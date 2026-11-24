@@ -26,6 +26,11 @@ const ASSETS = [
 ];
 
 // 코드(HTML·JS·CSS)는 항상 네트워크에서 먼저 — 캐시에 옛 코드가 남아도 즉시 새 버전이 뜬다
+// (GitHub Pages가 index.html을 max-age=600으로 내려도 HTTP 캐시를 건너뛰도록 cache:'reload')
+function netFetch(req) {
+  try { return fetch(req, { cache: 'reload' }); } catch (e) { return fetch(req); }
+}
+
 function isCodeRequest(req, url) {
   if (req.mode === 'navigate') return true;
   if (req.destination === 'script' || req.destination === 'style' || req.destination === 'document') return true;
@@ -90,7 +95,7 @@ self.addEventListener('fetch', (event) => {
   // HTML·JS·CSS: 네트워크 우선 → 새 배포가 곧바로 보인다 (오프라인이면 캐시)
   if (isCodeRequest(req, url)) {
     event.respondWith(
-      fetch(req).then((res) => {
+      netFetch(req).then((res) => {
         cachePut(req, res);
         return res;
       }).catch(() => caches.match(req, { ignoreSearch: true }).then((hit) => {
