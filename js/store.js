@@ -237,6 +237,17 @@
     });
     w.map.markers.forEach((m) => {
       if (typeof m.factionId !== 'string' || !placeIdSet.has(m.factionId)) m.factionId = null;
+      if (typeof m.nationId !== 'string' || !nationIdSet.has(m.nationId)) m.nationId = null;
+      // 예전 핀의 '지배 세력'이 국가 항목이면 지배 국가로 옮긴다
+      if (!m.nationId && m.factionId && nationIdSet.has(m.factionId)) {
+        m.nationId = m.factionId;
+        m.factionId = null;
+      }
+      if (m.nationId) {
+        const nation = w.lore.find((l) => l.id === m.nationId);
+        m.nation = nation ? nation.title : '';
+      }
+      if (typeof m.nation !== 'string') m.nation = '';
       if (typeof m.faction !== 'string') m.faction = '';
     });
     w.map.markers.forEach((m) => {
@@ -245,6 +256,38 @@
       if (typeof m.y !== 'number') m.y = 50;
       if (!m.kind) m.kind = 'city';
     });
+
+    // 지도 고정(잠금) · 국경(영토) · 지도 위 인물 핀
+    if (typeof w.mapLocked !== 'boolean') w.mapLocked = !!w.mapLocked;
+    if (!Array.isArray(w.mapBorders)) w.mapBorders = [];
+    w.mapBorders = w.mapBorders.filter((b) => b && typeof b === 'object');
+    w.mapBorders.forEach((b) => {
+      if (!b.id) b.id = 'bd_' + Math.random().toString(36).slice(2, 9);
+      if (typeof b.nationId !== 'string' || !nationIdSet.has(b.nationId)) b.nationId = null;
+      if (typeof b.label !== 'string') b.label = '';
+      if (typeof b.color !== 'string' || !/^#[0-9a-fA-F]{3,8}$/.test(b.color)) b.color = '#b4564f';
+      b.points = (Array.isArray(b.points) ? b.points : [])
+        .filter((p) => p && typeof p.x === 'number' && typeof p.y === 'number' && isFinite(p.x) && isFinite(p.y))
+        .map((p) => ({
+          x: Math.min(100, Math.max(0, Math.round(p.x * 10) / 10)),
+          y: Math.min(100, Math.max(0, Math.round(p.y * 10) / 10))
+        }));
+    });
+    w.mapBorders = w.mapBorders.filter((b) => b.points.length >= 3);
+
+    if (!Array.isArray(w.mapCharacterPins)) w.mapCharacterPins = [];
+    w.mapCharacterPins = w.mapCharacterPins.filter((p) => p && typeof p === 'object');
+    const pinCharIdSet = new Set(w.characters.map((c) => c.id));
+    w.mapCharacterPins.forEach((p) => {
+      if (!p.id) p.id = 'cp_' + Math.random().toString(36).slice(2, 9);
+      if (typeof p.charId !== 'string' || !pinCharIdSet.has(p.charId)) p.charId = '';
+      if (typeof p.x !== 'number' || !isFinite(p.x)) p.x = 50;
+      if (typeof p.y !== 'number' || !isFinite(p.y)) p.y = 50;
+      p.x = Math.min(100, Math.max(0, Math.round(p.x * 10) / 10));
+      p.y = Math.min(100, Math.max(0, Math.round(p.y * 10) / 10));
+      if (typeof p.note !== 'string') p.note = '';
+    });
+    w.mapCharacterPins = w.mapCharacterPins.filter((p) => !!p.charId);
     // 유물의 소지 인물 · 보관 지역 연결 정리
     const charIdSet = new Set(w.characters.map((c) => c.id));
     const markerIdSet = new Set(w.map.markers.map((m) => m.id));

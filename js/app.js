@@ -619,6 +619,7 @@
           w.relations = w.relations.filter((r) => r.a !== id && r.b !== id);
           w.events.forEach((e) => { e.characters = (e.characters || []).filter((x) => x !== id); });
           w.episodes.forEach((e) => { e.characters = (e.characters || []).filter((x) => x !== id); });
+          w.mapCharacterPins = (w.mapCharacterPins || []).filter((p) => p.charId !== id);
           touch({ immediate: true });
           sheet.close();
           refreshView();
@@ -1697,6 +1698,10 @@
       onTerrainChange: () => touch(),
       onUseSample: () => {
         const w = W();
+        if (w.mapLocked) {
+          U.toast('🔒 지도가 고정되어 있어요 · 잠금을 해제하면 바꿀 수 있어요', { icon: 'i-x', duration: 2400 });
+          return;
+        }
         w.map.kind = 'sample';
         w.map.image = null;
         w.map.imageOriginal = null;
@@ -1707,11 +1712,18 @@
         U.toast('기본 판타지 지도를 불러왔어요');
       },
       onCreatePin: (x, y) => openPinForm(x, y, null),
-      onPin: (id) => openRegionDetail(id)
+      onPin: (id) => openRegionDetail(id),
+      onOpenCharacter: (charId) => openCharacterDetail(charId),
+      onMapChange: () => touch()
     });
   }
 
   async function uploadMapImage() {
+    const w0 = W();
+    if (w0 && w0.mapLocked) {
+      U.toast('🔒 지도가 고정되어 있어요 · 잠금을 해제하면 바꿀 수 있어요', { icon: 'i-x', duration: 2400 });
+      return;
+    }
     const file = await U.pickFile('image/*');
     if (!file) return;
     try {
@@ -1750,6 +1762,8 @@
 
   function regionDetailBody(w, m) {
     const kind = MapView.KINDS[m.kind] || MapView.KINDS.city;
+    const natItem = m.nationId ? (w.lore || []).find((x) => x.id === m.nationId && x.category === 'nation') : null;
+    const natName = natItem ? natItem.title : (m.nation || '');
     const facItem = m.factionId ? (w.lore || []).find((x) => x.id === m.factionId && (x.category === 'faction' || x.category === 'nation')) : null;
     const facName = facItem ? facItem.title : (m.faction || '');
     const defs = [];
@@ -1759,10 +1773,14 @@
     const events = w.events.filter((e) => (e.locations || []).indexOf(m.id) > -1);
     const eps = w.episodes.filter((e) => (e.locations || []).indexOf(m.id) > -1);
     let html = '<div class="mini-chips" style="margin-bottom:12px"><span class="mini-chip">' + esc(kind.label) + '</span>' +
+      (natItem
+        ? '<button class="mini-chip mini-chip--faction" data-open-faction="' + esc(natItem.id) + '">🏳 ' + esc(natName) + '</button>'
+        : (natName ? '<span class="mini-chip">🏳 ' + esc(natName) + '</span>' : '')) +
       (facItem
         ? '<button class="mini-chip mini-chip--faction" data-open-faction="' + esc(facItem.id) + '">⚑ ' + esc(facName) + '</button>'
         : (facName ? '<span class="mini-chip">⚑ ' + esc(facName) + '</span>' : '')) +
       '</div>';
+    if (w.mapLocked) html += '<p class="field-hint">🔒 지도가 고정되어 있어요 · 잠금을 해제하면 이 지역을 수정하거나 지울 수 있어요.</p>';
     if (defs.length) html += '<dl class="def-list">' + defs.map((d) => '<div class="def"><dt>' + esc(d[0]) + '</dt><dd>' + esc(d[1]) + '</dd></div>').join('') + '</dl>';
     if (m.notes) html += '<div class="divider"></div><p class="prose">' + esc(m.notes) + '</p>';
     const stored = (w.lore || []).filter((l) => l.category === 'item' && l.locationId === m.id);
@@ -1796,7 +1814,9 @@
       title: m.name,
       full: true,
       body: body,
-      foot: [
+      foot: w.mapLocked
+        ? [{ label: '닫기', className: 'btn--ghost', onClick: () => 'close' }]
+        : [
         { label: '수정', className: 'btn', icon: 'i-edit', onClick: () => { sheet.close(); setTimeout(() => openPinForm(m.x, m.y, id), 160); } },
         { label: '삭제', className: 'btn--danger', icon: 'i-trash', onClick: async () => {
           const ok = await U.confirmSheet({ title: '지역을 삭제할까요?', message: m.name + ' 핀이 지도에서 사라집니다.', confirmText: '삭제', danger: true });
@@ -1815,6 +1835,10 @@
 
   function openPinForm(x, y, id) {
     const w = W();
+    if (w.mapLocked) {
+      U.toast('🔒 지도가 고정되어 있어요 · 잠금을 해제한 뒤 수정할 수 있어요', { icon: 'i-x', duration: 2400 });
+      return;
+    }
     if (MapView.state.host) {
       MapView.state.pinning = false;
       MapView.refresh();
@@ -1823,6 +1847,7 @@
     const kindItems = Object.keys(MapView.KINDS).map((k) => ({ value: k, label: MapView.KINDS[k].label }));
     let kind = m ? m.kind : 'city';
     let factionPick = null;
+    let nationPick = null;
     let px = m ? m.x : (typeof x === 'number' ? x : 50);
     let py = m ? m.y : (typeof y === 'number' ? y : 50);
 
@@ -1836,9 +1861,13 @@
       '</div>' +
       '<div class="field"><span class="field__label">유형</span><div id="pin-kind"></div></div>' +
       U.field('기후', U.textInput('climate', m ? m.climate : '', { placeholder: '안개와 소금바람' })) +
-      '<div class="field"><span class="field__label">지배 세력 <span class="muted" style="font-size:10px">설정집 · 세력·국가</span></span>' +
+      '<div class="field"><span class="field__label">지배 국가 <span class="muted" style="font-size:10px">설정집 · 국가</span></span>' +
+        '<div id="pin-nation"></div>' +
+        '<span class="field-hint">설정집의 국가를 고르면 이 지역이 그 나라의 영토로 표시돼요. 비워 두면 무소속이에요.</span>' +
+      '</div>' +
+      '<div class="field"><span class="field__label">세부 지배 세력 <span class="muted" style="font-size:10px">설정집 · 세력</span></span>' +
         '<div id="pin-faction"></div>' +
-        '<span class="field-hint">설정집의 세력을 고르면 이 지역이 그 세력의 지배지로 함께 표시돼요.</span>' +
+        '<span class="field-hint">국가 안의 세력까지 정하면 핀에 ⚑ 세력도 함께 보여요.</span>' +
       '</div>' +
       U.field('주요 특산물', U.textInput('resources', m ? m.resources : '', { placeholder: '소금, 밀수품, 먼 바다의 소문' })) +
       U.field('위험 요소', U.textInput('danger', m ? m.danger : '', { placeholder: '모래 아래의 옛 성벽…' })) +
@@ -1855,9 +1884,14 @@
         const picker = U.chipPicker(kindItems, kind, { multi: false, onChange: (v) => { kind = v; } });
         body.querySelector('#pin-kind').appendChild(picker);
         factionPick = buildLorePicker(body.querySelector('#pin-faction'), w, {
-          category: 'faction', categories: FACTION_CATS, multi: false,
+          category: 'faction', multi: false, noneLabel: '없음',
           ids: (m && m.factionId) ? [m.factionId] : [],
           legacy: (m && !m.factionId) ? (m.faction || '') : ''
+        });
+        nationPick = buildLorePicker(body.querySelector('#pin-nation'), w, {
+          category: 'nation', multi: false, noneLabel: '무소속',
+          ids: (m && m.nationId) ? [m.nationId] : [],
+          legacy: ''
         });
         body.querySelector('#gen-place').addEventListener('click', () => {
           Generator.open({
@@ -1873,11 +1907,15 @@
       onSubmit: (fd) => {
         const name = String(fd.get('name') || '').trim();
         if (!name) { U.toast('지역명을 적어 주세요', { icon: 'i-x' }); return false; }
+        const natId = (nationPick && nationPick.ids()[0]) || null;
+        const natItem = natId ? (w.lore || []).find((x) => x.id === natId && x.category === 'nation') : null;
         const facId = (factionPick && factionPick.ids()[0]) || null;
         const facItem = facId ? (w.lore || []).find((x) => x.id === facId) : null;
         const data = {
           name: name, kind: kind, x: px, y: py,
           climate: String(fd.get('climate') || '').trim(),
+          nationId: natItem ? natItem.id : null,
+          nation: natItem ? natItem.title : '',
           factionId: facItem ? facItem.id : null,
           faction: facItem ? facItem.title : ((factionPick && factionPick.legacy()) || '').trim(),
           resources: String(fd.get('resources') || '').trim(),

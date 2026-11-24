@@ -94,12 +94,19 @@
   const TERRAIN_ORDER = ['mountains', 'hills', 'forest', 'swamp', 'river', 'lake', 'sea', 'desert', 'volcano', 'snow', 'castle', 'city', 'ruins', 'dungeon', 'road', 'route'];
   const STAMP_SIZE = { s: 22, m: 34, l: 50 };
 
+  /* 국경(영토) 색 팔레트 — 양피지 위에서도 서로 구분되는 색만 */
+  const BORDER_COLORS = ['#b4564f', '#c07a3a', '#b39427', '#5f9e6a', '#4f9e8e', '#4f7fb4', '#6f6fbf', '#a25fa8', '#8a8f96'];
+
   const st = {
     host: null,
     opts: {},
     pinning: false,
     story: false,
     terrain: false,
+    border: false,          // 국경 그리기 모드
+    borderPoints: [],       // 찍고 있는 꼭짓점(0~100%)
+    borderColor: BORDER_COLORS[0],
+    selectedBorder: null,
     terrainType: 'mountains',
     terrainSize: 'm',
     index: 0,
@@ -146,6 +153,38 @@
     if (!w.map.image) return null;
     if (styleName(w) === 'original' && w.map.imageOriginal) return w.map.imageOriginal;
     return w.map.image;
+  }
+
+  /* ---------------- 지도 고정 · 국가 이름 · 저장 ---------------- */
+  function isLocked() {
+    const w = world();
+    return !!(w && w.mapLocked);
+  }
+
+  // 잠긴 지도에서는 수정 동작을 막는다 (이동·핀치줌·핀/스토리 조회는 허용)
+  function lockBlocked() {
+    if (!isLocked()) return false;
+    U.toast('🔒 지도가 고정되어 있어요 · 잠금을 해제하면 수정할 수 있어요', { icon: 'i-x', duration: 2400 });
+    return true;
+  }
+
+  function bordersOf(w) {
+    return (w && Array.isArray(w.mapBorders)) ? w.mapBorders : [];
+  }
+
+  function nationTitle(w, id) {
+    if (!id) return '';
+    const n = ((w && w.lore) || []).find((x) => x.id === id);
+    return n ? n.title : '';
+  }
+
+  function markerNationName(w, m) {
+    return nationTitle(w, m && m.nationId) || ((m && m.nation) || '');
+  }
+
+  function saveMap() {
+    if (st.opts.onMapChange) st.opts.onMapChange();
+    else if (global.Store) global.Store.save();
   }
 
   function sortedEpisodes(w) {
@@ -260,6 +299,187 @@
     return ((w && w.map && w.map.terrainStamps) || []).map(stampHtml).join('');
   }
 
+  /* ---------------- 국경(영토 경계) ---------------- */
+  function borderSvgPoints(points, h) {
+    return (points || []).map((p) => ((p.x / 100) * VW).toFixed(2) + ',' + ((p.y / 100) * h).toFixed(2)).join(' ');
+  }
+
+  function borderCenter(points) {
+    const pts = points || [];
+    if (!pts.length) return { x: 50, y: 50 };
+    let sx = 0, sy = 0;
+    pts.forEach((p) => { sx += p.x; sy += p.y; });
+    return { x: sx / pts.length, y: sy / pts.length };
+  }
+
+  function borderLabel(w, b) {
+    return (b && b.label) || nationTitle(w, b && b.nationId) || '국경';
+  }
+
+  /* 국경 SVG — 반투명 영토 채우기 + 국경선 + 중앙 국가명 (지도 좌표계와 1:1) */
+  function renderBorderLayer(w) {
+    const h = viewH();
+    const list = bordersOf(w);
+    if (!list.length && !st.border) return '';
+
+    const shapes = list.map((b) => {
+      const pts = (b && b.points) || [];
+      if (pts.length < 3) return '';
+      const c = borderCenter(pts);
+      const color = b.color || BORDER_COLORS[0];
+      const xy = borderSvgPoints(pts, h);
+      return '<g class="map-border' + (st.selectedBorder === b.id ? ' is-selected' : '') + '" data-border="' + U.esc(b.id) + '">' +
+        '<polygon class="map-border__area" points="' + xy + '" fill="' + U.esc(color) + '" data-border="' + U.esc(b.id) + '"/>' +
+        '<polygon class="map-border__line" points="' + xy + '" stroke="' + U.esc(color) + '" data-border="' + U.esc(b.id) + '"/>' +
+        '<text class="map-border__label" x="' + ((c.x / 100) * VW).toFixed(1) + '" y="' + ((c.y / 100) * h).toFixed(1) + '">' + U.esc(borderLabel(w, b)) + '</text>' +
+      '</g>';
+    }).join('');
+
+    let draft = '';
+    if (st.border && st.borderPoints.length) {
+      draft = '<polyline class="map-border__draft" points="' + borderSvgPoints(st.borderPoints, h) + '"/>' +
+        st.borderPoints.map((p) => '<circle class="map-border__dot" cx="' + ((p.x / 100) * VW).toFixed(2) + '" cy="' + ((p.y / 100) * h).toFixed(2) + '" r="3.2"/>').join('');
+    }
+
+    return '<svg class="map-border-svg" viewBox="0 0 ' + VW + ' ' + h + '" preserveAspectRatio="none" aria-label="국경선">' + shapes + draft + '</svg>';
+  }
+
+  function renderBorderPanel(w) {
+    const n = st.borderPoints.length;
+    return '<div class="border-panel">' +
+      '<div class="border-panel__head">' +
+        '<span class="border-panel__title">🏳️ 국경 그리기</span>' +
+        '<span class="border-panel__count">꼭짓점 ' + n + '개</span>' +
+      '</div>' +
+      '<p class="field-hint">지도를 탭해 국경선 꼭짓점을 차례로 찍으세요. 3개 이상 찍고 [완료]를 누르면 국가와 색을 고를 수 있어요.</p>' +
+      '<div class="border-panel__row">' +
+        '<button type="button" class="btn btn--sm" data-border-act="undo"' + (n ? '' : ' disabled') + '>되돌리기</button>' +
+        '<button type="button" class="btn btn--sm btn--ghost" data-border-act="cancel">취소</button>' +
+        '<button type="button" class="btn btn--sm btn--gold" data-border-act="done"' + (n >= 3 ? '' : ' disabled') + '>완료</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function setBorder(on) {
+    if (on && lockBlocked()) return;
+    st.border = !!on;
+    st.borderPoints = [];
+    if (st.border) { st.pinning = false; st.terrain = false; st.story = false; st.playing = false; clearInterval(st.timer); }
+    render();
+    if (global.App && global.App.syncFab) global.App.syncFab();
+    if (st.border) U.toast('지도를 탭해 국경선 꼭짓점을 찍으세요', { icon: 'i-pin', duration: 2200 });
+  }
+
+  function addBorderPoint(x, y) {
+    st.borderPoints.push({ x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 });
+    render();
+    U.haptic(8);
+  }
+
+  /* 국경 저장/수정 시트 — 국가(설정집)와 색, 표시 이름을 고른다 */
+  function openBorderEditor(borderId, draftPoints) {
+    const w = world();
+    if (!w) return;
+    if (lockBlocked()) return;
+    const existing = borderId ? bordersOf(w).find((b) => b.id === borderId) : null;
+    const points = (existing ? existing.points : draftPoints || []).map((p) => ({ x: p.x, y: p.y }));
+    if (points.length < 3) { U.toast('꼭짓점을 3개 이상 찍어 주세요', { icon: 'i-x' }); return; }
+
+    const nations = (w.lore || []).filter((l) => l.category === 'nation');
+    let nationId = existing ? (existing.nationId || '') : (nations[0] ? nations[0].id : '');
+    let color = (existing && existing.color) || st.borderColor || BORDER_COLORS[0];
+    st.borderColor = color;
+
+    const body = document.createElement('div');
+    body.innerHTML =
+      '<div class="field"><span class="field__label">지배 국가</span><div id="border-nation"></div>' +
+        '<span class="field-hint">' + (nations.length
+          ? '설정집의 국가를 고르면 지도 중앙에 국가명이 함께 표시돼요.'
+          : '설정집에 아직 국가가 없어요. 이름만 남기고 나중에 국가를 연결할 수 있어요.') + '</span></div>' +
+      '<div class="field"><span class="field__label">국경 색</span><div class="border-colors" id="border-colors"></div></div>' +
+      '<div class="field"><span class="field__label">표시 이름</span>' +
+        '<input class="input" id="border-label" placeholder="비우면 국가명이 표시돼요" value="' + U.esc(existing ? (existing.label || '') : '') + '"></div>' +
+      '<p class="field-hint">꼭짓점 ' + points.length + '개 · 반투명 영토와 국경선으로 그려져요.</p>' +
+      (existing ? '<button type="button" class="btn btn--danger btn--block mt-14" id="border-delete"><svg><use href="#i-trash"/></svg>국경 삭제</button>' : '');
+
+    const picker = U.chipPicker(
+      [{ value: '', label: '국가 없음' }].concat(nations.map((n) => ({ value: n.id, label: n.title }))),
+      nationId,
+      { multi: false, onChange: (v) => { nationId = v; } }
+    );
+    body.querySelector('#border-nation').appendChild(picker);
+
+    const colorWrap = body.querySelector('#border-colors');
+    function paintColors() {
+      colorWrap.innerHTML = BORDER_COLORS.map((c) =>
+        '<button type="button" class="border-color' + (String(c).toLowerCase() === String(color).toLowerCase() ? ' is-on' : '') +
+          '" data-color="' + c + '" style="--bc:' + c + '" aria-label="국경 색 ' + c + '"></button>').join('');
+    }
+    paintColors();
+    colorWrap.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-color]');
+      if (!b) return;
+      color = b.getAttribute('data-color');
+      paintColors();
+      U.haptic(6);
+    });
+
+    function save() {
+      const typed = String(body.querySelector('#border-label').value || '').trim();
+      const nation = nationId ? (w.lore || []).find((l) => l.id === nationId) : null;
+      const data = {
+        nationId: nation ? nation.id : null,
+        label: typed || (nation ? nation.title : '국경'),
+        color: color,
+        points: points
+      };
+      st.borderColor = color;
+      if (existing) {
+        Object.assign(existing, data);
+        st.selectedBorder = existing.id;
+      } else {
+        if (!Array.isArray(w.mapBorders)) w.mapBorders = [];
+        const made = Object.assign({ id: U.uid('bd') }, data);
+        w.mapBorders.push(made);
+        st.selectedBorder = made.id;
+      }
+      st.border = false;
+      st.borderPoints = [];
+      saveMap();
+      render();
+      sheet.close();
+      U.toast(existing ? '국경을 수정했어요' : '국경을 그렸어요', { icon: 'i-pin' });
+    }
+
+    const sheet = U.openSheet({
+      eyebrow: 'BORDER',
+      title: existing ? '국경 수정' : '국경 저장',
+      sub: '국가와 색을 고르면 지도에 영토가 칠해져요.',
+      body: body,
+      foot: [
+        { label: '취소', className: 'btn--ghost', onClick: () => 'close' },
+        { label: existing ? '저장' : '국경 저장', className: 'btn--gold', icon: 'i-check', onClick: () => save() }
+      ]
+    });
+
+    const del = body.querySelector('#border-delete');
+    if (del) del.addEventListener('click', async () => {
+      const ok = await U.confirmSheet({
+        title: '국경을 삭제할까요?',
+        message: borderLabel(w, existing) + ' 선이 지도에서 사라집니다. 지역 핀과 지형은 그대로 남아요.',
+        confirmText: '삭제',
+        danger: true
+      });
+      if (!ok) return;
+      w.mapBorders = bordersOf(w).filter((b) => b.id !== existing.id);
+      if (st.selectedBorder === existing.id) st.selectedBorder = null;
+      saveMap();
+      sheet.close();
+      render();
+      U.toast('국경을 삭제했어요', { icon: 'i-trash' });
+    });
+  }
+
   function renderTerrainPanel(w) {
     const count = ((w && w.map && w.map.terrainStamps) || []).length;
     return '<div class="terrain-panel">' +
@@ -296,6 +516,7 @@
   }
 
   function addStamp(x, y) {
+    if (lockBlocked()) return;
     const w = world();
     if (!w || !w.map) return;
     if (!Array.isArray(w.map.terrainStamps)) w.map.terrainStamps = [];
@@ -315,6 +536,7 @@
   }
 
   function removeStamp(id) {
+    if (lockBlocked()) return;
     const w = world();
     if (!w || !w.map) return;
     const stamp = (w.map.terrainStamps || []).find((s) => s.id === id);
@@ -328,6 +550,7 @@
   }
 
   async function clearStamps() {
+    if (lockBlocked()) return;
     const w = world();
     if (!w || !w.map) return;
     if (!((w.map.terrainStamps || []).length)) { U.toast('지울 지형이 없어요', { icon: 'i-x' }); return; }
@@ -347,8 +570,9 @@
   }
 
   function setTerrain(on) {
+    if (on && lockBlocked()) return;
     st.terrain = !!on;
-    if (st.terrain) { st.pinning = false; st.story = false; st.playing = false; clearInterval(st.timer); }
+    if (st.terrain) { st.pinning = false; st.story = false; st.border = false; st.borderPoints = []; st.playing = false; clearInterval(st.timer); }
     render();
     if (global.App && global.App.syncFab) global.App.syncFab();
   }
@@ -413,11 +637,164 @@
     const storyCls = st.story && stopIdx > -1
       ? (stopIdx === st.index ? ' pin--current' : (stopIdx < st.index ? ' pin--passed' : ''))
       : '';
+    const nation = markerNationName(w, m);
+    const faction = factionName(w, m);
+    const flags = [nation ? '🏳 ' + nation : '', faction ? '⚑ ' + faction : ''].filter(Boolean).join(' · ');
     return '<button type="button" class="pin ' + kind.cls + storyCls + '" data-pin="' + U.esc(m.id) + '" style="left:' + m.x + '%;top:' + m.y + '%" aria-label="' + U.esc(m.name) + '">' +
       '<span class="pin__mark"><span>' + U.esc(kind.mark) + '</span></span>' +
       '<span class="pin__label">' + U.esc(m.name) + '</span>' +
-      (factionName(w, m) ? '<span class="pin__faction">⚑ ' + U.esc(factionName(w, m)) + '</span>' : '') +
+      (flags ? '<span class="pin__faction">' + U.esc(flags) + '</span>' : '') +
     '</button>';
+  }
+
+  /* ---------------- 인물 핀 (지도 위 인물 배치) ---------------- */
+  function charPinsOf(w) {
+    return (w && Array.isArray(w.mapCharacterPins)) ? w.mapCharacterPins : [];
+  }
+
+  function charPinHtml(w, p) {
+    const c = ((w && w.characters) || []).find((x) => x.id === p.charId);
+    if (!c) return '';
+    return '<button type="button" class="cpin" data-cpin="' + U.esc(p.id) + '" style="left:' + p.x + '%;top:' + p.y + '%" aria-label="' + U.esc(c.name) + ' 위치">' +
+      '<span class="cpin__face">' +
+        (c.image ? '<img src="' + U.esc(c.image) + '" alt="">' : '<span class="cpin__initial">' + U.esc(U.initials(c.name)) + '</span>') +
+      '</span>' +
+      '<span class="cpin__label">' + U.esc(c.name) + '</span>' +
+      (p.note ? '<span class="cpin__note">' + U.esc(p.note) + '</span>' : '') +
+    '</button>';
+  }
+
+  function renderCharPinPanel(w) {
+    const n = charPinsOf(w).length;
+    return '<div class="border-panel">' +
+      '<div class="border-panel__head">' +
+        '<span class="border-panel__title">👤 인물 배치</span>' +
+        '<span class="border-panel__count">인물 핀 ' + n + '개</span>' +
+      '</div>' +
+      '<p class="field-hint">지도를 탭하고 인물을 고르면 그 자리에 인물 핀이 남아요. 놓인 인물 핀을 탭하면 상세를 보거나 옮기고 지웁니다.</p>' +
+      '<div class="border-panel__row">' +
+        '<button type="button" class="btn btn--sm btn--gold" data-charpin-act="done">배치 완료</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function setCharPin(on) {
+    if (on && lockBlocked()) return;
+    st.charPin = !!on;
+    st.movingCpin = null;
+    if (st.charPin) { st.pinning = false; st.terrain = false; st.border = false; st.borderPoints = []; st.story = false; st.playing = false; clearInterval(st.timer); }
+    render();
+    if (global.App && global.App.syncFab) global.App.syncFab();
+    if (st.charPin) U.toast('지도를 탭해 인물을 놓을 자리를 고르세요', { icon: 'i-users', duration: 2200 });
+  }
+
+  /* 지도 위 점을 탭 → 인물 선택 시트 */
+  function openCharacterPicker(x, y) {
+    const w = world();
+    if (!w) return;
+    if (lockBlocked()) return;
+    const chars = (w.characters || []);
+    if (!chars.length) { U.toast('먼저 인물을 만들어 주세요', { icon: 'i-users', duration: 2200 }); return; }
+    let charId = '';
+
+    const body = document.createElement('div');
+    body.innerHTML =
+      '<div class="field"><span class="field__label">인물 <b>*</b></span><div id="cpin-char"></div></div>' +
+      '<div class="field"><span class="field__label">위치 메모 <span class="muted" style="font-size:10px">선택</span></span>' +
+        '<input class="input" id="cpin-note" placeholder="예: 지금 북부 전선에 머무는 중"></div>' +
+      '<p class="field-hint">지도 ' + x.toFixed(1) + '%, ' + y.toFixed(1) + '% 자리에 인물 핀이 놓입니다.</p>';
+
+    const picker = U.chipPicker(chars.map((c) => ({ value: c.id, label: c.name })), '', {
+      multi: false,
+      onChange: (v) => { charId = v; }
+    });
+    body.querySelector('#cpin-char').appendChild(picker);
+
+    const sheet = U.openSheet({
+      eyebrow: 'CHARACTER PIN',
+      title: '인물 배치',
+      sub: '지도에 인물을 세워 둘 수 있어요.',
+      body: body,
+      foot: [
+        { label: '취소', className: 'btn--ghost', onClick: () => 'close' },
+        { label: '이 자리에 배치', className: 'btn--gold', icon: 'i-check', onClick: () => {
+          if (!charId) { U.toast('인물을 골라 주세요', { icon: 'i-x' }); return; }
+          const note = String(body.querySelector('#cpin-note').value || '').trim();
+          if (!Array.isArray(w.mapCharacterPins)) w.mapCharacterPins = [];
+          w.mapCharacterPins.push({ id: U.uid('cp'), charId: charId, x: x, y: y, note: note });
+          saveMap();
+          render();
+          sheet.close();
+          U.toast('인물을 지도에 배치했어요', { icon: 'i-users' });
+        } }
+      ]
+    });
+  }
+
+  /* 놓인 인물 핀 시트 — 상세 보기 · 옮기기 · 제거 (잠금 상태에서는 보기만) */
+  function openCharacterPinSheet(pinId) {
+    const w = world();
+    if (!w) return;
+    const pin = charPinsOf(w).find((p) => p.id === pinId);
+    if (!pin) return;
+    const c = ((w.characters) || []).find((x) => x.id === pin.charId);
+    const locked = isLocked();
+
+    const body = document.createElement('div');
+    body.innerHTML =
+      '<div class="mini-chips" style="margin-bottom:10px">' +
+        '<span class="mini-chip">👤 ' + U.esc(c ? c.name : '알 수 없음') + '</span>' +
+        '<span class="mini-chip">지도 ' + Number(pin.x).toFixed(1) + '%, ' + Number(pin.y).toFixed(1) + '%</span>' +
+      '</div>' +
+      (pin.note ? '<p class="prose">' + U.esc(pin.note) + '</p>' : '') +
+      (locked ? '<p class="field-hint">🔒 지도가 고정되어 있어 위치를 옮기거나 지울 수 없어요.</p>' : '');
+
+    const foot = [];
+    if (c) foot.push({ label: '인물 상세', className: 'btn', icon: 'i-users', onClick: () => {
+      sheet.close();
+      if (st.opts.onOpenCharacter) st.opts.onOpenCharacter(pin.charId);
+    } });
+    if (!locked) {
+      foot.push({ label: '옮기기', className: 'btn', icon: 'i-pin', onClick: () => {
+        st.movingCpin = pin.id;
+        st.charPin = false;
+        sheet.close();
+        render();
+        U.toast('지도를 탭해 인물을 옮기세요', { icon: 'i-pin', duration: 2000 });
+      } });
+      foot.push({ label: '제거', className: 'btn--danger', icon: 'i-trash', onClick: async () => {
+        const ok = await U.confirmSheet({ title: '인물 핀을 지울까요?', message: (c ? c.name : '이 인물') + ' 핀이 지도에서 사라집니다. 인물 기록은 그대로 남아요.', confirmText: '제거', danger: true });
+        if (!ok) return;
+        w.mapCharacterPins = charPinsOf(w).filter((p) => p.id !== pinId);
+        saveMap();
+        sheet.close();
+        render();
+        U.toast('인물 핀을 지웠어요', { icon: 'i-trash' });
+      } });
+    }
+
+    const sheet = U.openSheet({
+      eyebrow: 'CHARACTER PIN',
+      title: c ? c.name : '인물 핀',
+      sub: c && c.title ? c.title : '지도 위 인물',
+      body: body,
+      foot: foot
+    });
+  }
+
+  function moveCharacterPinTo(pinId, x, y) {
+    const w = world();
+    st.movingCpin = null;
+    if (!w) { render(); return; }
+    if (lockBlocked()) { render(); return; }
+    const pin = charPinsOf(w).find((p) => p.id === pinId);
+    if (!pin) { render(); return; }
+    pin.x = Math.round(x * 10) / 10;
+    pin.y = Math.round(y * 10) / 10;
+    saveMap();
+    render();
+    U.haptic(10);
+    U.toast('인물 위치를 옮겼어요', { icon: 'i-pin' });
   }
 
   function render() {
@@ -437,18 +814,27 @@
 
     const style = styleName(w);
     const canSwitchStyle = hasMap && w.map.kind === 'custom' && !!w.map.imageOriginal;
+    const locked = !!w.mapLocked;
+    const lockBtn = '<button type="button" class="gbtn gbtn--lock' + (locked ? ' is-on' : '') + '" data-map="lock" aria-pressed="' + (locked ? 'true' : 'false') + '" aria-label="' + (locked ? '지도 잠금 해제' : '지도 고정') + '">' +
+      '<span class="gbtn__emoji">' + (locked ? '🔓' : '🔒') + '</span>' + (locked ? '잠금 해제' : '지도 고정') + '</button>';
 
+    // 고정(잠금) 상태에서는 수정 단추를 감추고 잠금 해제·스토리 여정만 남긴다
     html += '<div class="map-toolbar">' +
-      '<button type="button" class="gbtn" data-map="upload"><svg><use href="#i-image"/></svg>지도 이미지</button>' +
-      '<button type="button" class="gbtn" data-map="gen"><span class="gbtn__emoji">🎲</span>대륙 생성</button>' +
-      '<button type="button" class="gbtn' + (st.pinning ? ' is-on' : '') + '" data-map="pin"><svg><use href="#i-pin"/></svg>핀 꽂기</button>' +
-      '<button type="button" class="gbtn' + (st.terrain ? ' is-on' : '') + '" data-map="terrain"><span class="gbtn__emoji">⛰️</span>지형 꾸미기</button>' +
+      (locked ? '' :
+        '<button type="button" class="gbtn" data-map="upload"><svg><use href="#i-image"/></svg>지도 이미지</button>' +
+        '<button type="button" class="gbtn' + (st.pinning ? ' is-on' : '') + '" data-map="pin"><svg><use href="#i-pin"/></svg>핀 꽂기</button>' +
+        '<button type="button" class="gbtn' + (st.terrain ? ' is-on' : '') + '" data-map="terrain"><span class="gbtn__emoji">⛰️</span>지형 꾸미기</button>' +
+        '<button type="button" class="gbtn' + (st.border ? ' is-on' : '') + '" data-map="border"><span class="gbtn__emoji">🏳️</span>국경 그리기</button>' +
+        '<button type="button" class="gbtn' + (st.charPin ? ' is-on' : '') + '" data-map="charpin"><span class="gbtn__emoji">👤</span>인물 배치</button>') +
       '<button type="button" class="gbtn' + (st.story ? ' is-on' : '') + '" data-map="story"><svg><use href="#i-route"/></svg>스토리 여정</button>' +
-      (canSwitchStyle
+      (!locked && canSwitchStyle
         ? '<button type="button" class="gbtn' + (style === 'parchment' ? ' is-on' : '') + '" data-map="style" aria-label="지도 스타일 바꾸기">' +
             '<span class="gbtn__emoji">' + (style === 'parchment' ? '📜' : '🖼️') + '</span>' + (style === 'parchment' ? '양피지' : '원본') + '</button>'
         : '') +
+      lockBtn +
     '</div>';
+
+    if (locked) html += '<div class="map-lock-note">🔒 지도가 고정되어 있어요 · 이동·확대와 핀 조회만 됩니다</div>';
 
     if (!hasMap) {
       html += '<div class="empty">' +
@@ -463,27 +849,34 @@
     } else {
       // 지도는 업로드한 이미지의 원본 비율을 그대로 쓴다 → 어떤 비율을 올려도 잘리지 않는다.
       html += '<div class="map-frame' + (st.pinning ? ' is-pinning' : '') + (st.story ? ' is-story' : '') + (st.terrain ? ' is-terrain' : '') +
+        (st.border ? ' is-border' : '') + (st.charPin || st.movingCpin ? ' is-charpin' : '') + (locked ? ' is-locked' : '') +
         '" id="map-frame" style="aspect-ratio:' + st.ratio + '">' +
         '<div class="map-stage" id="map-stage">' +
           '<img class="map-img" src="' + U.esc(src) + '" alt="세계 지도" draggable="false">' +
           '<div class="terrain-layer">' + terrainLayerInner(w) + '</div>' +
+          renderBorderLayer(w) +
           (st.story ? renderStoryOverlay() : '') +
           '<div class="pin-layer">' + markers.map((m) => pinHtml(m, w)).join('') + '</div>' +
+          '<div class="cpin-layer">' + charPinsOf(w).map((p) => charPinHtml(w, p)).join('') + '</div>' +
         '</div>' +
         '<div class="map-zoom" role="group" aria-label="지도 확대·축소">' +
           '<button type="button" class="mz" data-zoom="in" aria-label="확대"><svg><use href="#i-zoom-in"/></svg></button>' +
           '<button type="button" class="mz mz--label" data-zoom="reset" aria-label="100% 맞춤" data-zoomlabel>100%</button>' +
           '<button type="button" class="mz" data-zoom="out" aria-label="축소"><svg><use href="#i-zoom-out"/></svg></button>' +
         '</div>' +
-        ((!markers.length && !st.pinning && !st.terrain) || st.pinning || st.terrain
+        ((!markers.length && !st.pinning && !st.terrain && !st.border && !st.charPin) || st.pinning || st.terrain || st.border || st.charPin
           ? '<div class="map-empty-hint">' +
-              (st.terrain ? '지형 팔레트에서 지형을 고르고 지도를 터치하세요'
-                : (st.pinning ? '지도를 터치해 지역 핀을 꽂으세요' : '핀 꽂기를 눌러 지역을 등록할 수 있어요')) +
+              (st.charPin ? '지도를 탭해 인물을 놓을 자리를 고르세요'
+                : (st.border ? '지도를 탭해 국경선 꼭짓점을 찍으세요'
+                : (st.terrain ? '지형 팔레트에서 지형을 고르고 지도를 터치하세요'
+                : (st.pinning ? '지도를 터치해 지역 핀을 꽂으세요' : '핀 꽂기를 눌러 지역을 등록할 수 있어요')))) +
             '</div>'
           : '') +
       '</div>';
 
       if (st.terrain) html += renderTerrainPanel(w);
+      if (st.border) html += renderBorderPanel(w);
+      if (st.charPin) html += renderCharPinPanel(w);
       if (st.story) html += renderStoryCard(w);
 
       html += '<div class="section-head"><div><span class="eyebrow">Regions & Terrain</span>' +
@@ -497,7 +890,7 @@
               '<span class="row-card__badge">' + U.esc(kind.mark) + '</span>' +
               '<span class="row-card__body">' +
                 '<span class="row-card__title">' + U.esc(m.name) + '</span>' +
-                '<span class="row-card__meta">' + U.esc(kind.label) + (factionName(w, m) ? ' · ⚑ ' + U.esc(factionName(w, m)) : '') + (m.danger ? ' · ' + U.esc(m.danger) : '') + '</span>' +
+                '<span class="row-card__meta">' + U.esc(kind.label) + (markerNationName(w, m) ? ' · 🏳 ' + U.esc(markerNationName(w, m)) : '') + (factionName(w, m) ? ' · ⚑ ' + U.esc(factionName(w, m)) : '') + (m.danger ? ' · ' + U.esc(m.danger) : '') + '</span>' +
               '</span>' +
               '<span class="row-card__chev"><svg><use href="#i-chev-right"/></svg></span>' +
             '</button>';
@@ -563,7 +956,7 @@
     st.story = !!on;
     st.playing = false;
     clearInterval(st.timer);
-    if (st.story) { st.terrain = false; st.pinning = false; }
+    if (st.story) { st.terrain = false; st.pinning = false; st.border = false; st.borderPoints = []; st.charPin = false; st.movingCpin = null; }
     const w = world();
     if (st.story) {
       st.stops = buildStops(w);
@@ -638,8 +1031,9 @@
       btn.addEventListener('click', async () => {
         const act = btn.getAttribute('data-map');
         if (act === 'pin') {
+          if (lockBlocked()) return;
           st.pinning = !st.pinning;
-          if (st.pinning) st.terrain = false;
+          if (st.pinning) { st.terrain = false; st.border = false; st.borderPoints = []; st.charPin = false; st.movingCpin = null; }
           render();
           if (st.pinning) U.toast('지도를 터치해 핀을 꽂아 보세요', { icon: 'i-pin' });
         } else if (act === 'terrain') {
@@ -649,6 +1043,31 @@
           }
           setTerrain(!st.terrain);
           if (st.terrain) U.toast('지형 팔레트에서 지형을 고르고 지도를 터치하세요', { icon: 'i-pin', duration: 2200 });
+        } else if (act === 'border') {
+          if (!mapSource(w)) {
+            U.toast('지도 이미지를 먼저 올리거나 기본 지도를 불러와 주세요', { icon: 'i-image', duration: 2600 });
+            return;
+          }
+          setBorder(!st.border);
+        } else if (act === 'charpin') {
+          if (!mapSource(w)) {
+            U.toast('지도 이미지를 먼저 올리거나 기본 지도를 불러와 주세요', { icon: 'i-image', duration: 2600 });
+            return;
+          }
+          setCharPin(!st.charPin);
+        } else if (act === 'lock') {
+          w.mapLocked = !w.mapLocked;
+          st.pinning = false;
+          st.terrain = false;
+          st.border = false;
+          st.borderPoints = [];
+          st.charPin = false;
+          st.movingCpin = null;
+          saveMap();
+          render();
+          U.haptic(10);
+          U.toast(w.mapLocked ? '🔒 지도를 고정했어요 · 구경과 이동만 됩니다' : '🔓 잠금을 해제했어요 · 다시 편집할 수 있어요',
+            { icon: w.mapLocked ? 'i-shield' : 'i-edit', duration: 2400 });
         } else if (act === 'story') {
           if (!buildStops(w).length) {
             U.toast('연결된 지역이 있는 에피소드가 2개 이상 필요해요', { icon: 'i-route', duration: 2600 });
@@ -656,9 +1075,8 @@
           }
           setStory(!st.story);
         } else if (act === 'upload') {
+          if (lockBlocked()) return;
           if (st.opts.onUpload) st.opts.onUpload();
-        } else if (act === 'gen') {
-          generateContinent(w);
         } else if (act === 'style') {
           toggleMapStyle(w);
         } else if (act === 'sample') {
@@ -690,6 +1108,31 @@
       });
     });
 
+    // 국경 그리기 팔레트 — 되돌리기 / 취소 / 완료
+    host.querySelectorAll('[data-border-act]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const act = btn.getAttribute('data-border-act');
+        if (act === 'undo') {
+          st.borderPoints.pop();
+          render();
+          U.haptic(6);
+        } else if (act === 'cancel') {
+          st.border = false;
+          st.borderPoints = [];
+          render();
+          U.toast('국경 그리기를 취소했어요', { icon: 'i-x', duration: 1600 });
+        } else if (act === 'done') {
+          if (st.borderPoints.length < 3) { U.toast('꼭짓점을 3개 이상 찍어 주세요', { icon: 'i-x' }); return; }
+          openBorderEditor(null, st.borderPoints.slice());
+        }
+      });
+    });
+
+    // 인물 배치 모드 종료
+    host.querySelectorAll('[data-charpin-act]').forEach((btn) => {
+      btn.addEventListener('click', () => setCharPin(false));
+    });
+
     const frame = host.querySelector('#map-frame');
     if (frame) {
       bindGestures(frame);
@@ -708,6 +1151,23 @@
         if (e.target.closest('.map-zoom')) return;
         // 방금 핀치·팬 제스처가 끝났으면 탭으로 오인하지 않는다
         if (Date.now() - st.gestureAt < 500) return;
+
+        // 화면 좌표를 지도(스테이지) 좌표로 역산 — 확대·이동해 있어도 정확하다
+        const stage = frame.querySelector('#map-stage');
+        const rect = (stage || frame).getBoundingClientRect();
+        const x = U.clamp(((e.clientX - rect.left) / rect.width) * 100, 1, 99);
+        const y = U.clamp(((e.clientY - rect.top) / rect.height) * 100, 1, 99);
+
+        // 국경 그리기 — 탭한 자리에 꼭짓점을 찍는다
+        if (st.border) { e.preventDefault(); addBorderPoint(x, y); return; }
+        // 인물 핀 옮기기 / 새로 배치
+        if (st.movingCpin) { e.preventDefault(); moveCharacterPinTo(st.movingCpin, x, y); return; }
+        if (st.charPin) {
+          e.preventDefault();
+          openCharacterPicker(Math.round(x * 10) / 10, Math.round(y * 10) / 10);
+          return;
+        }
+
         // 지형 스탬프를 탭하면 지운다 (지형 모드에서만)
         const stamp = e.target.closest('[data-stamp]');
         if (stamp && st.terrain) {
@@ -726,11 +1186,28 @@
           if (st.opts.onPin) st.opts.onPin(id);
           return;
         }
-        // 화면 좌표를 지도(스테이지) 좌표로 역산 — 확대·이동해 있어도 정확하다
-        const stage = frame.querySelector('#map-stage');
-        const rect = (stage || frame).getBoundingClientRect();
-        const x = U.clamp(((e.clientX - rect.left) / rect.width) * 100, 1, 99);
-        const y = U.clamp(((e.clientY - rect.top) / rect.height) * 100, 1, 99);
+        // 인물 핀 — 탭하면 상세·이동·제거 시트 (잠금 상태에서는 인물 상세 바로 열기)
+        const cpin = e.target.closest('[data-cpin]');
+        if (cpin) {
+          e.preventDefault();
+          e.stopPropagation();
+          const cpinId = cpin.getAttribute('data-cpin');
+          if (isLocked()) {
+            const pinned = charPinsOf(w).find((p) => p.id === cpinId);
+            if (pinned && st.opts.onOpenCharacter) { st.opts.onOpenCharacter(pinned.charId); return; }
+          }
+          openCharacterPinSheet(cpinId);
+          return;
+        }
+        // 국경선을 탭하면 국가·색·삭제 시트
+        const borderEl = e.target.closest('[data-border]');
+        if (borderEl) {
+          e.preventDefault();
+          e.stopPropagation();
+          st.selectedBorder = borderEl.getAttribute('data-border');
+          openBorderEditor(st.selectedBorder);
+          return;
+        }
         if (st.terrain) {
           addStamp(x, y);
           return;
@@ -907,6 +1384,7 @@
 
   /* 🎲 대륙 랜덤 생성 — WorldGen이 그린 양피지 지도를 그대로 세계 지도로 쓴다 */
   function generateContinent(w) {
+    if (lockBlocked()) return;
     if (!w || !w.map) return;
     if (!global.WorldGen || typeof global.WorldGen.continent !== 'function') {
       U.toast('대륙 생성기를 불러오지 못했어요', { icon: 'i-x' });
@@ -937,6 +1415,7 @@
   }
 
   function toggleMapStyle(w) {
+    if (lockBlocked()) return;
     if (!w || !w.map || !w.map.imageOriginal) return;
     const next = styleName(w) === 'parchment' ? 'original' : 'parchment';
     w.map.style = next;
@@ -1136,6 +1615,10 @@
     st.pinning = false;
     st.story = false;
     st.terrain = false;
+    st.border = false;
+    st.borderPoints = [];
+    st.charPin = false;
+    st.movingCpin = null;
     st.terrainType = st.terrainType || 'mountains';
     st.terrainSize = st.terrainSize || 'm';
     st.index = 0;
@@ -1172,8 +1655,12 @@
     st.story = false;
     st.pinning = false;
     st.terrain = false;
+    st.border = false;
+    st.borderPoints = [];
+    st.charPin = false;
+    st.movingCpin = null;
   }
 
-  const api = { mount, refresh, destroy, setStory, setTerrain, goStep, KINDS, TERRAIN, TERRAIN_ORDER, state: st, buildStops, parchment, parchmentBase: paintParchmentBase, zoomBy, resetView, applyView, generateContinent };
+  const api = { mount, refresh, destroy, setStory, setTerrain, setBorder, setCharPin, goStep, KINDS, TERRAIN, TERRAIN_ORDER, BORDER_COLORS, state: st, buildStops, parchment, parchmentBase: paintParchmentBase, zoomBy, resetView, applyView, generateContinent };
   global.MapView = api;
 })(window);
