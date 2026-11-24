@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>아르카눔 · 판타지 세계관 노트</title>
+<meta name="description" content="인물·관계도·연표·지도·설정집·에피소드까지, 판타지 세계관을 iPhone에서 한 손으로 짓는 노트.">
+<meta name="theme-color" content="#12100e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="아르카눔">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+<script>
+  window.__qaErrors = [];
+  (function () {
+    function push(o) { try { window.__qaErrors.push(o); } catch (e) {} }
+    window.addEventListener('error', function (e) {
+      push({ type: 'error', msg: String(e.message || e.type), src: (e.filename || '') + ':' + (e.lineno || '') });
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+      push({ type: 'rejection', msg: String((e.reason && e.reason.message) || e.reason) });
+    });
+    var ce = console.error.bind(console);
+    console.error = function () {
+      push({ type: 'console', msg: Array.prototype.map.call(arguments, function (a) {
+        try { return typeof a === 'string' ? a : JSON.stringify(a); } catch (err) { return String(a); }
+      }).join(' ') });
+      ce.apply(null, arguments);
+    };
+    try {
+      var t = localStorage.getItem('arcanum.theme');
+      if (t === 'parchment' || t === 'dark') document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3z"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c.6-3.3 2.8-5.2 5.5-5.2s4.9 1.9 5.5 5.2M16 5.4a3.2 3.2 0 0 1 0 6.2M18 14.9c2 .6 3.3 2.3 3.7 4.6"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-network" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="18" r="2.4"/><circle cx="19" cy="18" r="2.4"/><path d="M10.7 7.2 6.4 15.8M13.3 7.2l4.3 8.6M7.4 18h9.2"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3.2 2"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15.5H6.5A2.5 2.5 0 0 0 4 21z"/><path d="M4 5.5v13M8 7.5h8M8 11h5"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-film" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M7.5 5v14M16.5 5v14M3 9.5h4.5M3 14.5h4.5M16.5 9.5H21M16.5 14.5H21"/></symbol>
+    <symbol fill="currentColor" stroke="none" stroke-width="0" id="i-sparkles" viewBox="0 0 24 24"><path d="M12 3.2l1.9 4.9 4.9 1.9-4.9 1.9-1.9 4.9-1.9-4.9L5.2 10l4.9-1.9z"/><path d="M18.5 15.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9zM5 16.5l.7 1.6 1.6.7-1.6.7L5 21.1l-.7-1.6-1.6-.7 1.6-.7z"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-chev-right" viewBox="0 0 24 24"><path d="M9 5l6.5 7L9 19"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-chev-down" viewBox="0 0 24 24"><path d="M5 9l7 6.5L19 9"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-chev-left" viewBox="0 0 24 24"><path d="M15 5l-6.5 7L15 19"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-download" viewBox="0 0 24 24"><path d="M12 3.5v11M7.5 10.5 12 15l4.5-4.5M4.5 19.5h15"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-upload" viewBox="0 0 24 24"><path d="M12 15.5v-11M7.5 9 12 4.5 16.5 9M4.5 19.5h15"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-trash" viewBox="0 0 24 24"><path d="M4.5 6.5h15M9 6.5V4h6v2.5M6.5 6.5l.9 13.5h9.2l.9-13.5M10 10.5v6M14 10.5v6"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-edit" viewBox="0 0 24 24"><path d="M4.5 19.5h4l10-10a2.1 2.1 0 0 0-3-3l-10 10z"/><path d="M14.5 5.5l3 3"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11" height="12" rx="2"/><path d="M15.5 5.5h-9a2 2 0 0 0-2 2v9"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9M20 4v4h-4"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-check" viewBox="0 0 24 24"><path d="M4.5 12.5l5 5 10-11"/></symbol>
+    <symbol fill="currentColor" stroke="none" stroke-width="0" id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.2 8.2 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M4.3 4.3l1.6 1.6M18.1 18.1l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.3 19.7l1.6-1.6M18.1 5.9l1.6-1.6"/></symbol>
+    <symbol fill="currentColor" stroke="none" stroke-width="0" id="i-play" viewBox="0 0 24 24"><path d="M8 5.5l10 6.5L8 18.5z"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-pause" viewBox="0 0 24 24"><path d="M9 5.5v13M15 5.5v13"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-zoom-in" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5M11 8.5v5M8.5 11h5"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-zoom-out" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5M8.5 11h5"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.2 8.8l-2 5.4-5.4 2 2-5.4z"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8.4 6h4.1a3.5 3.5 0 0 1 0 7H9.5a3.5 3.5 0 0 0 0 7h6.1"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-quill" viewBox="0 0 24 24"><path d="M19.5 4.5c-6.2.6-10.4 3.2-12 7.4-.5 1.3-.8 3.1-.9 4.6 1.5-.1 3.3-.4 4.6-.9 4.2-1.6 6.8-5.8 7.4-12z"/><path d="M4.5 19.5c1.6-3.4 4-6 7.5-8"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-shield" viewBox="0 0 24 24"><path d="M12 3.2 19 6v5.4c0 4.4-2.9 7.6-7 9.4-4.1-1.8-7-5-7-9.4V6z"/></symbol>
+    <symbol fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="i-flame" viewBox="0 0 24 24"><path d="M12 3s5 4.2 5 8.7c0 2.9-2.2 5.3-5 5.3s-5-2.4-5-5.3c0-1.6.8-3 1.7-4.1.4 1.4 1.3 2.3 2.3 2.3 1.2 0 1.9-1 1.9-2.4 0-1.4-.9-3.1-.9-4.5z"/><path d="M8 19.5h8"/></symbol>
+  </defs>
+</svg>
+
+<div class="app" id="app">
+  <header class="topbar">
+    <button class="world-switch" id="world-switch" aria-haspopup="dialog">
+      <span class="world-switch__sigil"><svg width="18" height="18"><use href="#i-compass"/></svg></span>
+      <span class="world-switch__text">
+        <span class="world-switch__name" id="world-name">세계관</span>
+        <span class="world-switch__sub" id="world-sub">불러오는 중…</span>
+      </span>
+    </button>
+    <div class="topbar__actions">
+      <button class="icon-btn" id="btn-generator" aria-label="이름·지명 추천">
+        <svg><use href="#i-sparkles"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-theme" aria-label="테마 바꾸기">
+        <svg><use href="#i-moon"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <section class="view is-active" id="view-dashboard" data-view="dashboard"><div id="dash-host"></div></section>
+    <section class="view" id="view-characters" data-view="characters"><div id="chars-host"></div></section>
+    <section class="view" id="view-relations" data-view="relations"><div id="rel-host"></div></section>
+    <section class="view" id="view-timeline" data-view="timeline"><div id="tl-host"></div></section>
+    <section class="view" id="view-map" data-view="map"><div id="map-host"></div></section>
+    <section class="view" id="view-lore" data-view="lore"><div id="lore-host"></div></section>
+    <section class="view" id="view-episodes" data-view="episodes"><div id="ep-host"></div></section>
+  </main>
+
+  <button class="fab" id="fab" hidden aria-label="새로 추가">
+    <svg><use href="#i-plus"/></svg>
+  </button>
+
+  <nav class="tabbar" id="tabbar" aria-label="주요 메뉴">
+    <button class="tab is-active" data-tab="dashboard"><svg><use href="#i-globe"/></svg><span>세계관</span></button>
+    <button class="tab" data-tab="characters"><svg><use href="#i-users"/></svg><span>인물</span></button>
+    <button class="tab" data-tab="relations"><svg><use href="#i-network"/></svg><span>관계도</span></button>
+    <button class="tab" data-tab="timeline"><svg><use href="#i-clock"/></svg><span>연표</span></button>
+    <button class="tab" data-tab="map"><svg><use href="#i-pin"/></svg><span>지도</span></button>
+    <button class="tab" data-tab="more"><svg><use href="#i-more"/></svg><span>더보기</span></button>
+  </nav>
+</div>
+
+<div id="sheet-root"></div>
+<div id="toast-root"></div>
+<input type="file" id="import-input" accept="application/json,.json" hidden>
+
+<script src="js/utils.js"></script>
+<script src="js/store.js"></script>
+<script src="js/generator.js"></script>
+<script src="js/sample.js"></script>
+<script src="js/graph.js"></script>
+<script src="js/mapview.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
