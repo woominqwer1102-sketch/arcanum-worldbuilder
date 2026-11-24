@@ -299,8 +299,13 @@
           x: Math.min(100, Math.max(0, Math.round(p.x * 10) / 10)),
           y: Math.min(100, Math.max(0, Math.round(p.y * 10) / 10))
         }));
+      // 육각 타일 영토 — "q,r" 칸 목록
+      b.tiles = (Array.isArray(b.tiles) ? b.tiles : [])
+        .filter((k) => typeof k === 'string' && /^-?\d+,-?\d+$/.test(k));
+      if (b.tiles.length) b.hexMode = true;
     });
-    w.mapBorders = w.mapBorders.filter((b) => b.points.length >= 3);
+    // 꼭짓점 3개 이상이거나 육각 칸이 하나라도 있으면 남긴다
+    w.mapBorders = w.mapBorders.filter((b) => (b.tiles || []).length || b.points.length >= 3);
 
     if (!Array.isArray(w.mapCharacterPins)) w.mapCharacterPins = [];
     w.mapCharacterPins = w.mapCharacterPins.filter((p) => p && typeof p === 'object');
