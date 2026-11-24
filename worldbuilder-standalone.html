@@ -2927,7 +2927,7 @@ main {
 <input type="file" id="import-input" accept="application/json,.json" hidden>
 
 <script>
-/* ---- js/utils.js ---- */
+/* ---- js/utils.js?v=1.4 ---- */
 /* =========================================================
    ARCANUM · utils (DOM, sheets, toast, files, images)
    ========================================================= */
@@ -3338,7 +3338,7 @@ main {
 
 </script>
 <script>
-/* ---- js/store.js ---- */
+/* ---- js/store.js?v=1.4 ---- */
 /* =========================================================
    ARCANUM · storage (IndexedDB + localStorage mirror)
    ========================================================= */
@@ -3909,7 +3909,7 @@ main {
 
 </script>
 <script>
-/* ---- js/generator.js ---- */
+/* ---- js/generator.js?v=1.4 ---- */
 /* =========================================================
    ARCANUM · 판타지 이름 / 지명 생성기
    ========================================================= */
@@ -4806,7 +4806,7 @@ main {
 
 </script>
 <script>
-/* ---- js/sample.js ---- */
+/* ---- js/sample.js?v=1.4 ---- */
 /* =========================================================
    ARCANUM · sample world "아르카디아 연대기" + sample map
    ========================================================= */
@@ -5263,7 +5263,7 @@ main {
 
 </script>
 <script>
-/* ---- js/graph.js ---- */
+/* ---- js/graph.js?v=1.4 ---- */
 /* =========================================================
    ARCANUM · 인물 관계도 (interactive SVG)
    ========================================================= */
@@ -5691,7 +5691,7 @@ main {
 
 </script>
 <script>
-/* ---- js/factiongraph.js ---- */
+/* ---- js/factiongraph.js?v=1.4 ---- */
 /* =========================================================
    ARCANUM · 세력 관계도 (faction relations, interactive SVG)
    설정집 '세력·국가' 항목을 노드로, world.factionRelations를 선으로 그린다.
@@ -6040,7 +6040,7 @@ main {
 
 </script>
 <script>
-/* ---- js/worldgen.js ---- */
+/* ---- js/worldgen.js?v=1.4 ---- */
 /* =========================================================
    ARCANUM · 🎲 대륙 랜덤 생성
    지구 대륙의 간략한 윤곽을 회전·반전·확대해 섞고, 해안선을 프랙탈로
@@ -6477,7 +6477,7 @@ main {
 
 </script>
 <script>
-/* ---- js/mapview.js ---- */
+/* ---- js/mapview.js?v=1.4 ---- */
 /* =========================================================
    ARCANUM · 지도 + 지역 핀 + 지형 스탬프 + 스토리 여정(타임라인)
    ========================================================= */
@@ -7660,7 +7660,7 @@ main {
 
 </script>
 <script>
-/* ---- js/rankicon.js ---- */
+/* ---- js/rankicon.js?v=1.4 ---- */
 /* =========================================================
    ARCANUM · 등급 아이콘 — 기본 팩(30종) + 설명 기반 문장(SVG) 생성기
    - 기본 아이콘: 이모지 24종 + 커스텀 SVG 문장 6종
@@ -8273,7 +8273,7 @@ main {
 
 </script>
 <script>
-/* ---- js/app.js ---- */
+/* ---- js/app.js?v=1.4 ---- */
 /* =========================================================
    ARCANUM · app (views, forms, backup, navigation)
    ========================================================= */
@@ -8586,7 +8586,7 @@ main {
           '<span class="row-card__chev"><svg><use href="#i-chev-right"/></svg></span></button>' +
       '</div>';
 
-    html += '<p class="center muted small" style="margin-top:22px">아르카눔 · 판타지 세계관 노트 v1.0</p>';
+    html += '<p class="center muted small" style="margin-top:22px">아르카눔 · 판타지 세계관 노트 v1.4</p>';
 
     host.innerHTML = html;
 
@@ -11492,9 +11492,15 @@ main {
         '<div class="def"><dt>버전</dt><dd>아르카눔 v1.4 · PWA</dd></div>' +
         '<div class="def"><dt>저장</dt><dd>' + (Store.isDbBroken() ? 'localStorage (자동 저장)' : 'IndexedDB + localStorage 이중 저장') + '</dd></div>' +
         '<div class="def"><dt>오프라인</dt><dd>홈 화면에 추가하면 인터넷 없이도 열립니다.</dd></div>' +
-      '</div>';
+      '</div>' +
+      '<div class="btn-row" style="margin-top:18px">' +
+        '<button class="btn" id="btn-hard-refresh" style="width:100%">🔄 최신 버전으로 새로고침</button>' +
+      '</div>' +
+      '<p class="center muted small" style="margin-top:8px">캐시만 비우고 다시 엽니다 · 세계관 데이터는 그대로 남습니다</p>';
 
     const sheet = U.openSheet({ eyebrow: 'MORE', title: '더보기', body: body, full: true });
+    const hardBtn = body.querySelector('#btn-hard-refresh');
+    if (hardBtn) hardBtn.addEventListener('click', () => { sheet.close(); hardRefresh(); });
     body.querySelectorAll('[data-more]').forEach((b) => b.addEventListener('click', () => {
       const act = b.dataset.more;
       sheet.close();
@@ -11717,6 +11723,27 @@ main {
     });
   }
 
+  /* 서비스워커 캐시를 비우고 최신 코드로 다시 연다.
+     IndexedDB·localStorage의 세계관 데이터는 절대 건드리지 않는다 (Cache Storage만 삭제). */
+  async function hardRefresh() {
+    try { U.toast('최신 버전을 확인하는 중…', { icon: 'i-refresh', duration: 1200 }); } catch (e) {}
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => (r.update ? r.update().catch(() => {}) : null)));
+        regs.forEach((r) => { try { if (r.waiting) r.waiting.postMessage({ type: 'SKIP_WAITING' }); } catch (e) {} });
+      }
+    } catch (e) { /* 업데이트 확인 실패해도 캐시 비우고 새로 연다 */ }
+    try {
+      if (window.caches && caches.keys) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+    } catch (e) {}
+    try { sessionStorage.setItem('arcanum.reloadAt', String(Date.now())); } catch (e) {}
+    location.reload();
+  }
+
   function registerSW() {
     if (!('serviceWorker' in navigator)) return;
     if (!/^https?:$/.test(location.protocol)) return;
@@ -11743,7 +11770,8 @@ main {
       setTimeout(() => { location.reload(); }, 650);
     });
 
-    navigator.serviceWorker.register('sw.js').then((reg) => {
+    // updateViaCache:'none' — sw.js 자체도 HTTP 캐시에 남은 옛 사본 대신 항상 새로 받아온다
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
       if (!reg) return;
       const wake = () => {
         if (!reg.waiting) return;
