@@ -3929,8 +3929,12 @@ main {
       if (!Array.isArray(c.abilityIds)) c.abilityIds = [];
       if (!Array.isArray(c.weaponIds)) c.weaponIds = [];
       if (typeof c.abilityText !== 'string') c.abilityText = '';
-      if (!c.pos || typeof c.pos.x !== 'number') {
+      if (!c.pos || typeof c.pos.x !== 'number' || typeof c.pos.y !== 'number') {
         c.pos = randomPos(w.characters.length);
+      } else {
+        // 예전 저장본의 자유 좌표도 격자 교차점으로 한 번 맞춘다
+        c.pos.x = gridX(c.pos.x);
+        c.pos.y = gridY(c.pos.y);
       }
       // 인물 등급: 체계마다 단계 하나(인덱스). 없는 체계·단계는 버린다.
       if (!Array.isArray(c.ranks)) c.ranks = [];
@@ -3953,6 +3957,13 @@ main {
       ['a', 'b'].forEach((k) => {
         if (typeof r[k] === 'object' && r[k]) r[k] = r[k].id;
       });
+      // 예전 '제자' 관계는 a가 제자·b가 스승이었다 → A(스승) → B(제자) 단방향으로 바로잡는다
+      if (r.type === 'student') {
+        const t = r.a;
+        r.a = r.b;
+        r.b = t;
+        r.type = 'mentor';
+      }
     });
     // drop relations pointing at removed characters
     const ids = new Set(w.characters.map((c) => c.id));
@@ -4183,14 +4194,19 @@ main {
     });
   }
 
+  // 자동 배치도 바둑판 격자 교차점(64px)에 맞춘다
+  const GRID_CELL = 64;
+  function gridX(x) { return Math.min(320, Math.max(64, Math.round(x / GRID_CELL) * GRID_CELL)); }
+  function gridY(y) { return Math.min(448, Math.max(64, Math.round(y / GRID_CELL) * GRID_CELL)); }
+
   function randomPos(index) {
     const i = index || 0;
-    const cx = 180, cy = 260;
+    const cx = 192, cy = 256;
     const angle = (i * 137.5) * Math.PI / 180;
     const radius = 40 + (i % 5) * 42;
     return {
-      x: Math.round(Math.min(320, Math.max(40, cx + Math.cos(angle) * radius))),
-      y: Math.round(Math.min(480, Math.max(40, cy + Math.sin(angle) * radius)))
+      x: gridX(cx + Math.cos(angle) * radius),
+      y: gridY(cy + Math.sin(angle) * radius)
     };
   }
 
@@ -5767,11 +5783,25 @@ main {
     hostile: { label: '적대', color: '#c0626b' },
     family: { label: '가족', color: '#c9a05a' },
     love: { label: '연인', color: '#d98aa8' },
+    friendship: { label: '친우', color: '#52a89b' },
     mentor: { label: '스승', color: '#7f9fd0' },
     student: { label: '제자', color: '#8fb4d8' },
     rival: { label: '라이벌', color: '#b487c9' },
     other: { label: '기타', color: '#9a9282' }
   };
+
+  // 바둑판 격자 — 노드는 격자 교차점에만 놓인다
+  const CELL = 64;
+  const GRID_MIN_X = CELL, GRID_MAX_X = 320, GRID_MIN_Y = CELL, GRID_MAX_Y = 448;
+
+  function snapX(x) { return U.clamp(Math.round(x / CELL) * CELL, GRID_MIN_X, GRID_MAX_X); }
+  function snapY(y) { return U.clamp(Math.round(y / CELL) * CELL, GRID_MIN_Y, GRID_MAX_Y); }
+
+  // 스승·제자: mentor는 a→b, student는 b→a 방향
+  function isDirected(type) { return type === 'mentor' || type === 'student'; }
+  function directedFromTo(r) {
+    return r.type === 'student' ? { from: r.b, to: r.a } : { from: r.a, to: r.b };
+  }
 
   const state = {
     host: null,
@@ -5783,6 +5813,7 @@ main {
     drag: null,
     pointers: new Map(),
     pinch: null,
+    tap: null,
     legend: true,
     mounted: false
   };
@@ -5824,15 +5855,35 @@ main {
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const len = Math.hypot(dx, dy) || 1;
-    const ox = (-dy / len) * offset;
-    const oy = (dx / len) * offset;
-    const cx = (a.x + b.x) / 2 + ox;
-    const cy = (a.y + b.y) / 2 + oy;
+    const nx = -dy / len;
+    const ny = dx / len;
+    const cx = (a.x + b.x) / 2 + nx * offset;
+    const cy = (a.y + b.y) / 2 + ny * offset;
+    // 노드 원 바깥에서 시작해 화살촉이 노드 가장자리에 닿도록 양끝을 다듬는다
+    const r = 19;
+    const sdx = cx - a.x, sdy = cy - a.y, sl = Math.hypot(sdx, sdy) || 1;
+    const edx = b.x - cx, edy = b.y - cy, el = Math.hypot(edx, edy) || 1;
+    const sx = a.x + (sdx / sl) * r, sy = a.y + (sdy / sl) * r;
+    const ex = b.x - (edx / el) * r, ey = b.y - (edy / el) * r;
     return {
-      d: 'M' + a.x + ' ' + a.y + ' Q' + cx + ' ' + cy + ' ' + b.x + ' ' + b.y,
-      mx: (a.x + 2 * cx + b.x) / 4,
-      my: (a.y + 2 * cy + b.y) / 4
+      d: 'M' + sx.toFixed(2) + ' ' + sy.toFixed(2) + ' Q' + cx.toFixed(2) + ' ' + cy.toFixed(2) + ' ' + ex.toFixed(2) + ' ' + ey.toFixed(2),
+      ex: ex, ey: ey,
+      ux: edx / el, uy: edy / el,
+      mx: (0.25 * sx + 0.5 * cx + 0.25 * ex),
+      my: (0.25 * sy + 0.5 * cy + 0.25 * ey)
     };
+  }
+
+  // 끝 화살표 머리 — A → B 단방향
+  function arrowHead(g, color) {
+    const size = 7.5;
+    const bx = g.ex - g.ux * size;
+    const by = g.ey - g.uy * size;
+    const px = -g.uy * size * 0.55;
+    const py = g.ux * size * 0.55;
+    return '<path d="M' + g.ex.toFixed(1) + ' ' + g.ey.toFixed(1) +
+      ' L' + (bx + px).toFixed(1) + ' ' + (by + py).toFixed(1) +
+      ' L' + (bx - px).toFixed(1) + ' ' + (by - py).toFixed(1) + ' Z" fill="' + color + '" opacity=".95"/>';
   }
 
   function truncate(name, n) {
@@ -5854,26 +5905,31 @@ main {
 
     let html = '';
     byPair.forEach((list) => {
-      list.forEach((r, i) => {
+      // A→B 와 B→A 가 함께 있으면 서로 반대쪽으로 휘어 두 화살표가 모두 또렷하게
+      const firstDir = list[0].a + '|' + list[0].b;
+      const bothWays = list.some((r) => (r.a + '|' + r.b) !== firstDir);
+      list.forEach((r) => {
         const a = chars.get(r.a);
         const b = chars.get(r.b);
         if (!a || !b) return;
-        const offset = (i - (list.length - 1) / 2) * 30;
+        const sameDir = list.filter((x) => x.a === r.a && x.b === r.b);
+        const idx = sameDir.indexOf(r);
+        const sign = ((r.a + '|' + r.b) === firstDir) ? 1 : -1;
+        const offset = bothWays
+          ? sign * (26 + idx * 20)
+          : (idx - (sameDir.length - 1) / 2) * 22;
         const g = edgeGeometry(a.pos, b.pos, offset);
         const type = TYPES[r.type] || TYPES.other;
-        const label = r.label || type.label;
-        const dash = r.type === 'hostile' ? ' stroke-dasharray="7 5"' : (r.type === 'student' ? ' stroke-dasharray="2 3"' : '');
-        // 스승 → 제자 방향을 점선 화살표 느낌으로 구분한다
-        const arrow = (r.type === 'mentor' || r.type === 'student')
-          ? '<circle cx="' + g.mx + '" cy="' + g.my + '" r="2.2" fill="' + type.color + '" opacity=".85"/>'
-          : '';
+        const directed = isDirected(r.type);
+        const label = r.label || (directed ? '스승→제자' : type.label);
+        const dash = r.type === 'hostile' ? ' stroke-dasharray="7 5"' : '';
         html +=
           '<g class="gedge" data-edge="' + U.esc(r.id) + '">' +
             '<path d="' + g.d + '" fill="none" stroke="' + type.color + '" stroke-width="1.6" stroke-linecap="round" opacity=".9"' + dash + '/>' +
             '<path d="' + g.d + '" fill="none" stroke="transparent" stroke-width="12" style="pointer-events:stroke;cursor:pointer"/>' +
-            arrow +
-            '<rect x="' + (g.mx - Math.min(46, (label.length * 3.4 + 7) / 2)) + '" y="' + (g.my - 6) + '" width="' + Math.min(92, label.length * 3.4 + 7) + '" height="12" rx="6" fill="#141010" fill-opacity=".82" stroke="' + type.color + '" stroke-opacity=".5" stroke-width=".7"/>' +
-            '<text x="' + g.mx + '" y="' + (g.my + 2.4) + '" text-anchor="middle" font-size="6.4" fill="' + type.color + '" font-family="-apple-system, sans-serif">' + U.esc(truncate(label, 13)) + '</text>' +
+            arrowHead(g, type.color) +
+            '<rect x="' + (g.mx - Math.min(46, (label.length * 3.4 + 7) / 2)).toFixed(1) + '" y="' + (g.my - 6).toFixed(1) + '" width="' + Math.min(92, label.length * 3.4 + 7).toFixed(1) + '" height="12" rx="6" fill="#141010" fill-opacity=".82" stroke="' + type.color + '" stroke-opacity=".5" stroke-width=".7"/>' +
+            '<text x="' + g.mx.toFixed(1) + '" y="' + (g.my + 2.4).toFixed(1) + '" text-anchor="middle" font-size="6.4" fill="' + type.color + '" font-family="-apple-system, sans-serif">' + U.esc(truncate(label, 13)) + '</text>' +
           '</g>';
       });
     });
@@ -5893,13 +5949,15 @@ main {
         defs += '<clipPath id="clip_' + U.esc(c.id) + '"><circle cx="' + c.pos.x + '" cy="' + c.pos.y + '" r="' + r + '"/></clipPath>';
       }
       html +=
-        '<g class="gnode' + (selected ? ' is-selected' : '') + '" data-node="' + U.esc(c.id) + '" transform="translate(' + c.pos.x + ' ' + c.pos.y + ')">' +
+        '<g class="gnode' + (selected ? ' is-selected' : '') + (c.pinned ? ' is-pinned' : '') + '" data-node="' + U.esc(c.id) + '" transform="translate(' + c.pos.x + ' ' + c.pos.y + ')">' +
           (selected ? '<circle r="24" fill="none" stroke="#d4af37" stroke-width="1" stroke-dasharray="2 2" opacity=".9"/>' : '') +
+          (c.pinned ? '<circle r="23" fill="none" stroke="#d4af37" stroke-width="1.2" stroke-opacity=".9" stroke-dasharray="1.4 2.8"/>' : '') +
           '<circle r="' + r + '" fill="#241a12" stroke="#d4af37" stroke-width="1.4" stroke-opacity=".75"/>' +
           (hasImg
             ? '<image href="' + U.esc(c.image) + '" x="' + (c.pos.x - r) + '" y="' + (c.pos.y - r) + '" width="' + (r * 2) + '" height="' + (r * 2) + '" preserveAspectRatio="xMidYMid slice" clip-path="url(#clip_' + U.esc(c.id) + ')" style="pointer-events:none"/>'
             : '<text y="4.5" text-anchor="middle" font-size="13" fill="#d8b864" font-family="Georgia, \'AppleMyungjo\', serif">' + U.esc(U.initials(c.name)) + '</text>') +
           '<text class="gnode-lbl" y="32" text-anchor="middle" font-size="8.4" stroke-width="2.2" paint-order="stroke" stroke-linejoin="round" font-family="-apple-system, sans-serif">' + U.esc(truncate(c.name, 8)) + '</text>' +
+          (c.pinned ? '<text y="-27" text-anchor="middle" font-size="9" aria-hidden="true">📌</text>' : '') +
         '</g>';
     });
     svg.querySelector('.gdefs-clip').innerHTML = defs;
@@ -5930,7 +5988,7 @@ main {
         ? '상대 인물을 한 명 더 탭하세요.'
         : '관계를 이을 인물 두 명을 차례로 탭하세요.';
     } else {
-      hint.textContent = '노드를 끌어 옮기고, 탭하면 인물 상세가 열립니다.';
+      hint.textContent = '노드를 끌면 바둑판 칸에 맞춰지고, 두 번 탭하면 위치가 고정돼요.';
     }
   }
 
@@ -5967,14 +6025,43 @@ main {
           refresh();
           if (state.opts.onLinkPair) state.opts.onLinkPair(a, id);
         }
-      } else if (state.opts.onNode) {
-        state.opts.onNode(id);
+      } else {
+        // 더블 탭 = 위치 고정/해제, 한 번 탭 = 인물 상세 (330ms 기다렸다 구분)
+        const now = Date.now();
+        if (state.tap && state.tap.id === id && now - state.tap.at <= 380) {
+          clearTimeout(state.tap.timer);
+          state.tap = null;
+          togglePin(id);
+          return;
+        }
+        if (state.tap) clearTimeout(state.tap.timer);
+        const t = { id: id, at: now, timer: 0 };
+        t.timer = setTimeout(() => {
+          state.tap = null;
+          if (state.opts.onNode) state.opts.onNode(id);
+        }, 330);
+        state.tap = t;
       }
       return;
     }
     if (edgeEl && state.opts.onEdge) {
       state.opts.onEdge(edgeEl.getAttribute('data-edge'));
     }
+  }
+
+  function togglePin(id) {
+    const c = nodeMap().get(id);
+    if (!c) return;
+    c.pinned = !c.pinned;
+    if (c.pinned) {
+      if (!c.pos) c.pos = { x: 180, y: 260 };
+      c.pos.x = snapX(c.pos.x);
+      c.pos.y = snapY(c.pos.y);
+    }
+    if (state.opts.onNodeMoved) state.opts.onNodeMoved();
+    refresh();
+    U.haptic(12);
+    U.toast(c.pinned ? '📌 ' + c.name + ' 위치를 고정했어요' : c.name + ' 위치 고정을 풀었어요', { icon: 'i-pin', duration: 1600 });
   }
 
   function bind() {
@@ -6047,9 +6134,10 @@ main {
       if (drag.type === 'node') {
         const c = nodeMap().get(drag.id);
         if (!c) return;
+        if (c.pinned) return;   // 고정된 노드는 끌어도 움직이지 않는다
         const p = toWorld(e.clientX, e.clientY);
-        c.pos.x = Math.round(U.clamp(p.x, 24, 336));
-        c.pos.y = Math.round(U.clamp(p.y, 24, 496));
+        c.pos.x = snapX(p.x);
+        c.pos.y = snapY(p.y);
         updateNodeTransform(c);
         renderEdges(state.svg, nodeMap());
         e.preventDefault();
@@ -6142,15 +6230,20 @@ main {
     state.pointers = new Map();
     state.pinch = null;
     state.drag = null;
+    state.tap = null;
 
     host.innerHTML =
       '<svg id="graph-svg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">' +
         '<defs class="gdefs-clip"></defs>' +
+        '<defs><pattern id="graph-grid" width="64" height="64" patternUnits="userSpaceOnUse">' +
+          '<path d="M 64 0 L 0 0 0 64" fill="none" stroke="rgba(212,175,55,.16)" stroke-width=".5"/>' +
+        '</pattern></defs>' +
+        '<rect class="graph-grid-bg" x="-4000" y="-4000" width="8000" height="8000" fill="url(#graph-grid)"/>' +
         '<g class="gedges"></g>' +
         '<g class="gnodes"></g>' +
       '</svg>' +
-      '<div class="graph-legend">' + Object.keys(TYPES).map((k) =>
-        '<span><i style="background:' + TYPES[k].color + '"></i>' + TYPES[k].label + '</span>').join('') + '</div>' +
+      '<div class="graph-legend">' + Object.keys(TYPES).filter((k) => k !== 'student').map((k) =>
+        '<span><i style="background:' + TYPES[k].color + '"></i>' + (k === 'mentor' ? '스승·제자' : TYPES[k].label) + '</span>').join('') + '</div>' +
       '<div class="graph-hint"></div>';
 
     state.svg = host.querySelector('#graph-svg');
@@ -6165,6 +6258,7 @@ main {
     state.svg = null;
     state.host = null;
     state.mounted = false;
+    state.tap = null;
   }
 
   function toggleLegend() {
@@ -6199,6 +6293,12 @@ main {
     trade: { label: '교역·협정', color: '#7fa9d8' }
   };
 
+  // 바둑판 격자 — 노드는 격자 교차점에만 놓인다
+  const CELL = 64;
+  const GRID_MIN_X = CELL, GRID_MAX_X = 320, GRID_MIN_Y = CELL, GRID_MAX_Y = 448;
+  function snapX(x) { return U.clamp(Math.round(x / CELL) * CELL, GRID_MIN_X, GRID_MAX_X); }
+  function snapY(y) { return U.clamp(Math.round(y / CELL) * CELL, GRID_MIN_Y, GRID_MAX_Y); }
+
   const state = {
     host: null,
     svg: null,
@@ -6209,6 +6309,7 @@ main {
     drag: null,
     pointers: new Map(),
     pinch: null,
+    tap: null,
     mounted: false
   };
 
@@ -6232,7 +6333,7 @@ main {
       const ry = 150 + Math.min(120, n * 9.5);
       // 안팎으로 번갈아 놓아 이름이 겹치지 않게
       const k = i % 2 ? 0.7 : 1;
-      p = { x: Math.round(180 + Math.cos(angle) * rx * k), y: Math.round(260 + Math.sin(angle) * ry * k) };
+      p = { x: snapX(180 + Math.cos(angle) * rx * k), y: snapY(260 + Math.sin(angle) * ry * k) };
       w.factionNodes[l.id] = p;
     }
     return p;
@@ -6275,8 +6376,36 @@ main {
     return { x: state.view.x + (clientX - r.left) * s, y: state.view.y + (clientY - r.top) * s };
   }
 
-  function edgeGeometry(a, b) {
-    return { x1: a.x, y1: a.y, x2: b.x, y2: b.y, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+  function edgeGeometry(a, b, offset) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    const cx = (a.x + b.x) / 2 + nx * (offset || 0);
+    const cy = (a.y + b.y) / 2 + ny * (offset || 0);
+    const r = 22;
+    const sdx = cx - a.x, sdy = cy - a.y, sl = Math.hypot(sdx, sdy) || 1;
+    const edx = b.x - cx, edy = b.y - cy, el = Math.hypot(edx, edy) || 1;
+    const sx = a.x + (sdx / sl) * r, sy = a.y + (sdy / sl) * r;
+    const ex = b.x - (edx / el) * r, ey = b.y - (edy / el) * r;
+    return {
+      d: 'M' + sx.toFixed(2) + ' ' + sy.toFixed(2) + ' Q' + cx.toFixed(2) + ' ' + cy.toFixed(2) + ' ' + ex.toFixed(2) + ' ' + ey.toFixed(2),
+      ex: ex, ey: ey, ux: edx / el, uy: edy / el,
+      mx: 0.25 * sx + 0.5 * cx + 0.25 * ex,
+      my: 0.25 * sy + 0.5 * cy + 0.25 * ey
+    };
+  }
+
+  function arrowHead(g, color) {
+    const size = 8;
+    const bx = g.ex - g.ux * size;
+    const by = g.ey - g.uy * size;
+    const px = -g.uy * size * 0.55;
+    const py = g.ux * size * 0.55;
+    return '<path d="M' + g.ex.toFixed(1) + ' ' + g.ey.toFixed(1) +
+      ' L' + (bx + px).toFixed(1) + ' ' + (by + py).toFixed(1) +
+      ' L' + (bx - px).toFixed(1) + ' ' + (by - py).toFixed(1) + ' Z" fill="' + color + '" opacity=".95"/>';
   }
 
   function truncate(name, n) {
@@ -6295,21 +6424,39 @@ main {
     if (!edges || !gnodes) return;
 
     let ehtml = '';
-    ((w && w.factionRelations) || []).forEach((r) => {
-      const a = byId.get(r.a);
-      const b = byId.get(r.b);
-      if (!a || !b) return;
-      const g = edgeGeometry(a.pos, b.pos);
-      const type = TYPES[r.type] || TYPES.ally;
-      const label = r.label || type.label;
-      const dash = r.type === 'hostile' ? ' stroke-dasharray="7 5"' : (r.type === 'subject' ? ' stroke-dasharray="4 3"' : '');
-      ehtml +=
-        '<g class="fedge" data-fedge="' + U.esc(r.id) + '">' +
-          '<line x1="' + g.x1 + '" y1="' + g.y1 + '" x2="' + g.x2 + '" y2="' + g.y2 + '" stroke="' + type.color + '" stroke-width="1.7" opacity=".85"' + dash + '/>' +
-          '<line x1="' + g.x1 + '" y1="' + g.y1 + '" x2="' + g.x2 + '" y2="' + g.y2 + '" stroke="transparent" stroke-width="14" style="pointer-events:stroke;cursor:pointer"/>' +
-          '<rect x="' + (g.mx - Math.min(44, (label.length * 3.5 + 8) / 2)) + '" y="' + (g.my - 6.5) + '" width="' + Math.min(88, label.length * 3.5 + 8) + '" height="13" rx="6.5" fill="#141010" fill-opacity=".84" stroke="' + type.color + '" stroke-opacity=".5" stroke-width=".7"/>' +
-          '<text x="' + g.mx + '" y="' + (g.my + 2.6) + '" text-anchor="middle" font-size="6.6" fill="' + type.color + '" font-family="-apple-system, sans-serif">' + U.esc(truncate(label, 13)) + '</text>' +
-        '</g>';
+    const rels = ((w && w.factionRelations) || []).slice();
+    const byPair = new Map();
+    rels.forEach((r) => {
+      const key = [r.a, r.b].sort().join('|');
+      if (!byPair.has(key)) byPair.set(key, []);
+      byPair.get(key).push(r);
+    });
+    byPair.forEach((list) => {
+      const firstDir = list[0].a + '|' + list[0].b;
+      const bothWays = list.some((r) => (r.a + '|' + r.b) !== firstDir);
+      list.forEach((r) => {
+        const a = byId.get(r.a);
+        const b = byId.get(r.b);
+        if (!a || !b) return;
+        const sameDir = list.filter((x) => x.a === r.a && x.b === r.b);
+        const idx = sameDir.indexOf(r);
+        const sign = ((r.a + '|' + r.b) === firstDir) ? 1 : -1;
+        const offset = bothWays
+          ? sign * (28 + idx * 20)
+          : (idx - (sameDir.length - 1) / 2) * 24;
+        const g = edgeGeometry(a.pos, b.pos, offset);
+        const type = TYPES[r.type] || TYPES.ally;
+        const label = r.label || type.label;
+        const dash = r.type === 'hostile' ? ' stroke-dasharray="7 5"' : (r.type === 'subject' ? ' stroke-dasharray="4 3"' : '');
+        ehtml +=
+          '<g class="fedge" data-fedge="' + U.esc(r.id) + '">' +
+            '<path d="' + g.d + '" fill="none" stroke="' + type.color + '" stroke-width="1.7" opacity=".85"' + dash + '/>' +
+            '<path d="' + g.d + '" fill="none" stroke="transparent" stroke-width="14" style="pointer-events:stroke;cursor:pointer"/>' +
+            arrowHead(g, type.color) +
+            '<rect x="' + (g.mx - Math.min(44, (label.length * 3.5 + 8) / 2)).toFixed(1) + '" y="' + (g.my - 6.5).toFixed(1) + '" width="' + Math.min(88, label.length * 3.5 + 8).toFixed(1) + '" height="13" rx="6.5" fill="#141010" fill-opacity=".84" stroke="' + type.color + '" stroke-opacity=".5" stroke-width=".7"/>' +
+            '<text x="' + g.mx.toFixed(1) + '" y="' + (g.my + 2.6).toFixed(1) + '" text-anchor="middle" font-size="6.6" fill="' + type.color + '" font-family="-apple-system, sans-serif">' + U.esc(truncate(label, 13)) + '</text>' +
+          '</g>';
+      });
     });
 
     let nhtml = '';
@@ -6320,12 +6467,14 @@ main {
       const races = isNation ? raceNamesOf(w, n) : [];
       const nation = isNation ? '' : nationNameOf(w, n);
       nhtml +=
-        '<g class="fnode' + (selected ? ' is-selected' : '') + '" data-fnode="' + U.esc(n.id) + '" transform="translate(' + n.pos.x + ' ' + n.pos.y + ')">' +
+        '<g class="fnode' + (selected ? ' is-selected' : '') + (n.pos && n.pos.pinned ? ' is-pinned' : '') + '" data-fnode="' + U.esc(n.id) + '" transform="translate(' + n.pos.x + ' ' + n.pos.y + ')">' +
           (selected ? '<circle r="26" fill="none" stroke="#d4af37" stroke-width="1" stroke-dasharray="2 2" opacity=".9"/>' : '') +
+          (n.pos && n.pos.pinned ? '<circle r="27" fill="none" stroke="#d4af37" stroke-width="1.2" stroke-opacity=".9" stroke-dasharray="1.4 2.8"/>' : '') +
           (isNation ? '<circle r="24" fill="none" stroke="' + color + '" stroke-width="1" stroke-dasharray="1.6 2.6" opacity=".7"/>' : '') +
           '<circle r="21" fill="#1a1411" stroke="' + color + '" stroke-width="1.4" opacity=".95"/>' +
           '<text text-anchor="middle" y="4.4" font-size="11" fill="' + color + '" font-family="AppleMyungjo, Georgia, serif">' + U.esc(String(n.title || '').slice(0, 1)) + '</text>' +
           '<text class="fnode-label" text-anchor="middle" y="33" font-size="7.2" fill="#d8cdb4" stroke="#100d0b" stroke-width="2.4" paint-order="stroke" font-family="-apple-system, sans-serif">' + U.esc(truncate(n.title, 9)) + '</text>' +
+          (n.pos && n.pos.pinned ? '<text y="-30" text-anchor="middle" font-size="9" aria-hidden="true">📌</text>' : '') +
           (races.length ? '<text class="fnode-race" text-anchor="middle" y="41" font-size="5.6" fill="#9c9078" stroke="#100d0b" stroke-width="1.8" paint-order="stroke" font-family="-apple-system, sans-serif">' + U.esc(truncate(races.join(' · '), 14)) + '</text>' : '') +
           (!isNation ? '<text class="fnode-nation" text-anchor="middle" y="41" font-size="5.6" fill="' + (nation ? '#c0a463' : '#7d7466') + '" stroke="#100d0b" stroke-width="1.8" paint-order="stroke" font-family="-apple-system, sans-serif">' + U.esc(nation || '무소속') + '</text>' : '') +
         '</g>';
@@ -6354,13 +6503,49 @@ main {
         }
         return;
       }
-      if (state.opts.onNode) state.opts.onNode(id);
+      // 더블 탭 = 위치 고정/해제, 한 번 탭 = 세력 상세
+      const now = Date.now();
+      if (state.tap && state.tap.id === id && now - state.tap.at <= 380) {
+        clearTimeout(state.tap.timer);
+        state.tap = null;
+        togglePin(id);
+        return;
+      }
+      if (state.tap) clearTimeout(state.tap.timer);
+      const t = { id: id, at: now, timer: 0 };
+      t.timer = setTimeout(() => {
+        state.tap = null;
+        if (state.opts.onNode) state.opts.onNode(id);
+      }, 330);
+      state.tap = t;
       return;
     }
     const edgeEl = target.closest ? target.closest('[data-fedge]') : null;
     if (edgeEl && state.opts.onEdge) state.opts.onEdge(edgeEl.getAttribute('data-fedge'));
   }
 
+  function togglePin(id) {
+    const w = world();
+    if (!w) return;
+    if (!w.factionNodes) w.factionNodes = {};
+    const cur = w.factionNodes[id];
+    if (!cur) return;
+    cur.pinned = !cur.pinned;
+    if (cur.pinned) {
+      cur.x = snapX(cur.x);
+      cur.y = snapY(cur.y);
+    }
+    if (state.opts.onNodeMoved) state.opts.onNodeMoved();
+    render();
+    U.haptic(12);
+    const title = factionTitle(id);
+    U.toast(cur.pinned ? '📌 ' + title + ' 위치를 고정했어요' : title + ' 위치 고정을 풀었어요', { icon: 'i-pin', duration: 1600 });
+  }
+
+  function factionTitle(id) {
+    const l = factions().find((x) => x.id === id);
+    return l ? l.title : '세력';
+  }
   function bind() {
     const svg = state.svg;
 
@@ -6408,12 +6593,13 @@ main {
       if (drag.type === 'node') {
         const w = world();
         if (!w || !w.factionNodes) return;
-        const p = toWorld(e.clientX, e.clientY);
         const cur = w.factionNodes[drag.id] || { x: 180, y: 260 };
+        if (cur.pinned) return;   // 고정된 노드는 끌어도 움직이지 않는다
+        const p = toWorld(e.clientX, e.clientY);
         // 노드 중심을 잡고 끌도록 클릭 지점과의 차이를 반영
         if (!drag.grab) drag.grab = { x: cur.x - toWorld(drag.startX, drag.startY).x, y: cur.y - toWorld(drag.startX, drag.startY).y };
-        cur.x = Math.round(U.clamp(p.x + drag.grab.x, 20, 340));
-        cur.y = Math.round(U.clamp(p.y + drag.grab.y, 20, 500));
+        cur.x = snapX(p.x + drag.grab.x);
+        cur.y = snapY(p.y + drag.grab.y);
         render();
         e.preventDefault();
       } else if (drag.type === 'pan') {
@@ -6481,7 +6667,7 @@ main {
     state.selected = [];
     render();
     const hint = state.host && state.host.querySelector('.graph-hint');
-    if (hint) hint.textContent = on ? '세력을 두 개 차례로 탭하면 관계를 이을 수 있어요' : '';
+    if (hint) hint.textContent = on ? '세력을 두 개 차례로 탭하면 관계를 이을 수 있어요' : '노드를 끌면 바둑판 칸에 맞춰지고, 두 번 탭하면 위치가 고정돼요';
   }
 
   function refresh() {
@@ -6497,9 +6683,14 @@ main {
     state.pointers = new Map();
     state.pinch = null;
     state.drag = null;
+    state.tap = null;
 
     host.innerHTML =
       '<svg id="faction-svg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">' +
+        '<defs><pattern id="faction-grid" width="64" height="64" patternUnits="userSpaceOnUse">' +
+          '<path d="M 64 0 L 0 0 0 64" fill="none" stroke="rgba(212,175,55,.16)" stroke-width=".5"/>' +
+        '</pattern></defs>' +
+        '<rect class="graph-grid-bg" x="-4000" y="-4000" width="8000" height="8000" fill="url(#faction-grid)"/>' +
         '<g class="fedges"></g>' +
         '<g class="fnodes"></g>' +
       '</svg>' +
@@ -6520,6 +6711,7 @@ main {
     state.host = null;
     state.mounted = false;
     state.drag = null;
+    state.tap = null;
     state.pointers = new Map();
     state.selected = [];
   }
@@ -9751,6 +9943,17 @@ main {
         : emptyBlock('아직 인물이 없어요', '이름과 칭호만 정해도 세계가 시작됩니다.', 'add-char', '첫 인물 만들기'));
   }
 
+  // 관계 카드에 보여 줄 역할 — 스승·제자는 내가 어느 쪽인지에 따라 상대를 부른다
+  function relationRole(r, selfId, other) {
+    const type = Graph.TYPES[r.type] || Graph.TYPES.other;
+    const name = other ? other.name : '상대';
+    if (r.type === 'mentor' || r.type === 'student') {
+      const mentorId = r.type === 'student' ? r.b : r.a;
+      return mentorId === selfId ? ('제자 · ' + name) : ('스승 · ' + name);
+    }
+    return r.label || type.label;
+  }
+
   function characterDetailBody(w, c) {
     const others = charsById(w);
     const rels = w.relations.filter((r) => r.a === c.id || r.b === c.id);
@@ -9819,12 +10022,15 @@ main {
         const other = others.get(r.a === c.id ? r.b : r.a);
         const type = Graph.TYPES[r.type] || Graph.TYPES.other;
         const oid = r.a === c.id ? r.b : r.a;
+        const directed = (r.type === 'mentor' || r.type === 'student');
+        const typeLabel = directed ? '스승→제자' : type.label;
+        const arrow = r.a === c.id ? '→' : '←';
         return '<div class="rel-card" style="--rel-color:' + type.color + '">' +
           '<button type="button" class="rel-card__who" data-open-char="' + esc(oid) + '" aria-label="' + esc(other ? other.name : '') + ' 상세 열기">' +
             '<span class="rel-card__face">' + (other && other.image ? '<img src="' + esc(other.image) + '" alt="">' : esc(other ? U.initials(other.name) : '?')) + '</span>' +
             '<span class="rel-card__txt"><b>' + esc(other ? other.name : '알 수 없음') + '</b>' +
-              '<span class="rel-card__label">' + esc(r.label || type.label) + '</span></span>' +
-            '<span class="rel-card__type">' + esc(type.label) + '</span>' +
+              '<span class="rel-card__label">' + esc(relationRole(r, c.id, other)) + '</span></span>' +
+            '<span class="rel-card__type">' + esc(arrow + ' ' + typeLabel) + '</span>' +
           '</button>' +
           '<button type="button" class="rel-card__edit" data-rel="' + esc(r.id) + '" aria-label="관계 수정"><svg><use href="#i-edit"/></svg></button>' +
         '</div>';
@@ -10652,7 +10858,7 @@ main {
         return '<button class="rel-line" data-frel="' + esc(r.id) + '">' +
           '<span class="rel-dot" style="background:' + t.color + '"></span>' +
           '<span><b>' + esc(factionTitle(other)) + '</b><br><span class="muted">' + esc(r.label || '') + '</span></span>' +
-          '<span class="rel-type">' + esc(t.label) + '</span></button>';
+          '<span class="rel-type">' + esc((r.a === id ? '→ ' : '← ') + t.label) + '</span></button>';
       }).join('') + '</div>' : '<p class="field-hint">아직 이 세력과 이어진 관계가 없어요.</p>') +
       (members.length ? '<div class="label-row"><span>소속 인물</span><span>' + members.length + '</span></div><div class="mini-chips">' +
         members.map((c) => '<button class="mini-chip" data-open-char="' + esc(c.id) + '">' + esc(c.name) + '</button>').join('') + '</div>' : '');
@@ -10687,7 +10893,7 @@ main {
           const t = FactionGraph.TYPES[r.type] || FactionGraph.TYPES.ally;
           return '<button class="rel-line" data-frel="' + esc(r.id) + '">' +
             '<span class="rel-dot" style="background:' + t.color + '"></span>' +
-            '<span><b>' + esc(factionTitle(r.a)) + '</b> ↔ <b>' + esc(factionTitle(r.b)) + '</b><br>' +
+            '<span><b>' + esc(factionTitle(r.a)) + '</b> → <b>' + esc(factionTitle(r.b)) + '</b><br>' +
             '<span class="muted">' + esc(r.label || '') + '</span></span>' +
             '<span class="rel-type">' + esc(t.label) + '</span></button>';
         }).join('') + '</div>'
@@ -10716,8 +10922,9 @@ main {
 
     const body = document.createElement('div');
     body.innerHTML =
-      '<div class="field"><span class="field__label">세력 A</span><div id="frel-a"></div></div>' +
-      '<div class="field"><span class="field__label">세력 B</span><div id="frel-b"></div></div>' +
+      '<div class="center muted small" style="margin-bottom:10px">A(출발) → B(대상) 방향의 단방향 관계로 이어져요</div>' +
+      '<div class="field"><span class="field__label">세력 A <span class="muted" style="font-size:10px">출발</span></span><div id="frel-a"></div></div>' +
+      '<div class="field"><span class="field__label">세력 B <span class="muted" style="font-size:10px">대상</span></span><div id="frel-b"></div></div>' +
       '<div class="field"><span class="field__label">관계 종류</span><div id="frel-type"></div></div>' +
       U.field('한 줄 설명', U.textInput('label', rel ? rel.label : '', { placeholder: '예: 성소의 인장을 함께 지킨다' })) +
       U.field('메모', U.textArea('note', rel ? rel.note : '', '동맹의 대가, 적대의 이유…', 4));
@@ -10765,9 +10972,9 @@ main {
           const b = charsById(w).get(r.b);
           return '<button class="rel-line" data-rel="' + esc(r.id) + '">' +
             '<span class="rel-dot" style="background:' + type.color + '"></span>' +
-            '<span><b>' + esc(a ? a.name : '?') + '</b> ↔ <b>' + esc(b ? b.name : '?') + '</b><br>' +
+            '<span><b>' + esc(a ? a.name : '?') + '</b> → <b>' + esc(b ? b.name : '?') + '</b><br>' +
             '<span class="muted">' + esc(r.label || '') + '</span></span>' +
-            '<span class="rel-type">' + esc(type.label) + '</span></button>';
+            '<span class="rel-type">' + esc(((r.type === 'mentor' || r.type === 'student') ? '스승→제자' : type.label)) + '</span></button>';
         }).join('') + '</div>'
       : '<div class="empty"><div class="empty__sigil">✦</div><p>아직 이어진 관계가 없어요.</p></div>';
     const sheet = U.openSheet({ eyebrow: 'RELATIONS', title: '관계 목록', body: body, full: true });
@@ -10782,7 +10989,10 @@ main {
   function openRelationForm(aId, bId, relId) {
     const w = W();
     const rel = relId ? w.relations.find((r) => r.id === relId) : null;
-    if (rel) { aId = rel.a; bId = rel.b; }
+    if (rel) {
+      // 예전 '제자' 관계는 a가 제자·b가 스승 → A(스승) → B(제자)로 바로잡는다
+      if (rel.type === 'student') { aId = rel.b; bId = rel.a; } else { aId = rel.a; bId = rel.b; }
+    }
     const chars = w.characters;
     if (!chars.length) {
       U.toast('인물을 먼저 추가해 주세요', { icon: 'i-users' });
@@ -10791,24 +11001,29 @@ main {
     aId = aId || chars[0].id;
     bId = bId || (chars[1] ? chars[1].id : chars[0].id);
     const byId = charsById(w);
-    const typeItems = Object.keys(Graph.TYPES).map((k) => ({ value: k, label: Graph.TYPES[k].label }));
+    const typeItems = Object.keys(Graph.TYPES)
+      .filter((k) => k !== 'student')
+      .map((k) => ({ value: k, label: k === 'mentor' ? '스승·제자' : Graph.TYPES[k].label }));
 
     const body = document.createElement('div');
     body.innerHTML =
       '<div class="card" style="margin-bottom:14px">' +
         '<div class="center" style="font-family:var(--font-display);font-size:15px">' +
           '<span id="rel-a-name">' + esc(byId.get(aId).name) + '</span>' +
-          '<span class="muted" style="padding:0 8px">↔</span>' +
+          '<span class="muted" style="padding:0 8px">→</span>' +
           '<span id="rel-b-name">' + esc(byId.get(bId).name) + '</span>' +
         '</div>' +
+        '<div class="center muted small" id="rel-dir-note" style="margin-top:4px"></div>' +
+        '<button type="button" class="btn btn--sm btn--ghost" id="rel-swap" style="display:block;margin:8px auto 0">⇄ 방향 바꾸기</button>' +
       '</div>' +
-      '<div class="field"><span class="field__label">인물 A</span><div id="rel-a-pick"></div></div>' +
-      '<div class="field"><span class="field__label">인물 B</span><div id="rel-b-pick"></div></div>' +
+      '<div class="field"><span class="field__label">인물 A <span class="muted" style="font-size:10px">출발</span></span><div id="rel-a-pick"></div></div>' +
+      '<div class="field"><span class="field__label">인물 B <span class="muted" style="font-size:10px">대상</span></span><div id="rel-b-pick"></div></div>' +
       '<div class="field"><span class="field__label">관계 종류</span><div id="rel-type"></div></div>' +
+      '<span class="field-hint">모든 관계는 <b>A → B</b> 단방향 화살표로 표시돼요. 스승·제자는 A가 스승, B가 제자가 돼요.</span>' +
       U.field('한 줄 설명', U.textInput('label', rel ? rel.label : '', { placeholder: '예: 어린 시절의 서약' })) +
       U.field('메모', U.textArea('note', rel ? rel.note : '', '이 관계의 배경, 감정, 숨은 사정…', 4));
 
-    let typeValue = rel ? rel.type : 'alliance';
+    let typeValue = rel ? (rel.type === 'student' ? 'mentor' : rel.type) : 'alliance';
     let aValue = aId, bValue = bId;
 
     const sheet = U.openSheet({
@@ -10823,8 +11038,16 @@ main {
     });
 
     function paintNames() {
-      body.querySelector('#rel-a-name').textContent = byId.get(aValue) ? byId.get(aValue).name : '?';
-      body.querySelector('#rel-b-name').textContent = byId.get(bValue) ? byId.get(bValue).name : '?';
+      const A = byId.get(aValue);
+      const B = byId.get(bValue);
+      body.querySelector('#rel-a-name').textContent = A ? A.name : '?';
+      body.querySelector('#rel-b-name').textContent = B ? B.name : '?';
+      const note = body.querySelector('#rel-dir-note');
+      if (note) {
+        note.textContent = (typeValue === 'mentor' || typeValue === 'student')
+          ? (A ? A.name : 'A') + ' 가 스승 · ' + (B ? B.name : 'B') + ' 가 제자'
+          : 'A → B 방향으로 표시돼요';
+      }
     }
 
     const aPick = U.chipPicker(chars.map((c) => ({ value: c.id, label: c.name })), aValue, {
@@ -10837,11 +11060,23 @@ main {
     });
     const typePick = U.chipPicker(typeItems, typeValue, {
       multi: false,
-      onChange: (v) => { typeValue = v; }
+      onChange: (v) => { typeValue = v; paintNames(); }
     });
     body.querySelector('#rel-a-pick').appendChild(aPick);
     body.querySelector('#rel-b-pick').appendChild(bPick);
     body.querySelector('#rel-type').appendChild(typePick);
+    paintNames();
+
+    body.querySelector('#rel-swap').addEventListener('click', () => {
+      const t = aValue;
+      aValue = bValue;
+      bValue = t;
+      aPick.setSelected(aValue);
+      bPick.setSelected(bValue);
+      paintNames();
+      U.haptic(8);
+      U.toast('A ↔ B 방향을 바꿨어요', { icon: 'i-refresh', duration: 1400 });
+    });
 
     if (rel) {
       const del = document.createElement('button');
@@ -10865,18 +11100,20 @@ main {
         U.toast('서로 다른 두 인물을 골라 주세요', { icon: 'i-x' });
         return;
       }
+      const saveType = typeValue === 'student' ? 'mentor' : typeValue;
       const label = body.querySelector('[name="label"]').value.trim();
       const note = body.querySelector('[name="note"]').value.trim();
       const dup = w.relations.find((r) => r.id !== (rel && rel.id) &&
-        ((r.a === aValue && r.b === bValue) || (r.a === bValue && r.b === aValue)) && r.type === typeValue);
+        ((r.a === aValue && r.b === bValue) || (r.a === bValue && r.b === aValue)) &&
+        ((r.type === 'student' ? 'mentor' : r.type) === saveType));
       if (dup) {
         U.toast('같은 종류의 관계가 이미 있어요', { icon: 'i-x' });
         return;
       }
       if (rel) {
-        Object.assign(rel, { a: aValue, b: bValue, type: typeValue, label: label, note: note });
+        Object.assign(rel, { a: aValue, b: bValue, type: saveType, label: label, note: note });
       } else {
-        w.relations.push({ id: U.uid('r'), a: aValue, b: bValue, type: typeValue, label: label, note: note });
+        w.relations.push({ id: U.uid('r'), a: aValue, b: bValue, type: saveType, label: label, note: note });
       }
       touch({ immediate: true });
       sheet.close();

@@ -141,8 +141,12 @@
       if (!Array.isArray(c.abilityIds)) c.abilityIds = [];
       if (!Array.isArray(c.weaponIds)) c.weaponIds = [];
       if (typeof c.abilityText !== 'string') c.abilityText = '';
-      if (!c.pos || typeof c.pos.x !== 'number') {
+      if (!c.pos || typeof c.pos.x !== 'number' || typeof c.pos.y !== 'number') {
         c.pos = randomPos(w.characters.length);
+      } else {
+        // 예전 저장본의 자유 좌표도 격자 교차점으로 한 번 맞춘다
+        c.pos.x = gridX(c.pos.x);
+        c.pos.y = gridY(c.pos.y);
       }
       // 인물 등급: 체계마다 단계 하나(인덱스). 없는 체계·단계는 버린다.
       if (!Array.isArray(c.ranks)) c.ranks = [];
@@ -165,6 +169,13 @@
       ['a', 'b'].forEach((k) => {
         if (typeof r[k] === 'object' && r[k]) r[k] = r[k].id;
       });
+      // 예전 '제자' 관계는 a가 제자·b가 스승이었다 → A(스승) → B(제자) 단방향으로 바로잡는다
+      if (r.type === 'student') {
+        const t = r.a;
+        r.a = r.b;
+        r.b = t;
+        r.type = 'mentor';
+      }
     });
     // drop relations pointing at removed characters
     const ids = new Set(w.characters.map((c) => c.id));
@@ -395,14 +406,19 @@
     });
   }
 
+  // 자동 배치도 바둑판 격자 교차점(64px)에 맞춘다
+  const GRID_CELL = 64;
+  function gridX(x) { return Math.min(320, Math.max(64, Math.round(x / GRID_CELL) * GRID_CELL)); }
+  function gridY(y) { return Math.min(448, Math.max(64, Math.round(y / GRID_CELL) * GRID_CELL)); }
+
   function randomPos(index) {
     const i = index || 0;
-    const cx = 180, cy = 260;
+    const cx = 192, cy = 256;
     const angle = (i * 137.5) * Math.PI / 180;
     const radius = 40 + (i % 5) * 42;
     return {
-      x: Math.round(Math.min(320, Math.max(40, cx + Math.cos(angle) * radius))),
-      y: Math.round(Math.min(480, Math.max(40, cy + Math.sin(angle) * radius)))
+      x: gridX(cx + Math.cos(angle) * radius),
+      y: gridY(cy + Math.sin(angle) * radius)
     };
   }
 

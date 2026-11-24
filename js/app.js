@@ -498,6 +498,17 @@
         : emptyBlock('아직 인물이 없어요', '이름과 칭호만 정해도 세계가 시작됩니다.', 'add-char', '첫 인물 만들기'));
   }
 
+  // 관계 카드에 보여 줄 역할 — 스승·제자는 내가 어느 쪽인지에 따라 상대를 부른다
+  function relationRole(r, selfId, other) {
+    const type = Graph.TYPES[r.type] || Graph.TYPES.other;
+    const name = other ? other.name : '상대';
+    if (r.type === 'mentor' || r.type === 'student') {
+      const mentorId = r.type === 'student' ? r.b : r.a;
+      return mentorId === selfId ? ('제자 · ' + name) : ('스승 · ' + name);
+    }
+    return r.label || type.label;
+  }
+
   function characterDetailBody(w, c) {
     const others = charsById(w);
     const rels = w.relations.filter((r) => r.a === c.id || r.b === c.id);
@@ -566,12 +577,15 @@
         const other = others.get(r.a === c.id ? r.b : r.a);
         const type = Graph.TYPES[r.type] || Graph.TYPES.other;
         const oid = r.a === c.id ? r.b : r.a;
+        const directed = (r.type === 'mentor' || r.type === 'student');
+        const typeLabel = directed ? '스승→제자' : type.label;
+        const arrow = r.a === c.id ? '→' : '←';
         return '<div class="rel-card" style="--rel-color:' + type.color + '">' +
           '<button type="button" class="rel-card__who" data-open-char="' + esc(oid) + '" aria-label="' + esc(other ? other.name : '') + ' 상세 열기">' +
             '<span class="rel-card__face">' + (other && other.image ? '<img src="' + esc(other.image) + '" alt="">' : esc(other ? U.initials(other.name) : '?')) + '</span>' +
             '<span class="rel-card__txt"><b>' + esc(other ? other.name : '알 수 없음') + '</b>' +
-              '<span class="rel-card__label">' + esc(r.label || type.label) + '</span></span>' +
-            '<span class="rel-card__type">' + esc(type.label) + '</span>' +
+              '<span class="rel-card__label">' + esc(relationRole(r, c.id, other)) + '</span></span>' +
+            '<span class="rel-card__type">' + esc(arrow + ' ' + typeLabel) + '</span>' +
           '</button>' +
           '<button type="button" class="rel-card__edit" data-rel="' + esc(r.id) + '" aria-label="관계 수정"><svg><use href="#i-edit"/></svg></button>' +
         '</div>';
@@ -1399,7 +1413,7 @@
         return '<button class="rel-line" data-frel="' + esc(r.id) + '">' +
           '<span class="rel-dot" style="background:' + t.color + '"></span>' +
           '<span><b>' + esc(factionTitle(other)) + '</b><br><span class="muted">' + esc(r.label || '') + '</span></span>' +
-          '<span class="rel-type">' + esc(t.label) + '</span></button>';
+          '<span class="rel-type">' + esc((r.a === id ? '→ ' : '← ') + t.label) + '</span></button>';
       }).join('') + '</div>' : '<p class="field-hint">아직 이 세력과 이어진 관계가 없어요.</p>') +
       (members.length ? '<div class="label-row"><span>소속 인물</span><span>' + members.length + '</span></div><div class="mini-chips">' +
         members.map((c) => '<button class="mini-chip" data-open-char="' + esc(c.id) + '">' + esc(c.name) + '</button>').join('') + '</div>' : '');
@@ -1434,7 +1448,7 @@
           const t = FactionGraph.TYPES[r.type] || FactionGraph.TYPES.ally;
           return '<button class="rel-line" data-frel="' + esc(r.id) + '">' +
             '<span class="rel-dot" style="background:' + t.color + '"></span>' +
-            '<span><b>' + esc(factionTitle(r.a)) + '</b> ↔ <b>' + esc(factionTitle(r.b)) + '</b><br>' +
+            '<span><b>' + esc(factionTitle(r.a)) + '</b> → <b>' + esc(factionTitle(r.b)) + '</b><br>' +
             '<span class="muted">' + esc(r.label || '') + '</span></span>' +
             '<span class="rel-type">' + esc(t.label) + '</span></button>';
         }).join('') + '</div>'
@@ -1463,8 +1477,9 @@
 
     const body = document.createElement('div');
     body.innerHTML =
-      '<div class="field"><span class="field__label">세력 A</span><div id="frel-a"></div></div>' +
-      '<div class="field"><span class="field__label">세력 B</span><div id="frel-b"></div></div>' +
+      '<div class="center muted small" style="margin-bottom:10px">A(출발) → B(대상) 방향의 단방향 관계로 이어져요</div>' +
+      '<div class="field"><span class="field__label">세력 A <span class="muted" style="font-size:10px">출발</span></span><div id="frel-a"></div></div>' +
+      '<div class="field"><span class="field__label">세력 B <span class="muted" style="font-size:10px">대상</span></span><div id="frel-b"></div></div>' +
       '<div class="field"><span class="field__label">관계 종류</span><div id="frel-type"></div></div>' +
       U.field('한 줄 설명', U.textInput('label', rel ? rel.label : '', { placeholder: '예: 성소의 인장을 함께 지킨다' })) +
       U.field('메모', U.textArea('note', rel ? rel.note : '', '동맹의 대가, 적대의 이유…', 4));
@@ -1512,9 +1527,9 @@
           const b = charsById(w).get(r.b);
           return '<button class="rel-line" data-rel="' + esc(r.id) + '">' +
             '<span class="rel-dot" style="background:' + type.color + '"></span>' +
-            '<span><b>' + esc(a ? a.name : '?') + '</b> ↔ <b>' + esc(b ? b.name : '?') + '</b><br>' +
+            '<span><b>' + esc(a ? a.name : '?') + '</b> → <b>' + esc(b ? b.name : '?') + '</b><br>' +
             '<span class="muted">' + esc(r.label || '') + '</span></span>' +
-            '<span class="rel-type">' + esc(type.label) + '</span></button>';
+            '<span class="rel-type">' + esc(((r.type === 'mentor' || r.type === 'student') ? '스승→제자' : type.label)) + '</span></button>';
         }).join('') + '</div>'
       : '<div class="empty"><div class="empty__sigil">✦</div><p>아직 이어진 관계가 없어요.</p></div>';
     const sheet = U.openSheet({ eyebrow: 'RELATIONS', title: '관계 목록', body: body, full: true });
@@ -1529,7 +1544,10 @@
   function openRelationForm(aId, bId, relId) {
     const w = W();
     const rel = relId ? w.relations.find((r) => r.id === relId) : null;
-    if (rel) { aId = rel.a; bId = rel.b; }
+    if (rel) {
+      // 예전 '제자' 관계는 a가 제자·b가 스승 → A(스승) → B(제자)로 바로잡는다
+      if (rel.type === 'student') { aId = rel.b; bId = rel.a; } else { aId = rel.a; bId = rel.b; }
+    }
     const chars = w.characters;
     if (!chars.length) {
       U.toast('인물을 먼저 추가해 주세요', { icon: 'i-users' });
@@ -1538,24 +1556,29 @@
     aId = aId || chars[0].id;
     bId = bId || (chars[1] ? chars[1].id : chars[0].id);
     const byId = charsById(w);
-    const typeItems = Object.keys(Graph.TYPES).map((k) => ({ value: k, label: Graph.TYPES[k].label }));
+    const typeItems = Object.keys(Graph.TYPES)
+      .filter((k) => k !== 'student')
+      .map((k) => ({ value: k, label: k === 'mentor' ? '스승·제자' : Graph.TYPES[k].label }));
 
     const body = document.createElement('div');
     body.innerHTML =
       '<div class="card" style="margin-bottom:14px">' +
         '<div class="center" style="font-family:var(--font-display);font-size:15px">' +
           '<span id="rel-a-name">' + esc(byId.get(aId).name) + '</span>' +
-          '<span class="muted" style="padding:0 8px">↔</span>' +
+          '<span class="muted" style="padding:0 8px">→</span>' +
           '<span id="rel-b-name">' + esc(byId.get(bId).name) + '</span>' +
         '</div>' +
+        '<div class="center muted small" id="rel-dir-note" style="margin-top:4px"></div>' +
+        '<button type="button" class="btn btn--sm btn--ghost" id="rel-swap" style="display:block;margin:8px auto 0">⇄ 방향 바꾸기</button>' +
       '</div>' +
-      '<div class="field"><span class="field__label">인물 A</span><div id="rel-a-pick"></div></div>' +
-      '<div class="field"><span class="field__label">인물 B</span><div id="rel-b-pick"></div></div>' +
+      '<div class="field"><span class="field__label">인물 A <span class="muted" style="font-size:10px">출발</span></span><div id="rel-a-pick"></div></div>' +
+      '<div class="field"><span class="field__label">인물 B <span class="muted" style="font-size:10px">대상</span></span><div id="rel-b-pick"></div></div>' +
       '<div class="field"><span class="field__label">관계 종류</span><div id="rel-type"></div></div>' +
+      '<span class="field-hint">모든 관계는 <b>A → B</b> 단방향 화살표로 표시돼요. 스승·제자는 A가 스승, B가 제자가 돼요.</span>' +
       U.field('한 줄 설명', U.textInput('label', rel ? rel.label : '', { placeholder: '예: 어린 시절의 서약' })) +
       U.field('메모', U.textArea('note', rel ? rel.note : '', '이 관계의 배경, 감정, 숨은 사정…', 4));
 
-    let typeValue = rel ? rel.type : 'alliance';
+    let typeValue = rel ? (rel.type === 'student' ? 'mentor' : rel.type) : 'alliance';
     let aValue = aId, bValue = bId;
 
     const sheet = U.openSheet({
@@ -1570,8 +1593,16 @@
     });
 
     function paintNames() {
-      body.querySelector('#rel-a-name').textContent = byId.get(aValue) ? byId.get(aValue).name : '?';
-      body.querySelector('#rel-b-name').textContent = byId.get(bValue) ? byId.get(bValue).name : '?';
+      const A = byId.get(aValue);
+      const B = byId.get(bValue);
+      body.querySelector('#rel-a-name').textContent = A ? A.name : '?';
+      body.querySelector('#rel-b-name').textContent = B ? B.name : '?';
+      const note = body.querySelector('#rel-dir-note');
+      if (note) {
+        note.textContent = (typeValue === 'mentor' || typeValue === 'student')
+          ? (A ? A.name : 'A') + ' 가 스승 · ' + (B ? B.name : 'B') + ' 가 제자'
+          : 'A → B 방향으로 표시돼요';
+      }
     }
 
     const aPick = U.chipPicker(chars.map((c) => ({ value: c.id, label: c.name })), aValue, {
@@ -1584,11 +1615,23 @@
     });
     const typePick = U.chipPicker(typeItems, typeValue, {
       multi: false,
-      onChange: (v) => { typeValue = v; }
+      onChange: (v) => { typeValue = v; paintNames(); }
     });
     body.querySelector('#rel-a-pick').appendChild(aPick);
     body.querySelector('#rel-b-pick').appendChild(bPick);
     body.querySelector('#rel-type').appendChild(typePick);
+    paintNames();
+
+    body.querySelector('#rel-swap').addEventListener('click', () => {
+      const t = aValue;
+      aValue = bValue;
+      bValue = t;
+      aPick.setSelected(aValue);
+      bPick.setSelected(bValue);
+      paintNames();
+      U.haptic(8);
+      U.toast('A ↔ B 방향을 바꿨어요', { icon: 'i-refresh', duration: 1400 });
+    });
 
     if (rel) {
       const del = document.createElement('button');
@@ -1612,18 +1655,20 @@
         U.toast('서로 다른 두 인물을 골라 주세요', { icon: 'i-x' });
         return;
       }
+      const saveType = typeValue === 'student' ? 'mentor' : typeValue;
       const label = body.querySelector('[name="label"]').value.trim();
       const note = body.querySelector('[name="note"]').value.trim();
       const dup = w.relations.find((r) => r.id !== (rel && rel.id) &&
-        ((r.a === aValue && r.b === bValue) || (r.a === bValue && r.b === aValue)) && r.type === typeValue);
+        ((r.a === aValue && r.b === bValue) || (r.a === bValue && r.b === aValue)) &&
+        ((r.type === 'student' ? 'mentor' : r.type) === saveType));
       if (dup) {
         U.toast('같은 종류의 관계가 이미 있어요', { icon: 'i-x' });
         return;
       }
       if (rel) {
-        Object.assign(rel, { a: aValue, b: bValue, type: typeValue, label: label, note: note });
+        Object.assign(rel, { a: aValue, b: bValue, type: saveType, label: label, note: note });
       } else {
-        w.relations.push({ id: U.uid('r'), a: aValue, b: bValue, type: typeValue, label: label, note: note });
+        w.relations.push({ id: U.uid('r'), a: aValue, b: bValue, type: saveType, label: label, note: note });
       }
       touch({ immediate: true });
       sheet.close();

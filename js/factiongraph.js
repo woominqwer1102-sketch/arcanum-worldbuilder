@@ -15,6 +15,12 @@
     trade: { label: '교역·협정', color: '#7fa9d8' }
   };
 
+  // 바둑판 격자 — 노드는 격자 교차점에만 놓인다
+  const CELL = 64;
+  const GRID_MIN_X = CELL, GRID_MAX_X = 320, GRID_MIN_Y = CELL, GRID_MAX_Y = 448;
+  function snapX(x) { return U.clamp(Math.round(x / CELL) * CELL, GRID_MIN_X, GRID_MAX_X); }
+  function snapY(y) { return U.clamp(Math.round(y / CELL) * CELL, GRID_MIN_Y, GRID_MAX_Y); }
+
   const state = {
     host: null,
     svg: null,
@@ -25,6 +31,7 @@
     drag: null,
     pointers: new Map(),
     pinch: null,
+    tap: null,
     mounted: false
   };
 
@@ -48,7 +55,7 @@
       const ry = 150 + Math.min(120, n * 9.5);
       // 안팎으로 번갈아 놓아 이름이 겹치지 않게
       const k = i % 2 ? 0.7 : 1;
-      p = { x: Math.round(180 + Math.cos(angle) * rx * k), y: Math.round(260 + Math.sin(angle) * ry * k) };
+      p = { x: snapX(180 + Math.cos(angle) * rx * k), y: snapY(260 + Math.sin(angle) * ry * k) };
       w.factionNodes[l.id] = p;
     }
     return p;
@@ -91,8 +98,36 @@
     return { x: state.view.x + (clientX - r.left) * s, y: state.view.y + (clientY - r.top) * s };
   }
 
-  function edgeGeometry(a, b) {
-    return { x1: a.x, y1: a.y, x2: b.x, y2: b.y, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+  function edgeGeometry(a, b, offset) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    const cx = (a.x + b.x) / 2 + nx * (offset || 0);
+    const cy = (a.y + b.y) / 2 + ny * (offset || 0);
+    const r = 22;
+    const sdx = cx - a.x, sdy = cy - a.y, sl = Math.hypot(sdx, sdy) || 1;
+    const edx = b.x - cx, edy = b.y - cy, el = Math.hypot(edx, edy) || 1;
+    const sx = a.x + (sdx / sl) * r, sy = a.y + (sdy / sl) * r;
+    const ex = b.x - (edx / el) * r, ey = b.y - (edy / el) * r;
+    return {
+      d: 'M' + sx.toFixed(2) + ' ' + sy.toFixed(2) + ' Q' + cx.toFixed(2) + ' ' + cy.toFixed(2) + ' ' + ex.toFixed(2) + ' ' + ey.toFixed(2),
+      ex: ex, ey: ey, ux: edx / el, uy: edy / el,
+      mx: 0.25 * sx + 0.5 * cx + 0.25 * ex,
+      my: 0.25 * sy + 0.5 * cy + 0.25 * ey
+    };
+  }
+
+  function arrowHead(g, color) {
+    const size = 8;
+    const bx = g.ex - g.ux * size;
+    const by = g.ey - g.uy * size;
+    const px = -g.uy * size * 0.55;
+    const py = g.ux * size * 0.55;
+    return '<path d="M' + g.ex.toFixed(1) + ' ' + g.ey.toFixed(1) +
+      ' L' + (bx + px).toFixed(1) + ' ' + (by + py).toFixed(1) +
+      ' L' + (bx - px).toFixed(1) + ' ' + (by - py).toFixed(1) + ' Z" fill="' + color + '" opacity=".95"/>';
   }
 
   function truncate(name, n) {
@@ -111,21 +146,39 @@
     if (!edges || !gnodes) return;
 
     let ehtml = '';
-    ((w && w.factionRelations) || []).forEach((r) => {
-      const a = byId.get(r.a);
-      const b = byId.get(r.b);
-      if (!a || !b) return;
-      const g = edgeGeometry(a.pos, b.pos);
-      const type = TYPES[r.type] || TYPES.ally;
-      const label = r.label || type.label;
-      const dash = r.type === 'hostile' ? ' stroke-dasharray="7 5"' : (r.type === 'subject' ? ' stroke-dasharray="4 3"' : '');
-      ehtml +=
-        '<g class="fedge" data-fedge="' + U.esc(r.id) + '">' +
-          '<line x1="' + g.x1 + '" y1="' + g.y1 + '" x2="' + g.x2 + '" y2="' + g.y2 + '" stroke="' + type.color + '" stroke-width="1.7" opacity=".85"' + dash + '/>' +
-          '<line x1="' + g.x1 + '" y1="' + g.y1 + '" x2="' + g.x2 + '" y2="' + g.y2 + '" stroke="transparent" stroke-width="14" style="pointer-events:stroke;cursor:pointer"/>' +
-          '<rect x="' + (g.mx - Math.min(44, (label.length * 3.5 + 8) / 2)) + '" y="' + (g.my - 6.5) + '" width="' + Math.min(88, label.length * 3.5 + 8) + '" height="13" rx="6.5" fill="#141010" fill-opacity=".84" stroke="' + type.color + '" stroke-opacity=".5" stroke-width=".7"/>' +
-          '<text x="' + g.mx + '" y="' + (g.my + 2.6) + '" text-anchor="middle" font-size="6.6" fill="' + type.color + '" font-family="-apple-system, sans-serif">' + U.esc(truncate(label, 13)) + '</text>' +
-        '</g>';
+    const rels = ((w && w.factionRelations) || []).slice();
+    const byPair = new Map();
+    rels.forEach((r) => {
+      const key = [r.a, r.b].sort().join('|');
+      if (!byPair.has(key)) byPair.set(key, []);
+      byPair.get(key).push(r);
+    });
+    byPair.forEach((list) => {
+      const firstDir = list[0].a + '|' + list[0].b;
+      const bothWays = list.some((r) => (r.a + '|' + r.b) !== firstDir);
+      list.forEach((r) => {
+        const a = byId.get(r.a);
+        const b = byId.get(r.b);
+        if (!a || !b) return;
+        const sameDir = list.filter((x) => x.a === r.a && x.b === r.b);
+        const idx = sameDir.indexOf(r);
+        const sign = ((r.a + '|' + r.b) === firstDir) ? 1 : -1;
+        const offset = bothWays
+          ? sign * (28 + idx * 20)
+          : (idx - (sameDir.length - 1) / 2) * 24;
+        const g = edgeGeometry(a.pos, b.pos, offset);
+        const type = TYPES[r.type] || TYPES.ally;
+        const label = r.label || type.label;
+        const dash = r.type === 'hostile' ? ' stroke-dasharray="7 5"' : (r.type === 'subject' ? ' stroke-dasharray="4 3"' : '');
+        ehtml +=
+          '<g class="fedge" data-fedge="' + U.esc(r.id) + '">' +
+            '<path d="' + g.d + '" fill="none" stroke="' + type.color + '" stroke-width="1.7" opacity=".85"' + dash + '/>' +
+            '<path d="' + g.d + '" fill="none" stroke="transparent" stroke-width="14" style="pointer-events:stroke;cursor:pointer"/>' +
+            arrowHead(g, type.color) +
+            '<rect x="' + (g.mx - Math.min(44, (label.length * 3.5 + 8) / 2)).toFixed(1) + '" y="' + (g.my - 6.5).toFixed(1) + '" width="' + Math.min(88, label.length * 3.5 + 8).toFixed(1) + '" height="13" rx="6.5" fill="#141010" fill-opacity=".84" stroke="' + type.color + '" stroke-opacity=".5" stroke-width=".7"/>' +
+            '<text x="' + g.mx.toFixed(1) + '" y="' + (g.my + 2.6).toFixed(1) + '" text-anchor="middle" font-size="6.6" fill="' + type.color + '" font-family="-apple-system, sans-serif">' + U.esc(truncate(label, 13)) + '</text>' +
+          '</g>';
+      });
     });
 
     let nhtml = '';
@@ -136,12 +189,14 @@
       const races = isNation ? raceNamesOf(w, n) : [];
       const nation = isNation ? '' : nationNameOf(w, n);
       nhtml +=
-        '<g class="fnode' + (selected ? ' is-selected' : '') + '" data-fnode="' + U.esc(n.id) + '" transform="translate(' + n.pos.x + ' ' + n.pos.y + ')">' +
+        '<g class="fnode' + (selected ? ' is-selected' : '') + (n.pos && n.pos.pinned ? ' is-pinned' : '') + '" data-fnode="' + U.esc(n.id) + '" transform="translate(' + n.pos.x + ' ' + n.pos.y + ')">' +
           (selected ? '<circle r="26" fill="none" stroke="#d4af37" stroke-width="1" stroke-dasharray="2 2" opacity=".9"/>' : '') +
+          (n.pos && n.pos.pinned ? '<circle r="27" fill="none" stroke="#d4af37" stroke-width="1.2" stroke-opacity=".9" stroke-dasharray="1.4 2.8"/>' : '') +
           (isNation ? '<circle r="24" fill="none" stroke="' + color + '" stroke-width="1" stroke-dasharray="1.6 2.6" opacity=".7"/>' : '') +
           '<circle r="21" fill="#1a1411" stroke="' + color + '" stroke-width="1.4" opacity=".95"/>' +
           '<text text-anchor="middle" y="4.4" font-size="11" fill="' + color + '" font-family="AppleMyungjo, Georgia, serif">' + U.esc(String(n.title || '').slice(0, 1)) + '</text>' +
           '<text class="fnode-label" text-anchor="middle" y="33" font-size="7.2" fill="#d8cdb4" stroke="#100d0b" stroke-width="2.4" paint-order="stroke" font-family="-apple-system, sans-serif">' + U.esc(truncate(n.title, 9)) + '</text>' +
+          (n.pos && n.pos.pinned ? '<text y="-30" text-anchor="middle" font-size="9" aria-hidden="true">📌</text>' : '') +
           (races.length ? '<text class="fnode-race" text-anchor="middle" y="41" font-size="5.6" fill="#9c9078" stroke="#100d0b" stroke-width="1.8" paint-order="stroke" font-family="-apple-system, sans-serif">' + U.esc(truncate(races.join(' · '), 14)) + '</text>' : '') +
           (!isNation ? '<text class="fnode-nation" text-anchor="middle" y="41" font-size="5.6" fill="' + (nation ? '#c0a463' : '#7d7466') + '" stroke="#100d0b" stroke-width="1.8" paint-order="stroke" font-family="-apple-system, sans-serif">' + U.esc(nation || '무소속') + '</text>' : '') +
         '</g>';
@@ -170,13 +225,49 @@
         }
         return;
       }
-      if (state.opts.onNode) state.opts.onNode(id);
+      // 더블 탭 = 위치 고정/해제, 한 번 탭 = 세력 상세
+      const now = Date.now();
+      if (state.tap && state.tap.id === id && now - state.tap.at <= 380) {
+        clearTimeout(state.tap.timer);
+        state.tap = null;
+        togglePin(id);
+        return;
+      }
+      if (state.tap) clearTimeout(state.tap.timer);
+      const t = { id: id, at: now, timer: 0 };
+      t.timer = setTimeout(() => {
+        state.tap = null;
+        if (state.opts.onNode) state.opts.onNode(id);
+      }, 330);
+      state.tap = t;
       return;
     }
     const edgeEl = target.closest ? target.closest('[data-fedge]') : null;
     if (edgeEl && state.opts.onEdge) state.opts.onEdge(edgeEl.getAttribute('data-fedge'));
   }
 
+  function togglePin(id) {
+    const w = world();
+    if (!w) return;
+    if (!w.factionNodes) w.factionNodes = {};
+    const cur = w.factionNodes[id];
+    if (!cur) return;
+    cur.pinned = !cur.pinned;
+    if (cur.pinned) {
+      cur.x = snapX(cur.x);
+      cur.y = snapY(cur.y);
+    }
+    if (state.opts.onNodeMoved) state.opts.onNodeMoved();
+    render();
+    U.haptic(12);
+    const title = factionTitle(id);
+    U.toast(cur.pinned ? '📌 ' + title + ' 위치를 고정했어요' : title + ' 위치 고정을 풀었어요', { icon: 'i-pin', duration: 1600 });
+  }
+
+  function factionTitle(id) {
+    const l = factions().find((x) => x.id === id);
+    return l ? l.title : '세력';
+  }
   function bind() {
     const svg = state.svg;
 
@@ -224,12 +315,13 @@
       if (drag.type === 'node') {
         const w = world();
         if (!w || !w.factionNodes) return;
-        const p = toWorld(e.clientX, e.clientY);
         const cur = w.factionNodes[drag.id] || { x: 180, y: 260 };
+        if (cur.pinned) return;   // 고정된 노드는 끌어도 움직이지 않는다
+        const p = toWorld(e.clientX, e.clientY);
         // 노드 중심을 잡고 끌도록 클릭 지점과의 차이를 반영
         if (!drag.grab) drag.grab = { x: cur.x - toWorld(drag.startX, drag.startY).x, y: cur.y - toWorld(drag.startX, drag.startY).y };
-        cur.x = Math.round(U.clamp(p.x + drag.grab.x, 20, 340));
-        cur.y = Math.round(U.clamp(p.y + drag.grab.y, 20, 500));
+        cur.x = snapX(p.x + drag.grab.x);
+        cur.y = snapY(p.y + drag.grab.y);
         render();
         e.preventDefault();
       } else if (drag.type === 'pan') {
@@ -297,7 +389,7 @@
     state.selected = [];
     render();
     const hint = state.host && state.host.querySelector('.graph-hint');
-    if (hint) hint.textContent = on ? '세력을 두 개 차례로 탭하면 관계를 이을 수 있어요' : '';
+    if (hint) hint.textContent = on ? '세력을 두 개 차례로 탭하면 관계를 이을 수 있어요' : '노드를 끌면 바둑판 칸에 맞춰지고, 두 번 탭하면 위치가 고정돼요';
   }
 
   function refresh() {
@@ -313,9 +405,14 @@
     state.pointers = new Map();
     state.pinch = null;
     state.drag = null;
+    state.tap = null;
 
     host.innerHTML =
       '<svg id="faction-svg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">' +
+        '<defs><pattern id="faction-grid" width="64" height="64" patternUnits="userSpaceOnUse">' +
+          '<path d="M 64 0 L 0 0 0 64" fill="none" stroke="rgba(212,175,55,.16)" stroke-width=".5"/>' +
+        '</pattern></defs>' +
+        '<rect class="graph-grid-bg" x="-4000" y="-4000" width="8000" height="8000" fill="url(#faction-grid)"/>' +
         '<g class="fedges"></g>' +
         '<g class="fnodes"></g>' +
       '</svg>' +
@@ -336,6 +433,7 @@
     state.host = null;
     state.mounted = false;
     state.drag = null;
+    state.tap = null;
     state.pointers = new Map();
     state.selected = [];
   }
