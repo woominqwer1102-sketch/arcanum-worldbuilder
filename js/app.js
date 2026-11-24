@@ -26,9 +26,11 @@
   const App = {
     state: null,
     tab: 'dashboard',
-    filters: { charQuery: '', charFaction: '전체', charRace: '전체', loreQuery: '', loreCat: '전체', epStatus: '전체', tlEra: '전체' },
+    filters: { charQuery: '', charFaction: '전체', charRace: '전체', charRank: '', loreQuery: '', loreCat: '전체', epStatus: '전체', tlEra: '전체' },
     openLore: {}
   };
+
+  const RANK_COLORS = ['#d4af37', '#c9a24a', '#7fa9d8', '#8fbf8f', '#c9738a', '#a98fd0', '#c98a5a', '#9aa7b0'];
 
   /* ---------------------------------------------------------
      data helpers
@@ -306,6 +308,7 @@
     else if (act === 'add-ep') openEpisodeForm(null);
     else if (act === 'add-pin') { go('map'); setTimeout(() => { MapView.state.pinning = true; MapView.refresh(); }, 40); }
     else if (act === 'add-rel') { go('relations'); setTimeout(() => Graph.setLinkMode(true), 60); }
+    else if (act === 'ranks') openRankSystems();
     else if (act === 'worlds') openWorldSwitcher();
     else if (act === 'backup') openBackupSheet();
   }
@@ -313,7 +316,8 @@
   /* ---------------------------------------------------------
      characters
      --------------------------------------------------------- */
-  function charCard(c) {
+  function charCard(c, w) {
+    const ranks = rankList(w, c);
     return '<button class="char-card" data-char="' + esc(c.id) + '">' +
       '<div class="char-card__portrait">' +
         '<span class="char-card__race">' + esc(c.race || '종족 미정') + '</span>' +
@@ -323,8 +327,36 @@
         '<div class="char-card__name">' + esc(c.name) + '</div>' +
         (c.title ? '<div class="char-card__title">' + esc(c.title) + '</div>' : '') +
         (c.faction ? '<div class="char-card__faction">' + esc(c.faction) + '</div>' : '') +
+        (ranks.length ? '<div class="char-card__ranks">' + ranks.map((r) => rankBadge(r, { small: true })).join('') + '</div>' : '') +
       '</div>' +
     '</button>';
+  }
+
+  /* ---------------------------------------------------------
+     강함 / 등급 — 조회·배지
+     --------------------------------------------------------- */
+  function rankList(w, c) {
+    const systems = (w && w.rankSystems) || [];
+    const out = [];
+    ((c && c.ranks) || []).forEach((r) => {
+      const s = systems.find((x) => x.id === r.systemId);
+      if (!s) return;
+      const label = s.tiers[r.tier];
+      if (!label) return;
+      out.push({ system: s, label: label, primary: out.length === 0 });
+    });
+    return out;
+  }
+
+  function rankBadge(rank, opts) {
+    const o = opts || {};
+    const s = rank.system;
+    return '<span class="rank-badge' + (o.small ? ' rank-badge--sm' : '') + (rank.primary ? ' is-primary' : '') +
+      '" style="--rank-color:' + esc(s.color) + '" aria-label="' + esc(s.name + ' ' + rank.label) + '">' +
+      '<span class="rank-badge__icon">' + esc(s.icon) + '</span>' +
+      (o.small ? '' : '<span class="rank-badge__name">' + esc(s.name) + '</span>') +
+      '<span class="rank-badge__tier">' + esc(rank.label) + '</span>' +
+    '</span>';
   }
 
   function filteredCharacters(w) {
@@ -332,6 +364,12 @@
     return w.characters.filter((c) => {
       if (App.filters.charFaction !== '전체' && c.faction !== App.filters.charFaction) return false;
       if (App.filters.charRace !== '전체' && c.race !== App.filters.charRace) return false;
+      if (App.filters.charRank) {
+        const parts = App.filters.charRank.split(':');
+        const sid = parts[0];
+        const tier = Number(parts[1]);
+        if (!(c.ranks || []).some((r) => r.systemId === sid && Number(r.tier) === tier)) return false;
+      }
       if (q) {
         const hay = [c.name, c.title, c.race, c.faction, c.abilities, c.personality, c.notes, c.age].join(' ').toLowerCase();
         if (hay.indexOf(q) === -1) return false;
@@ -345,14 +383,33 @@
     const host = $('#chars-host');
     const factions = unique(w.characters.map((c) => c.faction));
     const races = unique(w.characters.map((c) => c.race));
+    const systems = w.rankSystems || [];
     if (App.filters.charFaction !== '전체' && factions.indexOf(App.filters.charFaction) === -1) App.filters.charFaction = '전체';
     if (App.filters.charRace !== '전체' && races.indexOf(App.filters.charRace) === -1) App.filters.charRace = '전체';
+    if (App.filters.charRank && !systems.some((s) => App.filters.charRank.indexOf(s.id + ':') === 0)) App.filters.charRank = '';
+
+    const rankOptions = [];
+    if (systems.length) {
+      rankOptions.push('<option value="">등급 전체</option>');
+      systems.forEach((s) => {
+        s.tiers.forEach((t, i) => {
+          rankOptions.push('<option value="' + esc(s.id + ':' + i) + '"' +
+            (App.filters.charRank === s.id + ':' + i ? ' selected' : '') + '>' +
+            esc(s.name + ' · ' + t) + '</option>');
+        });
+      });
+    }
 
     host.innerHTML =
       '<div class="section-head"><div><span class="eyebrow">Characters</span><h2>인물 <span class="muted" style="font-size:12px">' + w.characters.length + '</span></h2></div>' +
-      '<button class="section-head__link" data-new-char><svg width="14" height="14" style="display:inline;vertical-align:-2px"><use href="#i-plus"/></svg> 추가</button></div>' +
+      '<div class="section-head__acts">' +
+        '<button class="section-head__link" data-act="ranks"><svg width="14" height="14" style="display:inline;vertical-align:-2px"><use href="#i-shield"/></svg> 등급</button>' +
+        '<button class="section-head__link" data-new-char><svg width="14" height="14" style="display:inline;vertical-align:-2px"><use href="#i-plus"/></svg> 추가</button>' +
+      '</div></div>' +
       '<div class="toolbar"><label class="search"><svg><use href="#i-search"/></svg>' +
-        '<input type="search" id="char-search" placeholder="이름 · 칭호 · 종족 검색" value="' + esc(App.filters.charQuery) + '"></label></div>' +
+        '<input type="search" id="char-search" placeholder="이름 · 칭호 · 종족 검색" value="' + esc(App.filters.charQuery) + '"></label>' +
+        (systems.length ? '<select class="select rank-filter" id="char-rank-filter" aria-label="등급으로 찾기">' + rankOptions.join('') + '</select>' : '') +
+      '</div>' +
       (factions.length > 1 ? '<div class="chip-row" id="faction-chips">' +
         ['전체'].concat(factions).map((f) => '<button class="chip chip--small' + (App.filters.charFaction === f ? ' chip--active' : '') + '" data-faction="' + esc(f) + '">' + esc(f) + '</button>').join('') + '</div>' : '') +
       (races.length > 1 ? '<div class="chip-row" id="race-chips">' +
@@ -364,6 +421,11 @@
     host.querySelector('[data-new-char]').addEventListener('click', () => openCharacterForm(null));
     host.querySelector('#char-search').addEventListener('input', (e) => {
       App.filters.charQuery = e.target.value;
+      drawCharGrid();
+    });
+    const rankFilter = host.querySelector('#char-rank-filter');
+    if (rankFilter) rankFilter.addEventListener('change', (e) => {
+      App.filters.charRank = e.target.value;
       drawCharGrid();
     });
     bindHostOnce(host, 'chars', () => host.addEventListener('click', (e) => {
@@ -394,7 +456,7 @@
     if (!host || !w) return;
     const list = filteredCharacters(w);
     host.innerHTML = list.length
-      ? '<div class="char-grid">' + list.map(charCard).join('') + '</div>'
+      ? '<div class="char-grid">' + list.map((c) => charCard(c, w)).join('') + '</div>'
       : (w.characters.length
         ? '<div class="empty"><div class="empty__sigil">✦</div><p>조건에 맞는 인물이 없어요.</p></div>'
         : emptyBlock('아직 인물이 없어요', '이름과 칭호만 정해도 세계가 시작됩니다.', 'add-char', '첫 인물 만들기'));
@@ -412,6 +474,10 @@
       (c.faction ? '<span class="mini-chip">' + esc(c.faction) + '</span>' : '') +
       (c.age ? '<span class="mini-chip">' + esc(c.age) + '</span>' : '') +
     '</div>';
+    const ranks = rankList(w, c);
+    if (ranks.length) {
+      html += '<div class="rank-badges">' + ranks.map((r) => rankBadge(r)).join('') + '</div>';
+    }
     const defs = [];
     if (c.abilities) defs.push(['능력 / 무기', c.abilities]);
     if (c.age) defs.push(['나이 / 신체', c.age]);
@@ -531,6 +597,117 @@
     };
   }
 
+  /* ---------------------------------------------------------
+     AI 일러스트 (인물 세부정보 → 영어 프롬프트 → 초상화)
+     --------------------------------------------------------- */
+  function bindIllustrationPanel(hostBody, form, imgField) {
+    const host = hostBody.querySelector('#char-ai');
+    if (!host) return;
+
+    host.innerHTML =
+      '<div class="ai-art__row">' +
+        '<button type="button" class="btn btn--gold btn--sm" id="ai-gen"><svg><use href="#i-sparkles"/></svg><span>AI 일러스트 생성</span></button>' +
+      '</div>' +
+      '<div class="ai-art__status" id="ai-status"></div>' +
+      '<div class="ai-art__prompt" id="ai-prompt">' +
+        '<div class="ai-art__prompt-head"><span>영어 프롬프트</span><span id="ai-prompt-len"></span></div>' +
+        '<div class="ai-art__prompt-text" id="ai-prompt-text"></div>' +
+        '<div class="ai-art__acts">' +
+          '<button type="button" class="btn btn--sm" id="ai-copy"><svg><use href="#i-copy"/></svg><span>프롬프트 복사</span></button>' +
+          '<button type="button" class="btn btn--sm btn--ghost" id="ai-fallback"><svg><use href="#i-shield"/></svg><span>실루엣 초상화</span></button>' +
+        '</div>' +
+      '</div>' +
+      '<p class="field-hint">이름·칭호·종족·소속·나이·능력·성격 메모를 조합해 프롬프트를 만들고, 무료 공개 AI 이미지로 초상화를 자동 적용해요. 서버가 막히면 프롬프트를 복사해 다른 곳에 붙여 넣거나 실루엣 초상화로 대신할 수 있어요.</p>';
+
+    const statusEl = host.querySelector('#ai-status');
+    const promptEl = host.querySelector('#ai-prompt');
+    const promptTextEl = host.querySelector('#ai-prompt-text');
+    const promptLenEl = host.querySelector('#ai-prompt-len');
+    const genBtn = host.querySelector('#ai-gen');
+    let lastPrompt = '';
+    let busy = false;
+
+    function readFields() {
+      const get = (n) => {
+        const el = form.querySelector('[name="' + n + '"]');
+        return el && typeof el.value === 'string' ? el.value.trim() : '';
+      };
+      return {
+        name: get('name'), title: get('title'), race: get('race'), faction: get('faction'),
+        age: get('age'), abilities: get('abilities'), notes: get('notes')
+      };
+    }
+
+    function setStatus(text, kind, spinning) {
+      statusEl.className = 'ai-art__status is-open' +
+        (kind === 'busy' ? ' is-busy' : (kind === 'error' ? ' is-error' : ''));
+      statusEl.innerHTML = '<svg class="' + (spinning ? 'ai-art__spin' : '') + '"><use href="#' +
+        (spinning ? 'i-refresh' : (kind === 'error' ? 'i-x' : 'i-check')) + '"/></svg><span></span>';
+      statusEl.querySelector('span').textContent = text;
+    }
+
+    function showPrompt(prompt) {
+      lastPrompt = prompt || '';
+      promptTextEl.textContent = lastPrompt;
+      promptLenEl.textContent = lastPrompt ? lastPrompt.length + '자' : '';
+      promptEl.classList.toggle('is-open', !!lastPrompt);
+    }
+
+    async function generate() {
+      if (busy) return;
+      const fields = readFields();
+      const prompt = Generator.buildPortraitPrompt(fields);
+      showPrompt(prompt);
+      if (!fields.name && !fields.title && !fields.race) {
+        setStatus('이름·종족 같은 정보를 조금 적으면 초상화가 훨씬 정확해져요. 지금은 기본 묘사로 시도합니다.', 'info');
+      }
+      busy = true;
+      genBtn.disabled = true;
+      setStatus('AI 일러스트를 그리는 중… (최대 25초)', 'busy', true);
+      let res;
+      try {
+        res = await Generator.generatePortrait(fields, { timeoutMs: 25000, maxDim: 900 });
+      } catch (err) {
+        res = { ok: false, reason: (err && err.message) || '알 수 없는 오류' };
+      }
+      busy = false;
+      genBtn.disabled = false;
+      if (res.ok) {
+        imgField.set(res.dataUrl);
+        setStatus('초상화를 대표 이미지로 넣었어요. 마음에 안 들면 다시 눌러 새로 그려 보세요.', 'ok');
+        U.toast('AI 초상화를 넣었어요', { icon: 'i-sparkles' });
+      } else {
+        setStatus('AI 서버에 연결하지 못했어요' + (res.reason ? ' (' + res.reason + ')' : '') +
+          '. 아래 프롬프트를 복사해 다른 이미지 생성기에 붙여 넣거나, 실루엣 초상화를 눌러 주세요. 세계관 데이터는 그대로예요.', 'error');
+      }
+    }
+
+    genBtn.addEventListener('click', generate);
+
+    host.querySelector('#ai-copy').addEventListener('click', async () => {
+      const fields = readFields();
+      const prompt = lastPrompt || Generator.buildPortraitPrompt(fields);
+      showPrompt(prompt);
+      const ok = await U.copyText(prompt);
+      U.toast(ok ? '프롬프트를 복사했어요' : '복사가 막혔어요. 길게 눌러 복사해 주세요.', { icon: ok ? 'i-copy' : 'i-x' });
+      U.haptic(8);
+    });
+
+    host.querySelector('#ai-fallback').addEventListener('click', () => {
+      const fields = readFields();
+      showPrompt(lastPrompt || Generator.buildPortraitPrompt(fields));
+      try {
+        const dataUrl = Generator.fallbackPortrait(fields);
+        if (!dataUrl) throw new Error('생성 실패');
+        imgField.set(dataUrl);
+        setStatus('문장 실루엣 초상화를 만들었어요. 파일 없이 오프라인에서도 바로 됩니다.', 'ok');
+        U.toast('실루엣 초상화를 넣었어요', { icon: 'i-shield' });
+      } catch (err) {
+        setStatus('실루엣 초상화를 만들지 못했어요. 잠시 후 다시 시도해 주세요.', 'error');
+      }
+    });
+  }
+
   function formSheet(opts) {
     const body = document.createElement('div');
     body.innerHTML = '<form class="wb-form" novalidate>' + opts.html + '</form>';
@@ -582,12 +759,19 @@
       U.field('나이 / 신체', U.textInput('age', c ? c.age : '', { placeholder: '27세 · 182cm' })) +
       U.field('능력 / 무기', U.textArea('abilities', c ? c.abilities : '', '결빙의 검술, 서리검 「글라시엘」…', 3)) +
       U.field('성격 · 배경 메모', U.textArea('notes', c ? c.notes : '', '어떤 사람인지, 무엇을 숨기고 있는지…', 5)) +
+      '<div class="field"><span class="field__label">강함 / 등급</span>' +
+        '<div id="char-ranks"></div>' +
+        '<span class="field-hint">체계를 고르면 단계가 바로 떠요. 여러 체계를 함께 가질 수 있고, 먼저 고른 등급이 대표로 표시돼요.</span>' +
+      '</div>' +
       '<div class="field"><span class="field__label">대표 이미지</span><div id="char-img"></div>' +
       '<span class="field-hint">폰 사진첩에서 고르면 자동으로 줄여서 저장해요.</span></div>' +
+      '<div class="ai-art" id="char-ai"></div>' +
       U.datalist('dl-races', races) + U.datalist('dl-factions', factions) +
       (c ? '<button type="button" class="btn btn--danger btn--block mt-14" id="char-delete"><svg><use href="#i-trash"/></svg>인물 삭제</button>' : '');
 
     let img = null;
+    const rankSel = new Map();
+    (c && c.ranks ? c.ranks : []).forEach((r) => rankSel.set(r.systemId, Number(r.tier)));
 
     formSheet({
       eyebrow: c ? 'EDIT CHARACTER' : 'NEW CHARACTER',
@@ -598,6 +782,13 @@
       onReady: ({ body, form, sheet }) => {
         img = buildImageField(c ? c.image : null, { maxDim: 900, label: '초상 사진 올리기' });
         body.querySelector('#char-img').appendChild(img.el);
+        bindIllustrationPanel(body, form, img);
+
+        const rkHost = body.querySelector('#char-ranks');
+        if (rkHost) {
+          const paintRanks = () => drawRankPicker(rkHost, w, rankSel, () => openRankSystems(paintRanks));
+          paintRanks();
+        }
 
         body.querySelector('#gen-name').addEventListener('click', () => {
           Generator.open({
@@ -646,6 +837,12 @@
           notes: String(fd.get('notes') || '').trim(),
           image: img.get()
         };
+        const ranks = [];
+        (w.rankSystems || []).forEach((s) => {
+          const t = rankSel.get(s.id);
+          if (typeof t === 'number' && t >= 0 && t < s.tiers.length) ranks.push({ systemId: s.id, tier: t });
+        });
+        data.ranks = ranks;
         if (c) {
           Object.assign(c, data);
         } else {
@@ -1033,10 +1230,12 @@
     MapView.mount(host, {
       world: W,
       onUpload: uploadMapImage,
+      onTerrainChange: () => touch(),
       onUseSample: () => {
         const w = W();
         w.map.kind = 'sample';
         w.map.image = null;
+        w.map.ratio = 3 / 4; // 기본 지도 도안은 900×1200
         touch({ immediate: true });
         MapView.refresh();
         U.toast('기본 판타지 지도를 불러왔어요');
@@ -1052,12 +1251,22 @@
     try {
       U.toast('지도를 준비하는 중…', { icon: 'i-image', duration: 1400 });
       const data = await U.resizeImage(file, 1600, 0.84);
+      let ratio = null;
+      try {
+        const im = await U.loadImage(data);
+        if (im.naturalWidth && im.naturalHeight) {
+          ratio = Math.round(Math.min(2.8, Math.max(0.45, im.naturalWidth / im.naturalHeight)) * 1000) / 1000;
+        }
+      } catch (e) { /* 비율을 몰라도 지도는 저장한다 */ }
       const w = W();
       w.map.image = data;
       w.map.kind = 'custom';
+      if (ratio) w.map.ratio = ratio;
       touch({ immediate: true });
       MapView.refresh();
-      U.toast('지도 이미지를 올렸어요');
+      U.toast(ratio
+        ? '지도 이미지를 올렸어요 · 원본 비율 ' + (ratio < 1 ? '세로형' : '가로형') + ' 그대로 보여요'
+        : '지도 이미지를 올렸어요', { icon: 'i-image', duration: 2400 });
     } catch (e) {
       U.toast('이미지를 올리지 못했어요', { icon: 'i-x' });
     }
@@ -1572,7 +1781,7 @@
       body.querySelectorAll('[data-world]').forEach((b) => b.addEventListener('click', () => {
         if (b.dataset.world === App.state.activeId) { sheet.close(); return; }
         App.state.activeId = b.dataset.world;
-        App.filters = { charQuery: '', charFaction: '전체', charRace: '전체', loreQuery: '', loreCat: '전체', epStatus: '전체', tlEra: '전체' };
+        App.filters = { charQuery: '', charFaction: '전체', charRace: '전체', charRank: '', loreQuery: '', loreCat: '전체', epStatus: '전체', tlEra: '전체' };
         touch({ immediate: true });
         sheet.close();
         Graph.destroy();
@@ -1676,6 +1885,232 @@
   }
 
   /* ---------------------------------------------------------
+     강함 / 등급 체계 (rank systems)
+     --------------------------------------------------------- */
+  function rankUsedCount(w, sysId) {
+    return w.characters.filter((c) => (c.ranks || []).some((r) => r.systemId === sysId)).length;
+  }
+
+  // 인물 폼 안의 등급 선택기 (체계별로 한 단계씩)
+  function drawRankPicker(host, w, sel, onManage) {
+    const systems = w.rankSystems || [];
+    if (!systems.length) {
+      host.innerHTML = '<div class="rank-empty">' +
+        '<p class="field-hint">아직 등록된 등급 체계가 없어요. 마법 서클·기사단 계위 같은 체계를 먼저 만들어 주세요.</p>' +
+        '<button type="button" class="btn btn--sm" data-rank-manage><svg><use href="#i-plus"/></svg><span>등급 체계 만들기</span></button>' +
+      '</div>';
+    } else {
+      host.innerHTML = systems.map((s) => {
+        const cur = sel.get(s.id);
+        const has = typeof cur === 'number' && cur >= 0 && cur < s.tiers.length;
+        return '<div class="rank-pick" style="--rank-color:' + esc(s.color) + '">' +
+          '<div class="rank-pick__head">' +
+            '<span class="rank-pick__name"><span class="rank-pick__icon">' + esc(s.icon) + '</span>' + esc(s.name) + '</span>' +
+            (has ? '<button type="button" class="rank-pick__clear" data-rank-clear="' + esc(s.id) + '">해제</button>' : '') +
+          '</div>' +
+          '<div class="chip-row rank-pick__chips">' + s.tiers.map((t, i) =>
+            '<button type="button" class="chip chip--small rank-chip' + (cur === i ? ' chip--active' : '') + '"' +
+            ' data-rank-system="' + esc(s.id) + '" data-rank-tier="' + i + '">' + esc(t) + '</button>').join('') +
+          '</div>' +
+        '</div>';
+      }).join('') +
+        '<button type="button" class="btn btn--sm btn--ghost mt-8" data-rank-manage><svg><use href="#i-shield"/></svg><span>등급 체계 관리</span></button>';
+    }
+    host.querySelectorAll('[data-rank-system]').forEach((b) => b.addEventListener('click', () => {
+      sel.set(b.getAttribute('data-rank-system'), Number(b.getAttribute('data-rank-tier')));
+      U.haptic(8);
+      drawRankPicker(host, w, sel, onManage);
+    }));
+    host.querySelectorAll('[data-rank-clear]').forEach((b) => b.addEventListener('click', () => {
+      sel.delete(b.getAttribute('data-rank-clear'));
+      U.haptic(6);
+      drawRankPicker(host, w, sel, onManage);
+    }));
+    host.querySelectorAll('[data-rank-manage]').forEach((b) => b.addEventListener('click', () => {
+      if (onManage) onManage();
+    }));
+  }
+
+  function guessTierSuffix(sys) {
+    if (!sys || !sys.tiers || !sys.tiers.length) return '';
+    const m = String(sys.tiers[0]).match(/^\s*\d+\s*(.+)$/);
+    return m ? m[1].trim() : '';
+  }
+
+  function openRankSystems(onDone) {
+    const w = W();
+    if (!w) return;
+    const body = document.createElement('div');
+
+    function draw() {
+      const systems = w.rankSystems || [];
+      body.innerHTML =
+        '<p class="prose small">세계관마다 여러 등급 체계를 만들 수 있어요. 예: 마법 서클, 검사 계위, 모험가 랭크.</p>' +
+        (systems.length
+          ? '<div class="rank-sys-list">' + systems.map((s) =>
+              '<button type="button" class="rank-sys" data-rank-edit="' + esc(s.id) + '">' +
+                '<span class="rank-sys__icon" style="--rank-color:' + esc(s.color) + '">' + esc(s.icon) + '</span>' +
+                '<span class="rank-sys__body">' +
+                  '<span class="rank-sys__name">' + esc(s.name) + '</span>' +
+                  '<span class="rank-sys__meta">' + s.tiers.length + '단계 · ' + esc(s.tiers[0]) + ' ~ ' + esc(s.tiers[s.tiers.length - 1]) + ' · 인물 ' + rankUsedCount(w, s.id) + '명</span>' +
+                  '<span class="rank-sys__tiers">' + s.tiers.map((t) => '<span class="mini-chip">' + esc(t) + '</span>').join('') + '</span>' +
+                '</span>' +
+                '<span class="rank-sys__chev"><svg><use href="#i-edit"/></svg></span>' +
+              '</button>').join('') + '</div>'
+          : '<div class="empty"><div class="empty__sigil">⚔</div><p>아직 등급 체계가 없어요.<br>마법 서클, 기사단 계위처럼 이 세계의 강함을 나눠 보세요.</p></div>') +
+        '<button type="button" class="btn btn--gold btn--block mt-14" data-rank-new><svg><use href="#i-plus"/></svg><span>새 등급 체계</span></button>' +
+        '<p class="field-hint mt-8">인물 폼의 <b>강함 / 등급</b>에서 체계를 고르면 단계를 탭 한 번으로 정할 수 있어요.</p>';
+
+      body.querySelectorAll('[data-rank-edit]').forEach((b) => b.addEventListener('click', () => {
+        const id = b.getAttribute('data-rank-edit');
+        U.haptic(6);
+        sheet.close();
+        setTimeout(() => openRankForm(id, onDone || (() => openRankSystems())), 170);
+      }));
+      body.querySelector('[data-rank-new]').addEventListener('click', () => {
+        U.haptic(6);
+        sheet.close();
+        setTimeout(() => openRankForm(null, onDone || (() => openRankSystems())), 170);
+      });
+    }
+
+    const sheet = U.openSheet({ eyebrow: 'POWER TIER', title: '강함 · 등급 체계', full: true, body: body });
+    draw();
+  }
+
+  function openRankForm(id, onDone) {
+    const w = W();
+    if (!w) return;
+    const sys = id ? (w.rankSystems || []).find((s) => s.id === id) : null;
+    let color = sys ? sys.color : RANK_COLORS[0];
+
+    const html =
+      U.field('체계 이름', U.textInput('name', sys ? sys.name : '', { placeholder: '예: 마법 서클 · 검사 계위 · 모험가 랭크' }), '세계관마다 여러 체계를 만들 수 있어요.', true) +
+      '<div class="field--slim">' +
+        U.field('아이콘', U.textInput('icon', sys ? sys.icon : '⚔', { placeholder: '⚔' })) +
+        '<div class="field"><span class="field__label">색상</span><div class="rank-colors" id="rank-colors"></div>' +
+          '<input type="hidden" name="color" value="' + esc(color) + '"></div>' +
+      '</div>' +
+      '<div class="field"><span class="field__label">단계 <b>*</b></span>' +
+        '<div class="rank-gen">' +
+          '<input class="input" id="tier-prefix" placeholder="단위 (예: 서클)" value="' + esc(guessTierSuffix(sys)) + '" aria-label="단계 단위">' +
+          '<input class="input" id="tier-count" type="number" min="1" max="20" step="1" value="' + (sys ? sys.tiers.length : 9) + '" inputmode="numeric" aria-label="단계 수">' +
+          '<button type="button" class="btn btn--sm btn--gold" id="tier-gen">자동 생성</button>' +
+        '</div>' +
+        '<span class="field-hint">개수를 넣고 [자동 생성]을 누르면 1서클~9서클처럼 한 번에 만들어져요. 만든 뒤 단계 이름은 각각 고칠 수 있어요.</span>' +
+        '<div class="rank-tiers" id="rank-tiers"></div>' +
+        '<button type="button" class="btn btn--sm btn--ghost mt-8" id="tier-add"><svg><use href="#i-plus"/></svg><span>단계 추가</span></button>' +
+      '</div>' +
+      (sys ? '<button type="button" class="btn btn--danger btn--block mt-8" id="rank-delete"><svg><use href="#i-trash"/></svg><span>체계 삭제</span></button>' : '');
+
+    formSheet({
+      eyebrow: sys ? 'EDIT TIER' : 'NEW TIER',
+      title: sys ? '등급 체계 수정' : '새 등급 체계',
+      sub: '이름과 단계만 정하면 인물에 바로 붙일 수 있어요.',
+      full: true,
+      html: html,
+      onReady: ({ body, sheet }) => {
+        function readTiers() {
+          return U.$$('#rank-tiers [name="tier"]', body).map((el) => el.value.trim());
+        }
+
+        function drawTiers(list) {
+          const host = body.querySelector('#rank-tiers');
+          host.innerHTML = list.map((t, i) =>
+            '<div class="rank-tier-row">' +
+              '<span class="rank-tier-no">' + (i + 1) + '</span>' +
+              '<input class="input" name="tier" value="' + esc(t) + '" aria-label="' + (i + 1) + '단계 이름">' +
+              '<button type="button" class="mini-btn" data-tier-del="' + i + '" aria-label="' + (i + 1) + '단계 삭제"><svg><use href="#i-x"/></svg></button>' +
+            '</div>').join('') ||
+            '<p class="field-hint">아래 [자동 생성]으로 단계를 만들거나 [단계 추가]를 눌러 주세요.</p>';
+          host.querySelectorAll('[data-tier-del]').forEach((b) => b.addEventListener('click', () => {
+            const next = readTiers();
+            next.splice(Number(b.getAttribute('data-tier-del')), 1);
+            drawTiers(next);
+            U.haptic(6);
+          }));
+        }
+
+        drawTiers(sys ? sys.tiers.slice() : []);
+
+        const colorHost = body.querySelector('#rank-colors');
+        colorHost.innerHTML = RANK_COLORS.map((c) =>
+          '<button type="button" class="rank-color' + (c === color ? ' is-on' : '') + '" data-color="' + c + '"' +
+          ' style="--rank-color:' + c + '" aria-label="색상 ' + c + '"></button>').join('');
+        colorHost.addEventListener('click', (e) => {
+          const b = e.target.closest('[data-color]');
+          if (!b) return;
+          color = b.getAttribute('data-color');
+          body.querySelector('[name="color"]').value = color;
+          U.$$('[data-color]', colorHost).forEach((x) => x.classList.toggle('is-on', x === b));
+          U.haptic(6);
+        });
+
+        body.querySelector('#tier-gen').addEventListener('click', () => {
+          const prefix = String(body.querySelector('#tier-prefix').value || '').trim();
+          const n = U.clamp(Math.round(Number(body.querySelector('#tier-count').value) || 0), 1, 20);
+          const list = [];
+          for (let i = 1; i <= n; i++) list.push(prefix ? i + prefix : i + '단계');
+          drawTiers(list);
+          U.haptic(10);
+          U.toast(n + '단계를 만들었어요', { icon: 'i-check' });
+        });
+
+        body.querySelector('#tier-add').addEventListener('click', () => {
+          const next = readTiers();
+          next.push((next.length + 1) + '단계');
+          drawTiers(next);
+          const inputs = U.$$('#rank-tiers [name="tier"]', body);
+          const lastInput = inputs[inputs.length - 1];
+          if (lastInput) { lastInput.focus(); lastInput.select(); }
+        });
+
+        const del = body.querySelector('#rank-delete');
+        if (del) {
+          del.addEventListener('click', async () => {
+            const used = rankUsedCount(w, sys.id);
+            const ok = await U.confirmSheet({
+              title: '이 등급 체계를 지울까요?',
+              message: sys.name + ' 체계와 함께 ' + (used ? '인물 ' + used + '명의 등급 표시가' : '연결된 정보가') + ' 사라집니다.',
+              confirmText: '삭제',
+              danger: true
+            });
+            if (!ok) return;
+            w.rankSystems = (w.rankSystems || []).filter((x) => x.id !== sys.id);
+            w.characters.forEach((c) => { c.ranks = (c.ranks || []).filter((r) => r.systemId !== sys.id); });
+            touch({ immediate: true });
+            refreshView();
+            sheet.close();
+            U.toast('등급 체계를 지웠어요');
+            if (onDone) setTimeout(onDone, 220);
+          });
+        }
+      },
+      onSubmit: (fd, body) => {
+        const name = String(fd.get('name') || '').trim();
+        if (!name) { U.toast('체계 이름을 적어 주세요', { icon: 'i-x' }); return false; }
+        const tiers = U.$$('#rank-tiers [name="tier"]', body).map((el) => el.value.trim()).filter(Boolean);
+        if (!tiers.length) { U.toast('단계를 하나 이상 만들어 주세요', { icon: 'i-x' }); return false; }
+        const icon = String(fd.get('icon') || '').trim().slice(0, 2) || '⚔';
+        const data = { name: name, icon: icon, color: color, tiers: tiers };
+        if (sys) Object.assign(sys, data);
+        else w.rankSystems.push(Object.assign({ id: U.uid('rk') }, data));
+        // 단계가 줄면 범위를 벗어난 인물 등급을 정리한다
+        w.characters.forEach((c) => {
+          c.ranks = (c.ranks || []).filter((r) => {
+            const s = (w.rankSystems || []).find((x) => x.id === r.systemId);
+            return !!s && Number(r.tier) < s.tiers.length;
+          });
+        });
+        touch({ immediate: true });
+        refreshView();
+        U.toast(sys ? '등급 체계를 수정했어요' : '등급 체계를 만들었어요');
+        if (onDone) setTimeout(onDone, 220);
+      }
+    });
+  }
+
+  /* ---------------------------------------------------------
      more / backup
      --------------------------------------------------------- */
   function openMoreSheet() {
@@ -1687,6 +2122,7 @@
         '<button class="quick" data-more="episodes"><svg><use href="#i-film"/></svg><span>에피소드 · 콘티</span></button>' +
         '<button class="quick" data-more="story"><svg><use href="#i-route"/></svg><span>스토리 여정</span></button>' +
         '<button class="quick" data-more="gen"><svg><use href="#i-sparkles"/></svg><span>이름 · 지명 추천</span></button>' +
+        '<button class="quick" data-more="ranks"><svg><use href="#i-shield"/></svg><span>강함 · 등급 체계</span></button>' +
         '<button class="quick" data-more="backup"><svg><use href="#i-download"/></svg><span>백업 · 복원</span></button>' +
         '<button class="quick" data-more="worlds"><svg><use href="#i-globe"/></svg><span>세계관 관리</span></button>' +
       '</div>' +
@@ -1698,7 +2134,7 @@
       '<div class="divider"></div>' +
       '<div class="label-row"><span>앱 정보</span></div>' +
       '<div class="def-list">' +
-        '<div class="def"><dt>버전</dt><dd>아르카눔 v1.0 · PWA</dd></div>' +
+        '<div class="def"><dt>버전</dt><dd>아르카눔 v1.1 · PWA</dd></div>' +
         '<div class="def"><dt>저장</dt><dd>' + (Store.isDbBroken() ? 'localStorage (자동 저장)' : 'IndexedDB + localStorage 이중 저장') + '</dd></div>' +
         '<div class="def"><dt>오프라인</dt><dd>홈 화면에 추가하면 인터넷 없이도 열립니다.</dd></div>' +
       '</div>';
@@ -1711,6 +2147,7 @@
       else if (act === 'episodes') go('episodes');
       else if (act === 'story') { go('map'); setTimeout(() => MapView.setStory(true), 80); }
       else if (act === 'gen') setTimeout(() => Generator.open({}), 120);
+      else if (act === 'ranks') setTimeout(openRankSystems, 120);
       else if (act === 'backup') setTimeout(openBackupSheet, 120);
       else if (act === 'worlds') setTimeout(openWorldSwitcher, 120);
     }));
@@ -1724,27 +2161,121 @@
     }));
   }
 
+  /* ---------------------------------------------------------
+     backup · '세계 만들기' 폴더 저장
+     --------------------------------------------------------- */
+  function backupFolderName() {
+    const s = App.state && App.state.settings;
+    const f = s && typeof s.backupFolder === 'string' ? s.backupFolder.trim() : '';
+    return f || Store.DEFAULT_BACKUP_FOLDER || '세계 만들기';
+  }
+
+  function backupFileName() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    const stamp = String(d.getFullYear()) + p(d.getMonth() + 1) + p(d.getDate());
+    const safe = backupFolderName().replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, '_');
+    return (safe || '세계_만들기') + '_아르카눔_백업_' + stamp + '.json';
+  }
+
+  function backupText() {
+    return JSON.stringify(Store.exportPayload(), null, 2);
+  }
+
+  function canShareFiles(file) {
+    try {
+      return !!(navigator.canShare && navigator.share && typeof File !== 'undefined' && navigator.canShare({ files: [file] }));
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Web Share(파일 앱의 폴더 선택) 우선 → 안 되면 일반 다운로드
+  async function exportBackup(forceDownload) {
+    const name = backupFileName();
+    const text = backupText();
+    const folder = backupFolderName();
+    if (!forceDownload && typeof File !== 'undefined' && navigator.share) {
+      let file;
+      try {
+        file = new File([text], name, { type: 'application/json' });
+      } catch (e) {
+        file = null;
+      }
+      if (file && canShareFiles(file)) {
+        try {
+          await navigator.share({ files: [file], title: name });
+          U.toast('공유 시트에서 [파일에 저장] → ' + folder + ' 폴더를 고르세요', { icon: 'i-download', duration: 3600 });
+          return 'shared';
+        } catch (err) {
+          if (err && err.name === 'AbortError') {
+            U.toast('저장을 취소했어요', { icon: 'i-x' });
+            return 'canceled';
+          }
+          // 공유가 실패하면 다운로드로 대신 저장한다
+        }
+      }
+    }
+    U.downloadText(name, text, 'application/json');
+    U.toast('백업 파일을 내보냈어요 · 받은 파일을 ' + folder + ' 폴더로 옮길 수 있어요', { icon: 'i-download', duration: 3200 });
+    return 'downloaded';
+  }
+
   function openBackupSheet() {
     const w = W();
+    const folder = backupFolderName();
     const body = document.createElement('div');
     body.innerHTML =
-      '<p class="prose small">세계관 ' + App.state.worlds.length + '개 전체를 JSON 한 파일로 내보냅니다. 인물 사진과 지도 이미지도 함께 담겨요.</p>' +
-      '<div class="divider"></div>' +
-      '<button class="btn btn--gold btn--block" data-backup="export"><svg><use href="#i-download"/></svg>백업 파일 내보내기</button>' +
-      '<button class="btn btn--block mt-8" data-backup="import"><svg><use href="#i-upload"/></svg>백업 가져오기 (복원)</button>' +
-      '<button class="btn btn--ghost btn--block mt-8" data-backup="import-merge"><svg><use href="#i-upload"/></svg>가져오되 기존 세계관 유지</button>' +
+      '<p class="prose small">세계관 ' + App.state.worlds.length + '개 전체를 JSON 한 파일로 내보냅니다. 인물 사진, 지도 이미지, 지형 스탬프까지 함께 담겨요.</p>' +
+      '<button class="btn btn--gold btn--block mt-8" data-backup="export"><svg><use href="#i-download"/></svg><span>아이폰 \'' + esc(folder) + '\' 폴더에 저장</span></button>' +
+      '<p class="field-hint">공유 시트가 열리면 아래 안내대로 [파일에 저장]을 고르면 폴더를 직접 정할 수 있어요. 공유가 막힌 환경에서는 다운로드로 자동 저장합니다.</p>' +
+      '<div class="backup-guide">' +
+        '<div class="backup-guide__title"><svg><use href="#i-download"/></svg>아이폰 파일 앱 \'' + esc(folder) + '\' 폴더에 저장하는 법</div>' +
+        '<ol>' +
+          '<li>위 <b>폴더에 저장</b> 버튼을 눌러 공유 시트를 엽니다.</li>' +
+          '<li>공유 목록에서 <b>파일에 저장</b>을 선택합니다.</li>' +
+          '<li>저장 위치에서 <b>' + esc(folder) + '</b> 폴더를 고르고 <b>저장</b>을 누릅니다.</li>' +
+          '<li>폴더가 없으면 파일 앱에서 새 폴더를 만들어 이름을 <b>' + esc(folder) + '</b>로 정하면 돼요.</li>' +
+        '</ol>' +
+        '<div class="backup-folder">' +
+          '<input class="input" id="backup-folder-input" value="' + esc(folder) + '" placeholder="세계 만들기" aria-label="기본 저장 폴더 이름" maxlength="40">' +
+          '<button type="button" class="btn btn--sm" id="backup-folder-save">폴더명 저장</button>' +
+        '</div>' +
+        '<p class="field-hint">여기 적은 폴더명은 안내 문구와 백업 파일 이름 앞에 함께 쓰여요.</p>' +
+      '</div>' +
+      '<div class="btn-row mt-8">' +
+        '<button class="btn btn--sm" data-backup="export-download"><svg><use href="#i-download"/></svg><span>일반 다운로드</span></button>' +
+        '<button class="btn btn--sm btn--ghost" data-backup="import"><svg><use href="#i-upload"/></svg><span>백업 가져오기</span></button>' +
+      '</div>' +
+      '<button class="btn btn--ghost btn--block mt-8" data-backup="import-merge"><svg><use href="#i-upload"/></svg><span>가져오되 기존 세계관 유지</span></button>' +
       '<p class="field-hint mt-8">복원은 현재 데이터를 대체합니다. 먼저 백업을 내보내 두는 걸 권해요.</p>' +
       (w ? '<div class="divider"></div><div class="def-list"><div class="def"><dt>현재</dt><dd>' + esc(w.name) + '<br>' +
         '인물 ' + w.characters.length + ' · 관계 ' + w.relations.length + ' · 사건 ' + w.events.length +
-        ' · 지역 ' + w.map.markers.length + ' · 설정 ' + w.lore.length + ' · 에피소드 ' + w.episodes.length + '</dd></div></div>' : '');
+        ' · 지역 ' + w.map.markers.length + ' · 지형 ' + ((w.map.terrainStamps || []).length) +
+        ' · 설정 ' + w.lore.length + ' · 에피소드 ' + w.episodes.length + '</dd></div></div>' : '');
 
     const sheet = U.openSheet({ eyebrow: 'BACKUP', title: '백업 · 복원', body: body });
+
+    const folderInput = body.querySelector('#backup-folder-input');
+    body.querySelector('#backup-folder-save').addEventListener('click', () => {
+      const next = String(folderInput.value || '').trim();
+      if (!next) { U.toast('폴더명을 적어 주세요', { icon: 'i-x' }); folderInput.focus(); return; }
+      App.state.settings.backupFolder = next;
+      touch({ immediate: true });
+      U.toast('기본 폴더를 \'' + next + '\'로 저장했어요', { icon: 'i-check' });
+      sheet.close();
+      setTimeout(openBackupSheet, 180);
+    });
+
     body.querySelectorAll('[data-backup]').forEach((b) => b.addEventListener('click', async () => {
       const act = b.dataset.backup;
-      if (act === 'export') {
-        const payload = Store.exportPayload();
-        U.downloadText('arcanum-backup-' + U.fileStamp() + '.json', JSON.stringify(payload, null, 2), 'application/json');
-        U.toast('백업 파일을 내보냈어요', { icon: 'i-download' });
+      if (act === 'export' || act === 'export-download') {
+        b.disabled = true;
+        try {
+          await exportBackup(act === 'export-download');
+        } finally {
+          b.disabled = false;
+        }
         return;
       }
       const merge = act === 'import-merge';

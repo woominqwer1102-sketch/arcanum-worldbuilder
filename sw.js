@@ -1,5 +1,5 @@
 /* ARCANUM service worker · offline app shell */
-const CACHE = 'arcanum-v1';
+const CACHE = 'arcanum-v2';
 const ASSETS = [
   './',
   './index.html',

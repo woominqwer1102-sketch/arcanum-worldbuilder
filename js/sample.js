@@ -123,6 +123,32 @@
 
   const MAP_URI = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(SampleMapSVG());
 
+  /* 기본 등급 체계 — 마법 서클 9단계 / 기사단 계위 6단계 */
+  function RankDefaults() {
+    return {
+      systems: [
+        {
+          id: 'rk_circle', name: '마법 서클', icon: '✦', color: '#7fa9d8',
+          tiers: ['1서클', '2서클', '3서클', '4서클', '5서클', '6서클', '7서클', '8서클', '9서클']
+        },
+        {
+          id: 'rk_order', name: '기사단 계위', icon: '⚔', color: '#c9a24a',
+          tiers: ['수습', '견습 기사', '정식 기사', '기사장', '기사단장', '그랜드마스터']
+        }
+      ],
+      ranks: {
+        c_aelric: [{ systemId: 'rk_order', tier: 2 }],
+        c_seraphine: [{ systemId: 'rk_circle', tier: 7 }],
+        c_malachar: [{ systemId: 'rk_circle', tier: 8 }],
+        c_elindra: [{ systemId: 'rk_order', tier: 3 }],
+        c_isolde: [{ systemId: 'rk_circle', tier: 1 }, { systemId: 'rk_order', tier: 3 }],
+        c_corvus: [{ systemId: 'rk_circle', tier: 5 }],
+        c_nimue: [{ systemId: 'rk_circle', tier: 3 }],
+        c_thorn: []
+      }
+    };
+  }
+
   function SampleWorld() {
     const now = Date.now();
     const C = {
@@ -142,62 +168,63 @@
       createdAt: now,
       updatedAt: now,
       eraOrder: ['제1기', '제2기', '제3기'],
+      rankSystems: RankDefaults().systems,
       characters: [
         {
           id: C.aelric, name: '아엘릭 반 다이렌', title: '서리검의 계승자', race: '인간', faction: '서약 기사단',
           age: '27세 · 182cm', abilities: '서리검 「글라시엘」 · 결빙의 검술',
           personality: '무뚝뚝하고 말수가 적다. 서약을 어기는 자를 가장 싫어하지만, 정작 자신이 지켜야 할 서약이 무엇인지는 아직 모른다. 추위에 강하고 술에 약하다.',
           notes: '왕도 발드렌의 하급 기사 서자로 태어났다. 열두 살에 처음 글라시엘을 만졌을 때 손이 얼어붙어 세 달을 앓았다.',
-          image: null, pos: { x: 112, y: 122 }
+          ranks: [{ systemId: 'rk_order', tier: 2 }], image: null, pos: { x: 112, y: 122 }
         },
         {
           id: C.seraphine, name: '세라핀 아쉬포드', title: '황금 가지의 대마법사', race: '인간', faction: '봉인술사회',
           age: '34세', abilities: '봉인 마법 · 별의 지도 · 이름의 해독',
           personality: '호기심이 많고 웃음이 잦다. 대가 없이 얻는 것은 없다고 믿으며, 자기 목숨도 값으로 계산해 두었다.',
           notes: '봉인술사회 최연소 대마법사. 일곱 성소의 인장을 읽을 수 있는 마지막 세 사람 중 하나.',
-          image: null, pos: { x: 252, y: 92 }
+          ranks: [{ systemId: 'rk_circle', tier: 7 }], image: null, pos: { x: 252, y: 92 }
         },
         {
           id: C.malachar, name: '말라카르', title: '잿불의 군주', race: '용혈족', faction: '잿불 교단',
           age: '400세 이상', abilities: '화염 · 부패한 이름의 마법 · 재에서 다시 서는 몸',
           personality: '느리고 우아하다. 분노하지 않고, 대신 오래 기억한다. 자신을 죽인 자의 이름을 천 년 동안 외운다.',
           notes: '아르카디아를 태운 용의 후예. 잿빛 왕관의 마지막 소유자이며, 지금은 자기 이름을 되찾으려 한다.',
-          image: null, pos: { x: 300, y: 254 }
+          ranks: [{ systemId: 'rk_circle', tier: 8 }], image: null, pos: { x: 300, y: 254 }
         },
         {
           id: C.elindra, name: '엘린드라', title: '검은숲의 수호자', race: '엘프', faction: '검은숲 감시자',
           age: '240세', abilities: '밤의 이슬(장궁) · 숲의 길 읽기 · 매의 눈',
           personality: '냉정하고 과묵하다. 숲 밖의 일에는 관심이 없지만, 숲을 태운 불은 아직도 기억한다.',
           notes: '제2기 300년 대화재 이후 숲의 절반을 잃고 감시자의 자리를 이어받았다. 나무의 이름을 전부 외우고 있다.',
-          image: null, pos: { x: 192, y: 208 }
+          ranks: [{ systemId: 'rk_order', tier: 3 }], image: null, pos: { x: 192, y: 208 }
         },
         {
           id: C.thorn, name: '토른 그림스톤', title: '무쇠 망치', race: '드워프', faction: '무쇠 길드',
           age: '156세', abilities: '전투 도끼 「산의 이빨」 · 룬 단조 · 독한 술',
           personality: '입이 거칠고 의리가 두껍다. 빚은 반드시 갚고, 약속은 반드시 지킨다.',
           notes: '서리봉우리 아래 무쇠 길드의 단조장. 글라시엘의 검집을 만든 장인의 손자.',
-          image: null, pos: { x: 58, y: 262 }
+          ranks: [], image: null, pos: { x: 58, y: 262 }
         },
         {
           id: C.isolde, name: '이졸데 발드렌', title: '서약 없는 공주', race: '인간', faction: '아르카디아 왕실',
           age: '22세', abilities: '정통 검술 · 외교 · 왕관의 조각을 다루는 재주',
           personality: '당당하고 영리하다. 왕실이 무너진 뒤에도 고개를 숙이지 않았고, 그 때문에 미움을 샀다.',
           notes: '몰락한 왕실의 마지막 혈육. 핏줄에 용의 피가 섞여 있다는 소문이 있다.',
-          image: null, pos: { x: 142, y: 384 }
+          ranks: [{ systemId: 'rk_circle', tier: 1 }, { systemId: 'rk_order', tier: 3 }], image: null, pos: { x: 142, y: 384 }
         },
         {
           id: C.corvus, name: '코르부스', title: '침묵의 증인', race: '반요(까마귀 혈족)', faction: '무소속 · 정보상',
           age: '41세', abilities: '그림자 마법 · 독 · 기억에서 이름 지우기',
           personality: '농담을 하지 않는다. 목소리가 아니라 값으로 말한다. 다만 한 번은 값을 받지 않고 일했다.',
           notes: '무너진 왕실의 마지막 서기가 남긴 아이. 이졸데의 존재를 십 년 동안 숨겨 왔다.',
-          image: null, pos: { x: 262, y: 402 }
+          ranks: [{ systemId: 'rk_circle', tier: 5 }], image: null, pos: { x: 262, y: 402 }
         },
         {
           id: C.nimue, name: '니뮤에', title: '달의 호수의 아이', race: '정령혈족', faction: '성소 수호자',
           age: '겉보기 16세', abilities: '물의 정령술 · 인장 공명 · 물 위를 걷기',
           personality: '말이 느리고 표정이 적다. 기억을 잃었지만 이름은 잊지 않았다.',
           notes: '달의 호수 성소에서 깨어났다. 일곱 성소의 인장과 공명하며, 말라카르가 오래 찾던 이름을 알고 있다.',
-          image: null, pos: { x: 70, y: 448 }
+          ranks: [{ systemId: 'rk_circle', tier: 3 }], image: null, pos: { x: 70, y: 448 }
         }
       ],
       relations: [
@@ -314,5 +341,5 @@
     };
   }
 
-  global.Sample = { mapURI: MAP_URI, mapSVG: SampleMapSVG, world: SampleWorld };
+  global.Sample = { mapURI: MAP_URI, mapSVG: SampleMapSVG, world: SampleWorld, rankDefaults: RankDefaults };
 })(window);

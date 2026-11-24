@@ -333,5 +333,431 @@
     return handle;
   }
 
-  global.Generator = { open, genNames, genPlaces, STYLE_LABEL, PLACE };
+  /* ---------------- AI 초상 프롬프트 + 이미지 ---------------- */
+
+  // 한국어 인물 정보 → 영어 묘사 조각. 모르는 단어는 건너뛰고 아는 단서만 조합한다.
+  const RACE_EN = {
+    '인간': 'human', '엘프': 'elf', '하이엘프': 'high elf', '다크엘프': 'dark elf', '드워프': 'dwarf',
+    '오크': 'orc', '반오크': 'half-orc', '수인': 'beastfolk', '용인': 'dragonkin', '용족': 'dragonborn',
+    '마족': 'demonkin', '악마': 'demon', '천사': 'angelic being', '반신': 'demigod', '언데드': 'undead',
+    '리치': 'lich', '뱀파이어': 'vampire', '정령': 'elemental spirit', '거인': 'giant', '요정': 'fairy',
+    '고블린': 'goblin', '노움': 'gnome', '하플링': 'halfling', '반요': 'half-spirit'
+  };
+
+  const ROLE_EN = [
+    ['대마법사', 'archmage'], ['마법사', 'wizard'], ['마도사', 'sorcerer'], ['마녀', 'witch'], ['사제', 'priest'],
+    ['성기사', 'paladin'], ['기사', 'knight'], ['검사', 'swordsman'], ['검객', 'duelist'], ['왕', 'king'],
+    ['여왕', 'queen'], ['공주', 'princess'], ['왕자', 'prince'], ['황제', 'emperor'], ['귀족', 'noble'],
+    ['용사', 'hero'], ['모험가', 'adventurer'], ['사냥꾼', 'hunter'], ['도적', 'rogue'], ['암살자', 'assassin'],
+    ['연금술사', 'alchemist'], ['소환사', 'summoner'], ['드루이드', 'druid'], ['수도승', 'monk'], ['음유시인', 'bard'],
+    ['장군', 'general'], ['용병', 'mercenary'], ['상인', 'merchant'], ['학자', 'scholar'], ['현자', 'sage'],
+    ['수호자', 'guardian'], ['파수꾼', 'sentinel'], ['기록자', 'chronicler'], ['사제장', 'high priest'],
+    ['대장장이', 'blacksmith'], ['정찰병', 'scout'], ['해적', 'pirate'], ['선장', 'captain']
+  ];
+
+  const GEAR_EN = [
+    ['얼음', 'ice and frost magic'], ['결빙', 'frost magic'], ['불', 'flame'],
+    ['번개', 'lightning'], ['폭풍', 'storm'], ['바람', 'wind'], ['물', 'water'],
+    ['대지', 'earth'], ['그림자', 'shadow magic'], ['빛', 'radiant light'],
+    ['치유', 'healing'], ['저주', 'curse'], ['소환', 'summoning'], ['환영', 'illusion'], ['룬', 'runes'],
+    ['혈', 'blood magic'], ['정령', 'elemental'], ['검', 'sword'], ['대검', 'greatsword'], ['쌍수', 'dual blades'],
+    ['창', 'spear'], ['활', 'bow'], ['단검', 'dagger'], ['지팡이', 'staff'], ['마법서', 'grimoire'],
+    ['방패', 'shield'], ['도끼', 'axe'], ['낫', 'scythe'], ['사슬', 'chains'], ['채찍', 'whip'],
+    ['반지', 'enchanted ring'], ['왕관', 'crown'], ['갑옷', 'plate armor'], ['망토', 'cloak'], ['가면', 'mask']
+  ];
+
+  const MOOD_EN = [
+    ['냉정', 'cold and composed'],
+    ['냉혹', 'ruthless'], ['차가', 'cold'], ['무뚝뚝', 'stoic'],
+    ['과묵', 'taciturn'], ['온화', 'gentle'], ['다정', 'kind'], ['냉소', 'sardonic'],
+    ['잔혹', 'cruel'], ['교활', 'cunning'], ['충직', 'loyal'], ['고독', 'solitary'], ['오만', 'arrogant'],
+    ['쾌활', 'cheerful'], ['신중', 'cautious'], ['광기', 'mad'], ['우울', 'melancholic'], ['슬픔', 'sorrowful'],
+    ['분노', 'wrathful'], ['집착', 'obsessive'], ['침묵', 'silent'], ['고요', 'calm'], ['거만', 'haughty'],
+    ['정의', 'righteous'], ['배신', 'treacherous'], ['두려움', 'fearful'], ['자존', 'proud'], ['순수', 'innocent'],
+    ['당당', 'confident'], ['영리', 'clever'], ['우아', 'elegant'], ['호기심', 'curious']
+  ];
+
+  // 영어로 적힌 칭호에서 직업 단서만 골라내는 작은 사전
+  const ROLE_WORDS = [
+    ['archmage', 'archmage'], ['grandmaster', 'grandmaster'], ['knight', 'knight'], ['paladin', 'paladin'],
+    ['mage', 'mage'], ['wizard', 'wizard'], ['witch', 'witch'], ['sorcerer', 'sorcerer'], ['priest', 'priest'],
+    ['king', 'king'], ['queen', 'queen'], ['prince', 'prince'], ['princess', 'princess'], ['noble', 'noble'],
+    ['hunter', 'hunter'], ['assassin', 'assassin'], ['captain', 'captain'], ['guardian', 'guardian'],
+    ['scholar', 'scholar'], ['druid', 'druid'], ['monk', 'monk'], ['bard', 'bard'], ['merchant', 'merchant'],
+    ['pirate', 'pirate'], ['soldier', 'soldier'], ['rogue', 'rogue'], ['alchemist', 'alchemist'],
+    ['sentinel', 'sentinel'], ['warlord', 'warlord'], ['squire', 'squire'], ['blacksmith', 'blacksmith']
+  ];
+
+  function scanEn(text, table, limit) {
+    const src = String(text || '');
+    if (!src) return [];
+    const out = [];
+    table.forEach((pair) => {
+      if (out.length >= (limit || 3)) return;
+      if (src.indexOf(pair[0]) > -1 && out.indexOf(pair[1]) === -1) out.push(pair[1]);
+    });
+    return out.slice(0, limit || 3);
+  }
+
+  function raceEn(race) {
+    const key = String(race || '').trim();
+    if (!key) return 'humanoid';
+    if (RACE_EN[key]) return RACE_EN[key];
+    const hit = Object.keys(RACE_EN).find((k) => key.indexOf(k) > -1);
+    if (hit) return RACE_EN[hit];
+    if (/^[\x20-\x7E]+$/.test(key)) return key.toLowerCase();
+    return 'fantasy humanoid';
+  }
+
+  function agePhrase(age) {
+    const m = String(age || '').match(/(\d{1,4})\s*(?:세|살)?/);
+    if (!m) return '';
+    const n = Number(m[1]);
+    if (!n || n > 400) return '';
+    if (n < 16) return 'young adolescent';
+    if (n < 25) return 'young adult';
+    if (n < 40) return 'adult in their prime';
+    if (n < 60) return 'seasoned middle-aged';
+    if (n < 120) return 'elder';
+    return 'ancient long-lived being';
+  }
+
+  function nameForPrompt(name) {
+    const s = String(name || '').trim();
+    if (!s) return '';
+    return /^[\x20-\x7E]+$/.test(s) ? s : '';
+  }
+
+  // 인물 세부정보 → 영어 판타지 일러스트 프롬프트
+  function buildPortraitPrompt(fields) {
+    const f = fields || {};
+    const parts = [];
+    const latinName = nameForPrompt(f.name);
+    parts.push(latinName ? 'fantasy character portrait of ' + latinName : 'fantasy character portrait');
+
+    const title = String(f.title || '').trim();
+    const titleEn = /^[\x20-\x7E]+$/.test(title) ? title.toLowerCase() : '';
+    if (titleEn) parts.push(titleEn);
+
+    const race = raceEn(f.race);
+    const role = scanEn(title + ' ' + f.faction, ROLE_EN, 1)[0] ||
+      scanEn((title + ' ' + String(f.faction || '')).toLowerCase(), ROLE_WORDS, 1)[0] || 'wanderer';
+    const article = /^[aeiou]/i.test(race) ? 'an ' : 'a ';
+    parts.push(article + race + ' ' + role);
+
+    const age = agePhrase(f.age);
+    if (age) parts.push(age);
+
+    const gear = scanEn(String(f.abilities || '') + ' ' + String(f.title || ''), GEAR_EN, 2);
+    if (gear.length) parts.push('wielding ' + gear.join(' and '));
+
+    const mood = scanEn(String(f.personality || '') + ' ' + String(f.notes || ''), MOOD_EN, 2);
+    if (mood.length) parts.push(mood.join(', ') + ' expression');
+
+    const faction = String(f.faction || '').trim();
+    if (faction) {
+      parts.push(/^[\x20-\x7E]+$/.test(faction)
+        ? 'member of ' + faction.toLowerCase()
+        : 'bearing the sigil of a ' + (scanEn(faction, ROLE_EN, 1)[0] || 'secret order'));
+    }
+
+    const style = 'dark fantasy oil painting, painterly brushwork, dramatic chiaroscuro rim light, '
+      + 'ornate engraved background, gold filigree accents, intricate costume details, '
+      + 'centered vertical bust composition, looking at viewer, highly detailed face, 4k concept art';
+    return parts.filter(Boolean).join(', ') + ', ' + style + ', no text, no watermark, no logo';
+  }
+
+  const IMG_ENDPOINT = 'https://image.pollinations.ai/prompt/';
+
+  function portraitUrl(prompt, seed) {
+    return IMG_ENDPOINT + encodeURIComponent(String(prompt || '').slice(0, 900)) +
+      '?width=768&height=1024&seed=' + (seed || Math.floor(Math.random() * 1e9)) +
+      '&nologo=true&model=flux&referrer=arcanum';
+  }
+
+  function blobToDataURL(blob) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.onerror = () => reject(new Error('이미지를 읽지 못했어요'));
+      fr.readAsDataURL(blob);
+    });
+  }
+
+  function withTimeout(promise, ms) {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('시간 초과')), ms);
+      promise.then((v) => { clearTimeout(timer); resolve(v); },
+        (e) => { clearTimeout(timer); reject(e); });
+    });
+  }
+
+  // 1) fetch(blob) → 2) <img crossOrigin> 순서로 시도. 둘 다 안 되면 예외.
+  async function loadRemote(url, timeoutMs) {
+    const budget = timeoutMs || 22000;
+    let ctrl = null;
+    let timer = 0;
+    try {
+      if (typeof fetch === 'function') {
+        if (typeof AbortController !== 'undefined') ctrl = new AbortController();
+        timer = setTimeout(() => { if (ctrl) ctrl.abort(); }, budget);
+        const res = await fetch(url, { mode: 'cors', cache: 'no-store', signal: ctrl ? ctrl.signal : undefined });
+        if (res && res.ok) {
+          const blob = await res.blob();
+          if (blob && blob.size > 512 && (!blob.type || blob.type.indexOf('image') === 0)) {
+            const dataUrl = await blobToDataURL(blob);
+            if (dataUrl.indexOf('data:image') === 0) return dataUrl;
+          }
+          throw new Error('이미지 응답이 아니에요');
+        }
+        throw new Error('HTTP ' + (res ? res.status : '?') );
+      }
+      throw new Error('fetch 없음');
+    } catch (e) {
+      // fetch가 막혔으면(대개 CORS) 이미지 태그로 한 번 더 — 이 시도는 짧게 끊는다
+      return await withTimeout(loadViaImg(url), Math.min(9000, budget));
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function loadViaImg(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const cv = document.createElement('canvas');
+          cv.width = img.naturalWidth || 768;
+          cv.height = img.naturalHeight || 1024;
+          const ctx = cv.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          resolve(cv.toDataURL('image/jpeg', 0.88));
+        } catch (err) {
+          reject(new Error('이미지를 캔버스에 그릴 수 없어요(CORS)'));
+        }
+      };
+      img.onerror = () => reject(new Error('이미지를 불러오지 못했어요'));
+      img.src = url;
+    });
+  }
+
+  async function shrinkToPortrait(src, maxDim, quality) {
+    const img = await U.loadImage(src);
+    const md = maxDim || 900;
+    let w = img.naturalWidth || img.width;
+    let h = img.naturalHeight || img.height;
+    const scale = Math.min(1, md / Math.max(w, h));
+    w = Math.max(1, Math.round(w * scale));
+    h = Math.max(1, Math.round(h * scale));
+    const cv = document.createElement('canvas');
+    cv.width = w;
+    cv.height = h;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#171310';
+    ctx.fillRect(0, 0, w, h);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, w, h);
+    return cv.toDataURL('image/jpeg', quality || 0.85);
+  }
+
+  // 원격 AI 시도 → 실패해도 앱은 멈추지 않고 { ok:false, prompt } 를 돌려준다.
+  async function generatePortrait(fields, opts) {
+    const o = opts || {};
+    const prompt = buildPortraitPrompt(fields);
+    const url = portraitUrl(prompt, o.seed);
+    try {
+      const raw = await loadRemote(url, o.timeoutMs || 25000);
+      const dataUrl = await shrinkToPortrait(raw, o.maxDim || 900, 0.86);
+      if (!dataUrl || dataUrl.length < 2000) throw new Error('빈 이미지');
+      return { ok: true, dataUrl, prompt, url };
+    } catch (err) {
+      return { ok: false, prompt, url, reason: (err && err.message) || '연결 실패' };
+    }
+  }
+
+  /* ---------------- 오프라인 폴백: 문장(紋章) 실루엣 초상화 ---------------- */
+  function hashStr(s) {
+    let h = 2166136261;
+    const str = String(s || 'arcanum');
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  }
+
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function fallbackPortrait(fields) {
+    const f = fields || {};
+    const seed = hashStr([f.name, f.title, f.race, f.faction, f.age].join('|'));
+    const rnd = mulberry32(seed);
+    const W = 768, H = 1024;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    if (!ctx) return '';
+
+    const palettes = [
+      ['#121a24', '#2b1c2e', '#d4af37'],
+      ['#101a16', '#22301f', '#c9b06a'],
+      ['#1a1216', '#3a1d22', '#e8c67a'],
+      ['#141018', '#241a34', '#b9a9d4'],
+      ['#1b1509', '#33260f', '#e6cd86']
+    ];
+    const pal = palettes[Math.floor(rnd() * palettes.length)];
+    const gold = pal[2];
+
+    // 배경
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, pal[0]);
+    bg.addColorStop(1, pal[1]);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    const radial = ctx.createRadialGradient(W * 0.5, H * 0.42, 40, W * 0.5, H * 0.42, W * 0.92);
+    radial.addColorStop(0, 'rgba(255, 240, 200, .16)');
+    radial.addColorStop(.55, 'rgba(255, 240, 200, .04)');
+    radial.addColorStop(1, 'rgba(0, 0, 0, .55)');
+    ctx.fillStyle = radial;
+    ctx.fillRect(0, 0, W, H);
+
+    // 별가루
+    for (let i = 0; i < 90; i++) {
+      const x = rnd() * W, y = rnd() * H * 0.8;
+      ctx.globalAlpha = 0.15 + rnd() * 0.5;
+      ctx.fillStyle = i % 7 === 0 ? gold : '#f6ecd4';
+      ctx.beginPath();
+      ctx.arc(x, y, rnd() * 1.5 + 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // 문장 원 + 룬
+    const cx = W * 0.5, cy = H * 0.40, R = W * 0.30;
+    ctx.strokeStyle = gold;
+    ctx.globalAlpha = 0.42;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 0.28;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(cx, cy, R * 0.86, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([6, 10]);
+    ctx.beginPath(); ctx.arc(cx, cy, R * 1.1, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2;
+      const r1 = R * 0.92, r2 = R * (i % 3 === 0 ? 1.02 : 0.98);
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
+      ctx.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // 실루엣(어깨 + 머리)
+    const headY = H * 0.40, headRx = W * 0.115, headRy = W * 0.145;
+    ctx.save();
+    const bodyGrad = ctx.createLinearGradient(0, headY, 0, H);
+    bodyGrad.addColorStop(0, '#0d0a08');
+    bodyGrad.addColorStop(1, '#1b1410');
+    ctx.fillStyle = bodyGrad;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.5 - W * 0.34, H);
+    ctx.bezierCurveTo(W * 0.5 - W * 0.35, H * 0.70, W * 0.5 - W * 0.16, H * 0.58, W * 0.5 - W * 0.075, H * 0.545);
+    ctx.lineTo(W * 0.5 - W * 0.045, headY + headRy * 0.86);
+    ctx.lineTo(W * 0.5 + W * 0.045, headY + headRy * 0.86);
+    ctx.lineTo(W * 0.5 + W * 0.075, H * 0.545);
+    ctx.bezierCurveTo(W * 0.5 + W * 0.16, H * 0.58, W * 0.5 + W * 0.35, H * 0.70, W * 0.5 + W * 0.34, H);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.ellipse(cx, headY, headRx, headRy, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 금빛 테두리 빛(림 라이트)
+    ctx.strokeStyle = gold;
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(cx, headY, headRx, headRy, 0, Math.PI * 0.72, Math.PI * 1.55);
+    ctx.stroke();
+    ctx.globalAlpha = 0.32;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.5 - W * 0.075, H * 0.545);
+    ctx.bezierCurveTo(W * 0.5 - W * 0.2, H * 0.60, W * 0.5 - W * 0.3, H * 0.72, W * 0.5 - W * 0.31, H);
+    ctx.stroke();
+    ctx.restore();
+
+    // 문장 표식 — 가문 문양(움직이는 빛)
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.globalAlpha = 0.30;
+    ctx.strokeStyle = gold;
+    ctx.lineWidth = 1.6;
+    const spikes = 8 + Math.floor(rnd() * 4);
+    for (let i = 0; i < spikes; i++) {
+      const a = (i / spikes) * Math.PI * 2;
+      const len = R * (i % 2 === 0 ? 0.62 : 0.38);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(a) * len, Math.sin(a) * len);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(0, 0, R * 0.16, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    ctx.globalAlpha = 1;
+
+    // 하단 장식 + 이름
+    ctx.strokeStyle = gold;
+    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.22, H * 0.905);
+    ctx.lineTo(W * 0.78, H * 0.905);
+    ctx.stroke();
+    ctx.globalAlpha = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.5 - 8, H * 0.905);
+    ctx.lineTo(W * 0.5, H * 0.895);
+    ctx.lineTo(W * 0.5 + 8, H * 0.905);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    const name = String(f.name || '').trim();
+    if (name) {
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#f2e5c6';
+      ctx.font = '600 40px "AppleMyungjo", "Nanum Myeongjo", Georgia, serif';
+      ctx.fillText(name, W * 0.5, H * 0.945, W * 0.82);
+    }
+
+    // 프레임
+    ctx.strokeStyle = gold;
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 4;
+    ctx.strokeRect(20, 20, W - 40, H - 40);
+    ctx.globalAlpha = 0.25;
+    ctx.lineWidth = 1.4;
+    ctx.strokeRect(32, 32, W - 64, H - 64);
+    ctx.globalAlpha = 1;
+
+    try {
+      return cv.toDataURL('image/jpeg', 0.9);
+    } catch (e) {
+      return '';
+    }
+  }
+
+  global.Generator = { open, genNames, genPlaces, STYLE_LABEL, PLACE, buildPortraitPrompt, portraitUrl, generatePortrait, fallbackPortrait };
 })(window);

@@ -10,6 +10,7 @@
   const KEY = 'main';
   const LS_KEY = 'arcanum.state.v1';
   const LS_THEME = 'arcanum.theme';
+  const DEFAULT_BACKUP_FOLDER = '세계 만들기';
 
   let db = null;
   let dbBroken = false;
@@ -22,6 +23,9 @@
     if (!Array.isArray(out.worlds)) out.worlds = [];
     if (!out.settings) out.settings = {};
     if (out.settings.theme !== 'parchment' && out.settings.theme !== 'dark') out.settings.theme = 'dark';
+    if (typeof out.settings.backupFolder !== 'string' || !out.settings.backupFolder.trim()) {
+      out.settings.backupFolder = DEFAULT_BACKUP_FOLDER;
+    }
     if (!out.activeId || !out.worlds.some((w) => w.id === out.activeId)) {
       out.activeId = out.worlds[0] ? out.worlds[0].id : null;
     }
@@ -37,17 +41,70 @@
     });
     if (!w.map || typeof w.map !== 'object') w.map = { kind: null, image: null, markers: [] };
     if (!Array.isArray(w.map.markers)) w.map.markers = [];
+    if (!Array.isArray(w.map.terrainStamps)) w.map.terrainStamps = [];
+    if (typeof w.map.ratio !== 'number' || !isFinite(w.map.ratio) || w.map.ratio <= 0) w.map.ratio = 3 / 4;
+    // keep the canvas ratio inside a usable band so a very tall/wide export still fits a phone
+    w.map.ratio = Math.min(2.8, Math.max(0.45, w.map.ratio));
+    w.map.terrainStamps.forEach((t) => {
+      if (!t.id) t.id = 't_' + Math.random().toString(36).slice(2, 9);
+      if (!t.type) t.type = 'mountains';
+      if (typeof t.x !== 'number') t.x = 50;
+      if (typeof t.y !== 'number') t.y = 50;
+      if (t.size !== 's' && t.size !== 'm' && t.size !== 'l') t.size = 'm';
+    });
     if (!w.map.kind && w.map.image) w.map.kind = 'custom';
     if (!Array.isArray(w.eraOrder) || !w.eraOrder.length) {
       const eras = [];
       w.events.forEach((e) => { if (e.era && eras.indexOf(e.era) === -1) eras.push(e.era); });
       w.eraOrder = eras.length ? eras : ['제1기'];
     }
+
+    // 강함 / 등급 체계 (rank systems)
+    if (!Array.isArray(w.rankSystems)) w.rankSystems = [];
+    w.rankSystems = w.rankSystems.filter((s) => s && typeof s === 'object');
+    w.rankSystems.forEach((s) => {
+      if (!s.id) s.id = 'rk_' + Math.random().toString(36).slice(2, 9);
+      if (!s.name) s.name = '등급 체계';
+      if (!Array.isArray(s.tiers)) s.tiers = [];
+      s.tiers = s.tiers.map((t) => String(t === null || t === undefined ? '' : t));
+      if (!s.tiers.length) s.tiers = ['1단계'];
+      if (typeof s.icon !== 'string' || !s.icon) s.icon = '⚔';
+      if (typeof s.color !== 'string' || !/^#[0-9a-fA-F]{3,8}$/.test(s.color)) s.color = '#d4af37';
+    });
+
+    // 예전에 저장된 샘플 세계관에는 기본 등급 체계를 한 번만 붙여 준다.
+    if (w.id === 'w_arcadia' && !w.rankSystems.length && !w.rankSeeded &&
+        global.Sample && typeof global.Sample.rankDefaults === 'function') {
+      try {
+        const seed = global.Sample.rankDefaults();
+        w.rankSystems = seed.systems;
+        w.characters.forEach((c) => {
+          if (!c.ranks && seed.ranks[c.id]) c.ranks = seed.ranks[c.id];
+        });
+        w.rankSeeded = true;
+      } catch (e) { /* 샘플 마이그레이션은 실패해도 괜찮다 */ }
+    }
+
+    const rankSysById = new Map(w.rankSystems.map((s) => [s.id, s]));
     w.characters.forEach((c) => {
       if (!c.id) c.id = 'c_' + Math.random().toString(36).slice(2, 9);
       if (!c.pos || typeof c.pos.x !== 'number') {
         c.pos = randomPos(w.characters.length);
       }
+      // 인물 등급: 체계마다 단계 하나(인덱스). 없는 체계·단계는 버린다.
+      if (!Array.isArray(c.ranks)) c.ranks = [];
+      const seen = new Set();
+      c.ranks = c.ranks.filter((r) => {
+        if (!r || typeof r !== 'object') return false;
+        const sys = rankSysById.get(r.systemId);
+        if (!sys) return false;
+        const tier = Number(r.tier);
+        if (!isFinite(tier) || tier < 0 || tier >= sys.tiers.length) return false;
+        if (seen.has(r.systemId)) return false;
+        seen.add(r.systemId);
+        r.tier = tier;
+        return true;
+      });
     });
     w.relations.forEach((r) => {
       if (!r.id) r.id = 'r_' + Math.random().toString(36).slice(2, 9);
@@ -290,7 +347,7 @@
   function api() {
     return {
       init, get, save, setTheme, exportPayload, parseImport, applyImport,
-      normalizeWorld, randomPos,
+      normalizeWorld, randomPos, DEFAULT_BACKUP_FOLDER,
       state: () => state,
       isDbBroken: () => dbBroken,
       LS_KEY, LS_THEME

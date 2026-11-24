@@ -1222,11 +1222,23 @@ main {
 .graph-legend i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
 
 /* ---------- Map ---------- */
-.map-toolbar { display: flex; gap: 7px; margin-bottom: 10px; }
+.map-toolbar {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.map-toolbar::-webkit-scrollbar { display: none; }
+.map-toolbar .gbtn { flex: none; }
+.gbtn__emoji { font-size: 13px; line-height: 1; }
 
 .map-frame {
   position: relative;
   width: 100%;
+  /* JS가 업로드한 이미지의 실제 비율(width/height)로 덮어쓴다. */
   aspect-ratio: 3 / 4;
   border-radius: var(--r-lg);
   overflow: hidden;
@@ -1237,12 +1249,118 @@ main {
 }
 
 .map-frame img.map-img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
   display: block;
   user-select: none;
+  -webkit-user-select: none;
   -webkit-user-drag: none;
+}
+
+/* 지형 스탬프 레이어 — 지도 이미지 좌표계 위에 얹힌다 */
+.map-frame .terrain-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.tstamp {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  line-height: 0;
+  border: 0;
+  background: none;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 1px rgba(30, 20, 10, .28));
+  opacity: .96;
+  transition: transform .14s var(--ease), opacity .14s;
+}
+
+.map-frame.is-terrain .tstamp { pointer-events: auto; }
+.map-frame.is-terrain .tstamp:active { transform: translate(-50%, -50%) scale(.88); }
+.map-frame.is-terrain .tstamp::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 1px dashed rgba(212, 175, 55, 0);
+}
+.tstamp__svg { display: block; width: 100%; height: 100%; }
+.tstamp--s { width: 22px; height: 22px; }
+.tstamp--m { width: 34px; height: 34px; }
+.tstamp--l { width: 50px; height: 50px; }
+
+.terrain-panel {
+  margin: 11px 0 4px;
+  padding: 11px 12px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+}
+
+.terrain-panel__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.terrain-panel__title { font-size: 12.5px; font-weight: 600; color: var(--text); }
+.terrain-panel__count { font-size: 11px; color: var(--muted); }
+
+.terrain-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.terrain-chips::-webkit-scrollbar { display: none; }
+
+.tchip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 10px 0 6px;
+  border-radius: 9px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+.tchip.is-on { color: var(--ink); background: linear-gradient(180deg, var(--gold-soft), var(--gold)); border-color: var(--gold); font-weight: 600; }
+.tchip__icon { display: grid; place-items: center; width: 20px; height: 20px; }
+
+.terrain-panel__row { display: flex; align-items: center; gap: 7px; margin-top: 9px; flex-wrap: wrap; }
+.terrain-panel__label { font-size: 11px; color: var(--muted); }
+.terrain-sizes { display: flex; gap: 5px; }
+
+.terrain-clear {
+  margin-left: auto;
+  height: 29px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--danger);
+  background: rgba(200, 90, 100, .08);
+  border: 1px solid rgba(200, 90, 100, .32);
+}
+
+.terrain-done {
+  height: 29px;
+  padding: 0 13px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--gold-soft), var(--gold));
+  border: 1px solid var(--gold);
 }
 
 .map-frame.is-pinning { cursor: crosshair; box-shadow: 0 0 0 2px var(--gold) inset, var(--shadow-sm); }
@@ -1256,7 +1374,7 @@ main {
   flex-direction: column;
   align-items: center;
   padding: 0;
-  z-index: 2;
+  z-index: 3;
   transition: transform .15s var(--ease);
 }
 
@@ -1659,7 +1777,7 @@ main {
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 1;
+  z-index: 2;
   pointer-events: none;
   overflow: visible;
 }
@@ -1854,3 +1972,297 @@ main {
 [data-theme="parchment"] .graph-legend, [data-theme="parchment"] .graph-hint { color: #f6ecd4; }
 [data-theme="parchment"] .toast { color: #f6ecd4; }
 
+
+/* ---------- AI 일러스트 (인물 폼) ---------- */
+.ai-art {
+  margin: -3px 0 15px;
+  padding: 11px 12px 12px;
+  border-radius: var(--r-md);
+  border: 1px dashed var(--line-strong);
+  background: linear-gradient(180deg, rgba(212, 175, 55, .08), transparent 70%);
+}
+
+.ai-art__row { display: flex; gap: 8px; align-items: center; }
+.ai-art__row .btn { flex: 1; }
+
+.ai-art__status {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.ai-art__status.is-open { display: flex; }
+.ai-art__status.is-busy { color: var(--gold-soft); }
+.ai-art__status.is-error { color: var(--danger); }
+.ai-art__status svg { width: 14px; height: 14px; flex: none; }
+
+.ai-art__spin { animation: aiSpin 900ms linear infinite; }
+@keyframes aiSpin { to { transform: rotate(360deg); } }
+
+.ai-art__prompt { display: none; margin-top: 9px; }
+.ai-art__prompt.is-open { display: block; }
+
+.ai-art__prompt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+  font-size: 10.5px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ai-art__prompt-text {
+  max-height: 104px;
+  overflow: auto;
+  padding: 8px 9px;
+  border-radius: 9px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-dim);
+  word-break: break-word;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.ai-art__acts { display: flex; gap: 6px; margin-top: 7px; }
+.ai-art__acts .btn { flex: 1; }
+
+/* ---------- 백업 · '세계 만들기' 폴더 안내 ---------- */
+.backup-guide {
+  margin-top: 12px;
+  padding: 11px 12px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.backup-guide__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.backup-guide__title svg { width: 14px; height: 14px; color: var(--gold); flex: none; }
+
+.backup-guide ol {
+  margin: 0;
+  padding-left: 17px;
+  font-size: 11px;
+  line-height: 1.75;
+  color: var(--text-dim);
+}
+.backup-guide ol li::marker { color: var(--gold); font-weight: 600; }
+
+.backup-folder { display: flex; gap: 7px; align-items: center; margin-top: 10px; }
+.backup-folder .input { flex: 1; min-width: 0; }
+.backup-folder .btn { flex: none; }
+
+/* ---------- 강함 / 등급 (rank badges) ---------- */
+.char-card__ranks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px 4px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--text-dim);
+  background: var(--surface-2);
+  border: 1px solid var(--rank-color, var(--line-strong));
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12);
+  max-width: 100%;
+}
+
+.rank-badge.is-primary {
+  color: var(--text);
+  background: linear-gradient(180deg, var(--surface-3), var(--surface));
+  font-weight: 600;
+}
+
+.rank-badge__icon {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 9.5px;
+  color: var(--rank-color, var(--gold));
+  background: rgba(0, 0, 0, .28);
+  border: 1px solid var(--rank-color, var(--line-strong));
+  flex: none;
+}
+
+.rank-badge__name { font-size: 10px; opacity: .8; }
+.rank-badge__tier { color: var(--rank-color, var(--gold-soft)); font-weight: 600; white-space: nowrap; }
+
+.rank-badge--sm { padding: 2px 7px 2px 2px; gap: 4px; font-size: 10px; }
+.rank-badge--sm .rank-badge__icon { width: 14px; height: 14px; font-size: 8.5px; }
+.rank-badge--sm .rank-badge__tier { font-size: 9.5px; }
+
+.rank-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+
+/* ---------- 등급 체계 목록 ---------- */
+.rank-sys-list { display: grid; gap: 9px; margin-top: 10px; }
+
+.rank-sys {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: var(--r-md);
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.rank-sys:active { border-color: var(--line-strong); }
+
+.rank-sys__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  font-size: 15px;
+  color: var(--rank-color, var(--gold));
+  background: var(--surface-2);
+  border: 1px solid var(--rank-color, var(--line-strong));
+}
+
+.rank-sys__body { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.rank-sys__name { font-size: 13px; font-weight: 600; color: var(--text); }
+.rank-sys__meta { font-size: 10.5px; color: var(--muted); }
+
+.rank-sys__tiers {
+  display: flex;
+  gap: 4px;
+  overflow: hidden;
+  margin-top: 2px;
+  max-height: 22px;
+}
+
+.rank-sys__tiers .mini-chip { flex: none; font-size: 9.5px; padding: 2px 6px; }
+
+.rank-sys__chev { flex: none; color: var(--muted); align-self: center; }
+.rank-sys__chev svg { width: 15px; height: 15px; }
+
+/* ---------- 등급 체계 편집 ---------- */
+.rank-colors { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 4px; }
+
+.rank-color {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--rank-color);
+  border: 2px solid transparent;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .3) inset;
+}
+
+.rank-color.is-on { border-color: var(--text); box-shadow: 0 0 0 2px var(--rank-color); }
+
+.rank-gen { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+.rank-gen .input { flex: 1; min-width: 0; }
+.rank-gen #tier-count { flex: none; width: 64px; text-align: center; }
+.rank-gen .btn { flex: none; }
+
+.rank-tiers { display: grid; gap: 6px; margin-top: 9px; }
+
+.rank-tier-row { display: flex; align-items: center; gap: 8px; }
+
+.rank-tier-no {
+  flex: none;
+  width: 22px;
+  text-align: center;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.rank-tier-row .input { flex: 1; min-width: 0; }
+.rank-tier-row .mini-btn { flex: none; }
+
+/* ---------- 인물 폼 등급 선택기 ---------- */
+.rank-pick {
+  padding: 9px 10px 7px;
+  border-radius: 11px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  margin-bottom: 8px;
+}
+
+.rank-pick__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+
+.rank-pick__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.rank-pick__icon {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 9.5px;
+  color: var(--rank-color, var(--gold));
+  background: rgba(0, 0, 0, .25);
+  border: 1px solid var(--rank-color, var(--line-strong));
+}
+
+.rank-pick__clear {
+  font-size: 10.5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+}
+
+.rank-pick__chips { padding-bottom: 2px; }
+
+.rank-pick .rank-chip { flex: none; }
+.rank-pick .rank-chip.chip--active {
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--rank-color, var(--gold-soft)), var(--rank-color, var(--gold)));
+  border-color: var(--rank-color, var(--gold));
+}
+
+.rank-empty { display: grid; gap: 7px; justify-items: start; }
+
+.rank-filter {
+  flex: none;
+  width: auto;
+  max-width: 46%;
+  height: 44px;
+  padding: 0 28px 0 12px;
+  font-size: 11.5px;
+  border-radius: 12px;
+  background-color: var(--surface-2);
+}
+
+.section-head__acts { display: flex; align-items: center; gap: 12px; }
+.rank-filter { min-height: 44px; }
