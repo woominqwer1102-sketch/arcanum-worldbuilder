@@ -2281,8 +2281,8 @@ main {
 .rank-badge__icon {
   display: grid;
   place-items: center;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   font-size: 9.5px;
   color: var(--rank-color, var(--gold));
@@ -2295,7 +2295,7 @@ main {
 .rank-badge__tier { color: var(--rank-color, var(--gold-soft)); font-weight: 600; white-space: nowrap; }
 
 .rank-badge--sm { padding: 2px 7px 2px 2px; gap: 4px; font-size: 10px; }
-.rank-badge--sm .rank-badge__icon { width: 14px; height: 14px; font-size: 8.5px; }
+.rank-badge--sm .rank-badge__icon { width: 16px; height: 16px; font-size: 9px; }
 .rank-badge--sm .rank-badge__tier { font-size: 9.5px; }
 
 .rank-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
@@ -2487,14 +2487,14 @@ main {
 
 .legacy-traits__note { font-size: 10px; color: var(--muted); opacity: .8; }
 
-/* 나이 · 키 · 몸무게 3칸 */
-.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
-.stat { display: grid; gap: 4px; }
-.stat > span { font-size: 10px; letter-spacing: .06em; color: var(--muted); }
-.stat > span b { color: var(--gold-soft); font-weight: 600; }
-.stat .input { text-align: center; padding: 10px 6px; }
-.stat .input::-webkit-outer-spin-button,
-.stat .input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+/* 나이 · 키 · 몸무게 3칸 (대시보드 .stat와 겹치지 않게 body- 접두사) */
+.body-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
+.body-cell { display: grid; gap: 4px; }
+.body-cell > span { font-size: 10px; letter-spacing: .06em; color: var(--muted); }
+.body-cell > span b { color: var(--gold-soft); font-weight: 600; }
+.body-cell .input { text-align: center; padding: 10px 6px; }
+.body-cell .input::-webkit-outer-spin-button,
+.body-cell .input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
 /* 설정집 카드 · 세력 배지 · 지도 핀의 세력/종족 */
 .lore-card__races {

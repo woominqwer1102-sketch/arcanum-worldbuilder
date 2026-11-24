@@ -890,10 +890,10 @@
       '<div class="field"><span class="field__label">종족</span><div id="char-race"></div></div>' +
       '<div class="field"><span class="field__label">소속 / 세력 <span class="muted" style="font-size:10px">설정집 · 국가·세력</span></span><div id="char-faction"></div></div>' +
       '<div class="field"><span class="field__label">나이 · 신체</span>' +
-        '<div class="stat-grid">' +
-          '<label class="stat"><span>나이 <b>(세)</b></span><input class="input" type="number" name="ageNum" inputmode="numeric" min="0" max="9999" placeholder="27" value="' + (c && c.ageNum ? c.ageNum : '') + '"></label>' +
-          '<label class="stat"><span>키 <b>(cm)</b></span><input class="input" type="number" name="heightCm" inputmode="numeric" min="0" max="300" placeholder="175" value="' + (c && c.heightCm ? c.heightCm : '') + '"></label>' +
-          '<label class="stat"><span>몸무게 <b>(kg)</b></span><input class="input" type="number" name="weightKg" inputmode="numeric" min="0" max="500" placeholder="63" value="' + (c && c.weightKg ? c.weightKg : '') + '"></label>' +
+        '<div class="body-grid">' +
+          '<label class="body-cell"><span>나이 <b>(세)</b></span><input class="input" type="number" name="ageNum" inputmode="numeric" min="0" max="9999" placeholder="27" value="' + (c && c.ageNum ? c.ageNum : '') + '"></label>' +
+          '<label class="body-cell"><span>키 <b>(cm)</b></span><input class="input" type="number" name="heightCm" inputmode="numeric" min="0" max="300" placeholder="175" value="' + (c && c.heightCm ? c.heightCm : '') + '"></label>' +
+          '<label class="body-cell"><span>몸무게 <b>(kg)</b></span><input class="input" type="number" name="weightKg" inputmode="numeric" min="0" max="500" placeholder="63" value="' + (c && c.weightKg ? c.weightKg : '') + '"></label>' +
         '</div>' +
         '<span class="field-hint">비워 두면 <b>알 수 없음</b>으로 표시돼요. 나이·키·몸무게는 AI 초상화의 체형에도 반영됩니다.</span>' +
       '</div>' +
