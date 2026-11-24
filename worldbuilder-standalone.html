@@ -5944,7 +5944,6 @@ main {
     return U.graphSnap(x, y, occ, U.graphGrid(Math.max(1, list.length)));
   }
 
-  // 이름 라벨 폭 — 한글은 글자당 8.6px 남짓, 영문은 그보다 좁다
   function textWidth(text, size) {
     let w = 0;
     String(text || '').split('').forEach((ch) => {
@@ -6106,7 +6105,7 @@ main {
       if (hasImg) {
         defs += '<clipPath id="' + clipId + '"><circle cx="0" cy="0" r="' + NODE_R + '"/></clipPath>';
       }
-      const name = truncate(c.name, 7);
+      const name = truncate(c.name, 8);
       const title = truncate(String(c.title || '').trim(), 9);
       const nameW = textWidth(name, 8.8) + 11;
       const titleW = title ? textWidth(title, 6.4) + 9 : 0;
@@ -10436,7 +10435,9 @@ main {
     const fab = $('#fab');
     if (!fab) return;
     const storyOn = App.tab === 'map' && MapView.state.story;
-    const show = !!W() && !storyOn && ['characters', 'timeline', 'lore', 'episodes', 'map'].indexOf(App.tab) > -1;
+    // 영토·지형을 칠하는 동안에는 패널 단추를 가리지 않게 FAB를 감춘다
+    const paintOn = App.tab === 'map' && (MapView.state.border || MapView.state.terrain);
+    const show = !!W() && !storyOn && !paintOn && ['characters', 'timeline', 'lore', 'episodes', 'map'].indexOf(App.tab) > -1;
     fab.hidden = !show;
   }
 

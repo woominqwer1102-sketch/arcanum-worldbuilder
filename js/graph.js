@@ -39,7 +39,6 @@
     return U.graphSnap(x, y, occ, U.graphGrid(Math.max(1, list.length)));
   }
 
-  // 이름 라벨 폭 — 한글은 글자당 8.6px 남짓, 영문은 그보다 좁다
   function textWidth(text, size) {
     let w = 0;
     String(text || '').split('').forEach((ch) => {
@@ -201,7 +200,7 @@
       if (hasImg) {
         defs += '<clipPath id="' + clipId + '"><circle cx="0" cy="0" r="' + NODE_R + '"/></clipPath>';
       }
-      const name = truncate(c.name, 7);
+      const name = truncate(c.name, 8);
       const title = truncate(String(c.title || '').trim(), 9);
       const nameW = textWidth(name, 8.8) + 11;
       const titleW = title ? textWidth(title, 6.4) + 9 : 0;

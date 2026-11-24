@@ -201,7 +201,9 @@
     const fab = $('#fab');
     if (!fab) return;
     const storyOn = App.tab === 'map' && MapView.state.story;
-    const show = !!W() && !storyOn && ['characters', 'timeline', 'lore', 'episodes', 'map'].indexOf(App.tab) > -1;
+    // 영토·지형을 칠하는 동안에는 패널 단추를 가리지 않게 FAB를 감춘다
+    const paintOn = App.tab === 'map' && (MapView.state.border || MapView.state.terrain);
+    const show = !!W() && !storyOn && !paintOn && ['characters', 'timeline', 'lore', 'episodes', 'map'].indexOf(App.tab) > -1;
     fab.hidden = !show;
   }
 
