@@ -1,10 +1,9 @@
-/* ARCANUM service worker · offline app shell (arcanum-v5)
+/* ARCANUM service worker · offline app shell (arcanum-v6)
    - 새 버전은 install에서 바로 대기열을 건너뛰고(skipWaiting), activate에서 즉시 제어권을 가져온다(clients.claim).
    - activate 때 열려 있던 화면은 새 버전으로 다시 띄워, 홈 화면 앱에도 새 UI가 바로 보이게 한다.
-   - v5: HTML·JS·CSS는 network-first — 새 배포가 있으면 캐시에 남은 옛 코드를 쓰지 않고 바로 최신을 받아온다.
-     (오프라인일 때만 캐시 폴백) index.html의 ?v=1.4 쿼리로 예전 캐시(arcanum-v3/v4)와 URL 자체를 분리한다. */
-const CACHE = 'arcanum-v5';
-const QUERY = '?v=1.4';
+   - v6: 인물 프로필 사진 배치 + '크게 보기' 라이트박스 — index.html의 ?v=1.4.1 쿼리로 예전 캐시(arcanum-v3/v4/v5)와 URL 자체를 분리한다. */
+const CACHE = 'arcanum-v6';
+const QUERY = '?v=1.4.1';
 const ASSETS = [
   './',
   './index.html' + QUERY,

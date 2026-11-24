@@ -62,6 +62,7 @@
 
   /* ---------------- Sheets ---------------- */
   const sheetStack = [];
+  let lightboxOpen = 0;   // 라이트박스가 떠 있는 동안 시트의 ESC 닫기를 막는다
 
   function openSheet(opts) {
     const o = opts || {};
@@ -76,18 +77,21 @@
 
     sheet.innerHTML =
       '<div class="sheet__grab"></div>' +
-      '<div class="sheet__head">' +
-        '<div class="sheet__head-text">' +
-          (o.eyebrow ? '<div class="sheet__eyebrow">' + esc(o.eyebrow) + '</div>' : '') +
-          '<h2 class="sheet__title"></h2>' +
-          (o.sub ? '<div class="sheet__sub">' + esc(o.sub) + '</div>' : '') +
-        '</div>' +
+      '<div class="sheet__head' + (o.hideHeadText ? ' sheet__head--plain' : '') + '">' +
+        (o.hideHeadText ? '' :
+          '<div class="sheet__head-text">' +
+            (o.eyebrow ? '<div class="sheet__eyebrow">' + esc(o.eyebrow) + '</div>' : '') +
+            '<h2 class="sheet__title"></h2>' +
+            (o.sub ? '<div class="sheet__sub">' + esc(o.sub) + '</div>' : '') +
+          '</div>') +
         '<button class="sheet__close" type="button" aria-label="닫기"><svg><use href="#i-x"/></svg></button>' +
       '</div>' +
       '<div class="sheet__body"></div>' +
       (o.foot ? '<div class="sheet__foot"></div>' : '');
 
-    sheet.querySelector('.sheet__title').textContent = o.title || '';
+    const titleEl = sheet.querySelector('.sheet__title');
+    if (titleEl) titleEl.textContent = o.title || '';
+    else if (o.title) sheet.setAttribute('aria-label', o.title);
     const body = sheet.querySelector('.sheet__body');
     if (typeof o.body === 'string') body.innerHTML = o.body;
     else if (o.body) body.appendChild(o.body);
@@ -113,7 +117,7 @@
     sheet.querySelector('.sheet__close').addEventListener('click', close);
     backdrop.addEventListener('click', close);
     document.addEventListener('keydown', function onKey(e) {
-      if (e.key === 'Escape' && sheetStack[sheetStack.length - 1] === handle) close();
+      if (e.key === 'Escape' && !lightboxOpen && sheetStack[sheetStack.length - 1] === handle) close();
       if (closed) document.removeEventListener('keydown', onKey);
     });
 
@@ -190,6 +194,53 @@
       });
       return h;
     });
+  }
+
+  /* ---------------- Image lightbox (크게 보기) --------------
+     인물 일러스트 원본을 위아래 잘림 없이(object-fit: contain) 화면 가득 띄운다. */
+  function openLightbox(opts) {
+    const o = opts || {};
+    if (!o.src) return null;
+    const root = $('#sheet-root') || document.body;
+    const wrap = document.createElement('div');
+    wrap.className = 'lightbox';
+    wrap.setAttribute('role', 'dialog');
+    wrap.setAttribute('aria-modal', 'true');
+    wrap.setAttribute('aria-label', (o.title || '이미지') + ' 크게 보기');
+    wrap.innerHTML =
+      '<div class="lightbox__bar">' +
+        '<div class="lightbox__cap">' +
+          '<b class="lightbox__title"></b>' +
+          (o.sub ? '<span class="lightbox__sub"></span>' : '') +
+        '</div>' +
+        '<button type="button" class="lightbox__close" aria-label="크게 보기 닫기"><svg><use href="#i-x"/></svg></button>' +
+      '</div>' +
+      '<div class="lightbox__stage"><img class="lightbox__img" alt="" decoding="async"></div>' +
+      '<div class="lightbox__hint">탭하면 닫혀요</div>';
+    wrap.querySelector('.lightbox__title').textContent = o.title || '';
+    if (o.sub) wrap.querySelector('.lightbox__sub').textContent = o.sub;
+    const img = wrap.querySelector('.lightbox__img');
+    img.src = o.src;
+    img.alt = (o.title || '이미지') + ' 원본';
+
+    let closed = false;
+    function close() {
+      if (closed) return;
+      closed = true;
+      lightboxOpen = Math.max(0, lightboxOpen - 1);
+      wrap.classList.remove('is-open');
+      document.removeEventListener('keydown', onKey);
+      setTimeout(() => wrap.remove(), 240);
+    }
+    function onKey(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
+
+    wrap.addEventListener('click', close);
+    document.addEventListener('keydown', onKey);
+    lightboxOpen += 1;
+    root.appendChild(wrap);
+    void wrap.offsetHeight;
+    requestAnimationFrame(() => wrap.classList.add('is-open'));
+    return { el: wrap, close: close, img: img };
   }
 
   /* ---------------- Files ---------------- */
@@ -399,7 +450,7 @@
   function plural(n, unit) { return String(n) + unit; }
 
   global.UI = {
-    $, $$, esc, uid, debounce, clamp, toast, openSheet, confirmSheet,
+    $, $$, esc, uid, debounce, clamp, toast, openSheet, confirmSheet, openLightbox,
     readFileAsDataURL, readFileAsText, loadImage, resizeImage, downloadText, copyText,
     pickFile, haptic, field, textInput, textArea, selectInput, chipPicker, datalist,
     initials, todayLabel, fileStamp, plural

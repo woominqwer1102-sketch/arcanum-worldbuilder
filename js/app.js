@@ -310,7 +310,7 @@
           '<span class="row-card__chev"><svg><use href="#i-chev-right"/></svg></span></button>' +
       '</div>';
 
-    html += '<p class="center muted small" style="margin-top:22px">아르카눔 · 판타지 세계관 노트 v1.4</p>';
+    html += '<p class="center muted small" style="margin-top:22px">아르카눔 · 판타지 세계관 노트 v1.4.1</p>';
 
     host.innerHTML = html;
 
@@ -503,25 +503,33 @@
     const rels = w.relations.filter((r) => r.a === c.id || r.b === c.id);
     const events = w.events.filter((e) => (e.characters || []).indexOf(c.id) > -1);
     const eps = w.episodes.filter((e) => (e.characters || []).indexOf(c.id) > -1);
-    let html = '';
-    if (c.image) html += '<div class="detail-hero"><img src="' + esc(c.image) + '" alt=""></div>';
-    html += '<div class="mini-chips" style="margin-bottom:12px">' +
-      (c.race ? '<span class="mini-chip">' + esc(c.race) + '</span>' : '') +
-      (c.gender ? '<span class="mini-chip">' + esc(c.gender) + '</span>' : '') +
-      (c.faction ? '<span class="mini-chip">' + esc(c.faction) + '</span>' : '') +
-      '<span class="mini-chip">' + esc(charBodyText(c)) + '</span>' +
+    // ---- 맨 위 프로필 — 작은 프로필 사진 + 바로 옆 이름·칭호·성별·종족, 사진은 '크게 보기' ----
+    const chips = [c.race, c.gender, c.faction].filter(Boolean);
+    let html = '<div class="char-profile">' +
+      '<div class="char-profile__media">' +
+        (c.image
+          ? '<button type="button" class="char-profile__photo has-img" data-zoom-photo aria-label="' + esc(c.name) + ' 프로필 사진 크게 보기">' +
+              '<img src="' + esc(c.image) + '" alt="' + esc(c.name) + ' 프로필 사진">' +
+              '<span class="char-profile__lens" aria-hidden="true">🔍</span>' +
+            '</button>'
+          : '<div class="char-profile__photo char-profile__photo--empty" aria-hidden="true">' +
+              '<span class="char-profile__initial">' + esc(U.initials(c.name)) + '</span>' +
+            '</div>') +
+      '</div>' +
+      '<div class="char-profile__id">' +
+        '<div class="char-profile__eyebrow">Character</div>' +
+        '<h3 class="char-profile__name">' + esc(c.name) + '</h3>' +
+        (c.title ? '<div class="char-profile__title">' + esc(c.title) + '</div>' : '') +
+        (chips.length ? '<div class="char-profile__chips">' + chips.map((t) => '<span class="mini-chip">' + esc(t) + '</span>').join('') + '</div>' : '') +
+        '<div class="char-profile__body">' + esc(charBodyText(c)) + '</div>' +
+        (c.image ? '<button type="button" class="char-profile__zoom" data-zoom-photo><span aria-hidden="true">🔍</span><span>크게 보기</span></button>' : '') +
+      '</div>' +
     '</div>';
     const ranks = rankList(w, c);
     if (ranks.length) {
       html += '<div class="rank-badges">' + ranks.map((r) => rankBadge(r)).join('') + '</div>';
     }
-    const defs = [];
-    if (c.abilities) defs.push(['능력 / 무기', c.abilities]);
-    if (c.gender) defs.push(['성별', c.gender]);
-    defs.push(['나이 · 신체', charBodyText(c)]);
-    if (c.race) defs.push(['종족', c.race]);
-    if (c.faction) defs.push(['소속', c.faction]);
-    if (defs.length) html += '<dl class="def-list">' + defs.map((d) => '<div class="def"><dt>' + esc(d[0]) + '</dt><dd>' + esc(d[1]) + '</dd></div>').join('') + '</dl>';
+    if (c.abilities) html += '<div class="label-row"><span>능력 / 무기</span></div><p class="prose">' + esc(c.abilities) + '</p>';
 
     if (c.personality) html += '<div class="label-row"><span>성격</span></div><p class="prose">' + esc(c.personality) + '</p>';
     if (c.notes) html += '<div class="label-row"><span>배경 메모</span></div><p class="prose">' + esc(c.notes) + '</p>';
@@ -598,9 +606,8 @@
     const body = document.createElement('div');
     body.innerHTML = characterDetailBody(w, c);
     const sheet = U.openSheet({
-      eyebrow: 'CHARACTER',
       title: c.name,
-      sub: c.title || '',
+      hideHeadText: true,   // 이름·칭호는 본문 맨 위 프로필 블록이 맡는다(같은 내용이 두 번 보이지 않게)
       full: true,
       body: body,
       foot: [
@@ -620,6 +627,12 @@
       ]
     });
     body.addEventListener('click', (e) => {
+      const zoom = e.target.closest('[data-zoom-photo]');
+      if (zoom && c.image) {
+        U.openLightbox({ src: c.image, title: c.name, sub: c.title || '' });
+        U.haptic(6);
+        return;
+      }
       const rel = e.target.closest('[data-rel]');
       if (rel) {
         sheet.close();
@@ -3213,7 +3226,7 @@
       '<div class="divider"></div>' +
       '<div class="label-row"><span>앱 정보</span></div>' +
       '<div class="def-list">' +
-        '<div class="def"><dt>버전</dt><dd>아르카눔 v1.4 · PWA</dd></div>' +
+        '<div class="def"><dt>버전</dt><dd>아르카눔 v1.4.1 · PWA</dd></div>' +
         '<div class="def"><dt>저장</dt><dd>' + (Store.isDbBroken() ? 'localStorage (자동 저장)' : 'IndexedDB + localStorage 이중 저장') + '</dd></div>' +
         '<div class="def"><dt>오프라인</dt><dd>홈 화면에 추가하면 인터넷 없이도 열립니다.</dd></div>' +
       '</div>' +
