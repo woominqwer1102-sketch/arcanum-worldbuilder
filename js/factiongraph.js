@@ -32,7 +32,8 @@
 
   function factions() {
     const w = world();
-    return ((w && w.lore) || []).filter((l) => l.category === 'faction');
+    // 국가와 세력을 함께 노드로 — 국가는 바깥 점선 고리로 구분한다
+    return ((w && w.lore) || []).filter((l) => l.category === 'faction' || l.category === 'nation');
   }
 
   function posOf(w, l, i, total) {
@@ -41,11 +42,29 @@
     if (!p) {
       // 원형으로 흩어 놓는다
       const angle = (i / Math.max(1, total)) * Math.PI * 2 - Math.PI / 2;
-      const rx = 110, ry = 170;
-      p = { x: Math.round(180 + Math.cos(angle) * rx), y: Math.round(260 + Math.sin(angle) * ry) };
+      const n = Math.max(1, total);
+      // 노드가 많을수록 고리를 넓혀 이름이 겹치지 않게
+      const rx = 100 + Math.min(80, n * 6.5);
+      const ry = 150 + Math.min(120, n * 9.5);
+      // 안팎으로 번갈아 놓아 이름이 겹치지 않게
+      const k = i % 2 ? 0.7 : 1;
+      p = { x: Math.round(180 + Math.cos(angle) * rx * k), y: Math.round(260 + Math.sin(angle) * ry * k) };
       w.factionNodes[l.id] = p;
     }
     return p;
+  }
+
+  function nationNameOf(w, l) {
+    if (!l || !l.nationId) return '';
+    const n = ((w && w.lore) || []).find((x) => x.id === l.nationId);
+    return n ? n.title : '';
+  }
+
+  function raceNamesOf(w, l) {
+    return ((l && l.raceIds) || []).map((id) => {
+      const r = ((w && w.lore) || []).find((x) => x.id === id);
+      return r ? r.title : '';
+    }).filter(Boolean);
   }
 
   function nodeList() {
@@ -113,12 +132,18 @@
     nodes.forEach((n) => {
       const selected = state.selected.indexOf(n.id) > -1;
       const color = n.color || '#c9a24a';
+      const isNation = n.category === 'nation';
+      const races = isNation ? raceNamesOf(w, n) : [];
+      const nation = isNation ? '' : nationNameOf(w, n);
       nhtml +=
         '<g class="fnode' + (selected ? ' is-selected' : '') + '" data-fnode="' + U.esc(n.id) + '" transform="translate(' + n.pos.x + ' ' + n.pos.y + ')">' +
           (selected ? '<circle r="26" fill="none" stroke="#d4af37" stroke-width="1" stroke-dasharray="2 2" opacity=".9"/>' : '') +
+          (isNation ? '<circle r="24" fill="none" stroke="' + color + '" stroke-width="1" stroke-dasharray="1.6 2.6" opacity=".7"/>' : '') +
           '<circle r="21" fill="#1a1411" stroke="' + color + '" stroke-width="1.4" opacity=".95"/>' +
           '<text text-anchor="middle" y="4.4" font-size="11" fill="' + color + '" font-family="AppleMyungjo, Georgia, serif">' + U.esc(String(n.title || '').slice(0, 1)) + '</text>' +
           '<text class="fnode-label" text-anchor="middle" y="33" font-size="7.2" fill="#d8cdb4" stroke="#100d0b" stroke-width="2.4" paint-order="stroke" font-family="-apple-system, sans-serif">' + U.esc(truncate(n.title, 9)) + '</text>' +
+          (races.length ? '<text class="fnode-race" text-anchor="middle" y="41" font-size="5.6" fill="#9c9078" stroke="#100d0b" stroke-width="1.8" paint-order="stroke" font-family="-apple-system, sans-serif">' + U.esc(truncate(races.join(' · '), 14)) + '</text>' : '') +
+          (!isNation ? '<text class="fnode-nation" text-anchor="middle" y="41" font-size="5.6" fill="' + (nation ? '#c0a463' : '#7d7466') + '" stroke="#100d0b" stroke-width="1.8" paint-order="stroke" font-family="-apple-system, sans-serif">' + U.esc(nation || '무소속') + '</text>' : '') +
         '</g>';
     });
 

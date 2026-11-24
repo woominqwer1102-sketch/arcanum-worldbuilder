@@ -2361,6 +2361,175 @@ main {
 
 .rank-color.is-on { border-color: var(--text); box-shadow: 0 0 0 2px var(--rank-color); }
 
+/* ---------- 등급 아이콘 — 이모지·글자·인라인 SVG가 같은 자리에서 ---------- */
+.rank-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  line-height: 1;
+  color: inherit;
+}
+
+.rank-icon--svg svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.rank-icon--img { width: 100%; height: 100%; object-fit: contain; }
+
+.rank-badge__icon .rank-icon,
+.rank-sys__icon .rank-icon { width: 100%; height: 100%; }
+
+/* 아이콘 고르기 — 기본 5종 + [+ 아이콘 만들기] */
+.icon-row { display: flex; gap: 6px; align-items: stretch; margin-top: 6px; }
+
+.icon-cell {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--gold-soft);
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.icon-cell .rank-icon { width: 68%; height: 68%; }
+
+.icon-cell.is-on {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, .12);
+  box-shadow: 0 0 0 1px var(--gold), 0 0 14px rgba(212, 175, 55, .22);
+}
+
+.icon-forge {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 8px;
+  border-radius: 11px;
+  border: 1px dashed var(--line-strong);
+  background: transparent;
+  color: var(--gold-soft);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.icon-forge svg { width: 14px; height: 14px; flex: none; }
+.icon-forge:active { background: rgba(212, 175, 55, .1); }
+
+.icon-now {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+  color: var(--gold-soft);
+}
+
+.icon-now b { font-weight: 600; color: var(--gold-soft); }
+.icon-now__badge { width: 17px; height: 17px; display: grid; place-items: center; font-size: 12px; color: var(--gold); }
+
+/* 아이콘 만들기 시트 */
+.forge-stage {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.forge-preview {
+  flex: none;
+  width: 88px;
+  height: 88px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  border: 1px solid var(--line-strong);
+  background: radial-gradient(circle at 50% 45%, rgba(212, 175, 55, .14), rgba(0, 0, 0, .28));
+  color: var(--gold);
+}
+
+.forge-preview .rank-icon { width: 74px; height: 74px; }
+.forge-meta { flex: 1; min-width: 0; display: grid; gap: 5px; }
+.forge-meta b { font-size: 13px; color: var(--text); }
+.forge-meta span { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+/* 예전 설정집에서 온 특기 이름 (보존용 표시) */
+.legacy-traits {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .03);
+  border: 1px dashed var(--line);
+}
+
+.legacy-traits__label {
+  font-size: 9.5px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-right: 2px;
+}
+
+.legacy-traits__note { font-size: 10px; color: var(--muted); opacity: .8; }
+
+/* 나이 · 키 · 몸무게 3칸 */
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
+.stat { display: grid; gap: 4px; }
+.stat > span { font-size: 10px; letter-spacing: .06em; color: var(--muted); }
+.stat > span b { color: var(--gold-soft); font-weight: 600; }
+.stat .input { text-align: center; padding: 10px 6px; }
+.stat .input::-webkit-outer-spin-button,
+.stat .input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* 설정집 카드 · 세력 배지 · 지도 핀의 세력/종족 */
+.lore-card__races {
+  display: block;
+  font-size: 10px;
+  color: var(--gold-soft);
+  opacity: .78;
+  margin-top: 2px;
+}
+
+.mini-chip--faction,
+.mini-chip--race,
+.mini-chip--region {
+  border-color: rgba(212, 175, 55, .38);
+  color: var(--gold-soft);
+}
+
+.mini-chip--faction { background: rgba(212, 175, 55, .1); }
+
+.fnode-nation { letter-spacing: .02em; }
+
+.pin__faction {
+  margin-top: 1.5px;
+  font-size: 7.6px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  color: var(--gold-soft);
+  background: rgba(14, 10, 8, .78);
+  border: 1px solid rgba(212, 175, 55, .32);
+  max-width: 88px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* 단계 수 스테퍼 + 슬라이더 */
 .rank-stepper {
   display: flex;

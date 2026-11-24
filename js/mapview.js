@@ -398,6 +398,15 @@
     '</div>';
   }
 
+  // 지역 핀의 지배 세력 표시명 — 연결된 설정집 항목이 있으면 그 제목을 쓴다
+  function factionName(w, m) {
+    if (m.factionId) {
+      const f = ((w && w.lore) || []).find((x) => x.id === m.factionId);
+      if (f) return f.title;
+    }
+    return m.faction || '';
+  }
+
   function pinHtml(m, w) {
     const kind = kindMeta(m.kind);
     const stopIdx = st.stops.findIndex((s) => s.marker.id === m.id);
@@ -407,6 +416,7 @@
     return '<button type="button" class="pin ' + kind.cls + storyCls + '" data-pin="' + U.esc(m.id) + '" style="left:' + m.x + '%;top:' + m.y + '%" aria-label="' + U.esc(m.name) + '">' +
       '<span class="pin__mark"><span>' + U.esc(kind.mark) + '</span></span>' +
       '<span class="pin__label">' + U.esc(m.name) + '</span>' +
+      (factionName(w, m) ? '<span class="pin__faction">⚑ ' + U.esc(factionName(w, m)) + '</span>' : '') +
     '</button>';
   }
 
@@ -487,7 +497,7 @@
               '<span class="row-card__badge">' + U.esc(kind.mark) + '</span>' +
               '<span class="row-card__body">' +
                 '<span class="row-card__title">' + U.esc(m.name) + '</span>' +
-                '<span class="row-card__meta">' + U.esc(kind.label) + (m.faction ? ' · ' + U.esc(m.faction) : '') + (m.danger ? ' · ' + U.esc(m.danger) : '') + '</span>' +
+                '<span class="row-card__meta">' + U.esc(kind.label) + (factionName(w, m) ? ' · ⚑ ' + U.esc(factionName(w, m)) : '') + (m.danger ? ' · ' + U.esc(m.danger) : '') + '</span>' +
               '</span>' +
               '<span class="row-card__chev"><svg><use href="#i-chev-right"/></svg></span>' +
             '</button>';

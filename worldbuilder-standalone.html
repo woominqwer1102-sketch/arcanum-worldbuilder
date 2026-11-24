@@ -2379,6 +2379,175 @@ main {
 
 .rank-color.is-on { border-color: var(--text); box-shadow: 0 0 0 2px var(--rank-color); }
 
+/* ---------- 등급 아이콘 — 이모지·글자·인라인 SVG가 같은 자리에서 ---------- */
+.rank-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  line-height: 1;
+  color: inherit;
+}
+
+.rank-icon--svg svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.rank-icon--img { width: 100%; height: 100%; object-fit: contain; }
+
+.rank-badge__icon .rank-icon,
+.rank-sys__icon .rank-icon { width: 100%; height: 100%; }
+
+/* 아이콘 고르기 — 기본 5종 + [+ 아이콘 만들기] */
+.icon-row { display: flex; gap: 6px; align-items: stretch; margin-top: 6px; }
+
+.icon-cell {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--gold-soft);
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.icon-cell .rank-icon { width: 68%; height: 68%; }
+
+.icon-cell.is-on {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, .12);
+  box-shadow: 0 0 0 1px var(--gold), 0 0 14px rgba(212, 175, 55, .22);
+}
+
+.icon-forge {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 8px;
+  border-radius: 11px;
+  border: 1px dashed var(--line-strong);
+  background: transparent;
+  color: var(--gold-soft);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.icon-forge svg { width: 14px; height: 14px; flex: none; }
+.icon-forge:active { background: rgba(212, 175, 55, .1); }
+
+.icon-now {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+  color: var(--gold-soft);
+}
+
+.icon-now b { font-weight: 600; color: var(--gold-soft); }
+.icon-now__badge { width: 17px; height: 17px; display: grid; place-items: center; font-size: 12px; color: var(--gold); }
+
+/* 아이콘 만들기 시트 */
+.forge-stage {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.forge-preview {
+  flex: none;
+  width: 88px;
+  height: 88px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  border: 1px solid var(--line-strong);
+  background: radial-gradient(circle at 50% 45%, rgba(212, 175, 55, .14), rgba(0, 0, 0, .28));
+  color: var(--gold);
+}
+
+.forge-preview .rank-icon { width: 74px; height: 74px; }
+.forge-meta { flex: 1; min-width: 0; display: grid; gap: 5px; }
+.forge-meta b { font-size: 13px; color: var(--text); }
+.forge-meta span { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+/* 예전 설정집에서 온 특기 이름 (보존용 표시) */
+.legacy-traits {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .03);
+  border: 1px dashed var(--line);
+}
+
+.legacy-traits__label {
+  font-size: 9.5px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-right: 2px;
+}
+
+.legacy-traits__note { font-size: 10px; color: var(--muted); opacity: .8; }
+
+/* 나이 · 키 · 몸무게 3칸 */
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
+.stat { display: grid; gap: 4px; }
+.stat > span { font-size: 10px; letter-spacing: .06em; color: var(--muted); }
+.stat > span b { color: var(--gold-soft); font-weight: 600; }
+.stat .input { text-align: center; padding: 10px 6px; }
+.stat .input::-webkit-outer-spin-button,
+.stat .input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* 설정집 카드 · 세력 배지 · 지도 핀의 세력/종족 */
+.lore-card__races {
+  display: block;
+  font-size: 10px;
+  color: var(--gold-soft);
+  opacity: .78;
+  margin-top: 2px;
+}
+
+.mini-chip--faction,
+.mini-chip--race,
+.mini-chip--region {
+  border-color: rgba(212, 175, 55, .38);
+  color: var(--gold-soft);
+}
+
+.mini-chip--faction { background: rgba(212, 175, 55, .1); }
+
+.fnode-nation { letter-spacing: .02em; }
+
+.pin__faction {
+  margin-top: 1.5px;
+  font-size: 7.6px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  color: var(--gold-soft);
+  background: rgba(14, 10, 8, .78);
+  border: 1px solid rgba(212, 175, 55, .32);
+  max-width: 88px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* 단계 수 스테퍼 + 슬라이더 */
 .rank-stepper {
   display: flex;
@@ -3286,6 +3455,27 @@ main {
       if (!c.id) c.id = 'c_' + Math.random().toString(36).slice(2, 9);
       if (typeof c.gender !== 'string') c.gender = '';
       if (!c.gender && genderSeed && genderSeed[c.id]) c.gender = genderSeed[c.id];
+      // 나이 · 키 · 몸무게 — 숫자 칸이 없던 예전 저장본은 '27세 · 182cm' 문자열에서 한 번 풀어 둔다
+      const toNum = (v, max) => {
+        const n = Number(v);
+        return (isFinite(n) && n > 0) ? Math.min(max, Math.round(n)) : null;
+      };
+      c.ageNum = toNum(c.ageNum, 9999);
+      c.heightCm = toNum(c.heightCm, 300);
+      c.weightKg = toNum(c.weightKg, 500);
+      if (!c.ageNum && !c.heightCm && !c.weightKg && typeof c.age === 'string' && c.age) {
+        const a = c.age.match(/(\d{1,4})\s*(?:세|살)/);
+        const h = c.age.match(/(\d{2,3})\s*(?:cm|센티)/i);
+        const w2 = c.age.match(/(\d{2,3})\s*(?:kg|킬로)/i);
+        if (a) c.ageNum = toNum(a[1], 9999);
+        if (h) c.heightCm = toNum(h[1], 300);
+        if (w2) c.weightKg = toNum(w2[1], 500);
+      }
+      const bodyBits = [];
+      if (c.ageNum) bodyBits.push(c.ageNum + '세');
+      if (c.heightCm) bodyBits.push(c.heightCm + 'cm');
+      if (c.weightKg) bodyBits.push(c.weightKg + 'kg');
+      c.age = bodyBits.length ? bodyBits.join(' · ') : (typeof c.age === 'string' ? c.age : '');
       // 설정집 연결 (종족 · 세력 · 능력 · 아이템)
       if (typeof c.raceId !== 'string') c.raceId = null;
       if (typeof c.factionId !== 'string') c.factionId = null;
@@ -3345,8 +3535,50 @@ main {
     }
     w.lore.forEach((l) => {
       if (!l.id) l.id = 'l_' + Math.random().toString(36).slice(2, 9);
-      if (!l.category) l.category = 'etc';
       if (!Array.isArray(l.tags)) l.tags = [];
+      // v1.4 — '마법·능력체계'(magic)를 '기타 규칙'(rule)으로 통합한다.
+      // 인물의 abilityIds는 설정집 항목 id를 그대로 가리키므로 연결은 끊기지 않는다.
+      if (l.category === 'magic') {
+        l.category = 'rule';
+        if (l.tags.indexOf('능력') === -1) l.tags.unshift('능력');
+      }
+      if (!l.category || l.category === 'etc') l.category = 'rule';
+    });
+    // v1.4 — 옛 '세력·국가'(faction)를 '국가'(nation)와 '세력'(faction)으로 나눈다(세계관마다 한 번만).
+    // 관계도·인물·지역 연결은 id를 그대로 쓰므로 이름만 나뉘고 관계는 끊기지 않는다.
+    if (!w.loreSplit) {
+      const NATION_WORDS = /왕국|제국|왕조|황실|왕실|왕가|공국|연방|자치령|제후|왕좌|성국|국가|제정|왕권/;
+      w.lore.forEach((l) => {
+        if (l.category !== 'faction') return;
+        const hay = [l.title, (l.tags || []).join(' ')].join(' ');
+        if (NATION_WORDS.test(hay)) l.category = 'nation';
+      });
+      w.loreSplit = true;
+    }
+
+    // 국가의 주 종족(raceIds) · 세력의 소속 국가(nationId) · 지역의 지배 세력(factionId)
+    if (!Array.isArray(w.map.terrainStamps)) w.map.terrainStamps = [];
+    const raceIdSet = new Set(w.lore.filter((l) => l.category === 'race').map((l) => l.id));
+    const nationIdSet = new Set(w.lore.filter((l) => l.category === 'nation').map((l) => l.id));
+    const factionIdSet = new Set(w.lore.filter((l) => l.category === 'faction').map((l) => l.id));
+    const placeIdSet = new Set([].concat(Array.from(nationIdSet), Array.from(factionIdSet)));
+    w.lore.forEach((l) => {
+      if (l.category === 'nation') {
+        l.raceIds = (Array.isArray(l.raceIds) ? l.raceIds : [])
+          .filter((id) => raceIdSet.has(id))
+          .filter((id, i, arr) => arr.indexOf(id) === i);
+      } else if (l.raceIds) {
+        delete l.raceIds;
+      }
+      if (l.category === 'faction') {
+        if (typeof l.nationId !== 'string' || !nationIdSet.has(l.nationId)) l.nationId = null;
+      } else if ('nationId' in l) {
+        delete l.nationId;
+      }
+    });
+    w.map.markers.forEach((m) => {
+      if (typeof m.factionId !== 'string' || !placeIdSet.has(m.factionId)) m.factionId = null;
+      if (typeof m.faction !== 'string') m.faction = '';
     });
     w.map.markers.forEach((m) => {
       if (!m.id) m.id = 'm_' + Math.random().toString(36).slice(2, 9);
@@ -3354,6 +3586,19 @@ main {
       if (typeof m.y !== 'number') m.y = 50;
       if (!m.kind) m.kind = 'city';
     });
+    // 유물의 소지 인물 · 보관 지역 연결 정리
+    const charIdSet = new Set(w.characters.map((c) => c.id));
+    const markerIdSet = new Set(w.map.markers.map((m) => m.id));
+    w.lore.forEach((l) => {
+      if (l.category !== 'item') {
+        if ('holderCharId' in l) delete l.holderCharId;
+        if ('locationId' in l) delete l.locationId;
+        return;
+      }
+      if (l.holderCharId && !charIdSet.has(l.holderCharId)) l.holderCharId = null;
+      if (l.locationId && !markerIdSet.has(l.locationId)) l.locationId = null;
+    });
+
     linkLoreRefs(w);
     return w;
   }
@@ -3368,12 +3613,12 @@ main {
     }
     if (c.factionId) {
       const l = map.get(c.factionId);
-      if (l && l.category === 'faction') c.faction = l.title;
+      if (l && (l.category === 'faction' || l.category === 'nation')) c.faction = l.title;
       else c.factionId = null;
     }
     c.abilityIds = (c.abilityIds || []).filter((id) => {
       const l = map.get(id);
-      return !!l && l.category === 'magic';
+      return !!l && l.category === 'rule';
     });
     c.weaponIds = (c.weaponIds || []).filter((id) => {
       const l = map.get(id);
@@ -3404,9 +3649,9 @@ main {
       if (!(c.abilityIds || []).length && !(c.weaponIds || []).length && !c.abilityText && c.abilities && w.lore.length) {
         const rest = [];
         String(c.abilities).split('·').map((t) => t.trim()).filter(Boolean).forEach((token) => {
-          const hit = byTitle.get('magic|' + token) || byTitle.get('item|' + token);
+          const hit = byTitle.get('rule|' + token) || byTitle.get('item|' + token);
           if (!hit) { rest.push(token); return; }
-          if (hit.category === 'magic') c.abilityIds.push(hit.id);
+          if (hit.category === 'rule') c.abilityIds.push(hit.id);
           else c.weaponIds.push(hit.id);
         });
         if (rest.length) c.abilityText = rest.join(' · ');
@@ -3419,6 +3664,33 @@ main {
   function syncLoreLinks(w) {
     if (!w) return;
     linkLoreRefs(w);
+    // 항목이 지워지면 그 항목을 가리키던 국가·세력·지역·유물 연결도 함께 정리한다
+    const raceIds = new Set((w.lore || []).filter((l) => l.category === 'race').map((l) => l.id));
+    const nationIds = new Set((w.lore || []).filter((l) => l.category === 'nation').map((l) => l.id));
+    const factionIds = new Set((w.lore || []).filter((l) => l.category === 'faction').map((l) => l.id));
+    const placeIds = new Set([].concat(Array.from(nationIds), Array.from(factionIds)));
+    (w.lore || []).forEach((l) => {
+      if (l.category === 'nation') {
+        l.raceIds = (Array.isArray(l.raceIds) ? l.raceIds : []).filter((id) => raceIds.has(id));
+      } else if (l.raceIds) {
+        delete l.raceIds;
+      }
+      if (l.category === 'faction') {
+        if (l.nationId && !nationIds.has(l.nationId)) l.nationId = null;
+      } else if ('nationId' in l) {
+        delete l.nationId;
+      }
+    });
+    const charIds = new Set((w.characters || []).map((c) => c.id));
+    const markerIds = new Set((((w.map || {}).markers) || []).map((m) => m.id));
+    (w.lore || []).forEach((l) => {
+      if (l.category !== 'item') return;
+      if (l.holderCharId && !charIds.has(l.holderCharId)) l.holderCharId = null;
+      if (l.locationId && !markerIds.has(l.locationId)) l.locationId = null;
+    });
+    (((w.map || {}).markers) || []).forEach((m) => {
+      if (m.factionId && !placeIds.has(m.factionId)) m.factionId = null;
+    });
   }
 
   function randomPos(index) {
@@ -3841,8 +4113,93 @@ main {
     return out;
   }
 
+  /* ---------------- Codex (설정집) 이름 ---------------- */
+  const LORE = {
+    nation: {
+      label: '국가',
+      adj: ['아르카디아', '발드렌', '엘드렌', '테리안', '노스가르드', '크로반', '세른', '아스텔', '로웬', '카르디아', '드라켄', '벨로나'],
+      noun: ['왕국', '제국', '왕조', '공국', '연방', '자치령', '성국', '연합', '왕가', '제후국'],
+      subs: ['수도와 성문이 있는 나라', '몰락한 옛 제국의 후신', '서약으로 묶인 연방', '숲과 산으로 나뉜 땅', '재건 중인 왕국']
+    },
+    faction: {
+      label: '세력',
+      adj: ['서약', '잿불', '무쇠', '황금', '검은숲', '성소', '백야', '은빛', '붉은', '잊힌', '칠흑', '여명', '서리', '달빛'],
+      noun: ['기사단', '길드', '교단', '학회', '수호자', '감시자', '결사', '상단', '성좌', '의회', '순례단', '용병단', '서기단', '수도회', '경비대'],
+      subs: ['서약으로 묶인 무리', '값을 먼저 말하는 조직', '몰락한 옛 권력의 잔당', '이름을 감춘 결사', '성소를 지키는 맹세의 무리']
+    },
+    race: {
+      label: '종족 · 몬스터',
+      lead: ['용', '정령', '서리', '잿불', '달그림자', '검은숲', '무쇠', '백야', '심연', '폭풍', '뼈', '불꽃', '달'],
+      tail: ['혈족', '종족', '족', '거인', '망자', '요', '수인', '정령', '귀', '봉인체'],
+      subs: ['피에 힘이 깃든 종족', '오래 살고 오래 기억하는 자들', '숲과 함께 늙는 무리', '돌 아래에서 단련된 자들', '그림자와 소문을 먹고 사는 자들']
+    },
+    item: {
+      label: '아이템 · 유물',
+      adj: ['서리', '잿불', '황금', '흑요석', '무쇠', '달빛', '뼈', '칠흑', '백은', '성소의', '서약의', '재의'],
+      type: ['검', '장검', '단검', '방패', '지팡이', '인장', '성배', '반지', '망치', '활', '투구', '갑주', '두루마리', '목걸이', '왕관'],
+      name: ['글라시엘', '발라르', '아르젠', '카르넬', '세리온', '모르간트', '엘드라', '자르투스', '이슬렌', '벨라드'],
+      subs: ['뽑으면 겨울이 따라오는 유물', '읽는 자의 기억을 대가로 받는 물건', '주인을 바꾸지 않는 무기', '봉인이 남은 옛 유물', '값을 쇠로 매긴 장비']
+    },
+    rule: {
+      label: '기타 규칙',
+      lead: ['봉인', '이름', '인장', '룬', '그림자', '재', '성소', '맹세', '혈', '달', '빙결', '화염'],
+      tail: ['술', '주문', '마법', '의식', '규칙', '계약', '맹세', '공명', '해독', '금기', '법'],
+      subs: ['대가가 따르는 술식', '이름을 묶는 규칙', '한 세기마다 갱신되는 계약', '어기면 이름을 잃는 맹세', '세계가 지키는 오래된 금기']
+    },
+    rank: {
+      label: '능력 · 등급',
+      lead: ['마법', '기사', '모험가', '성좌', '검', '룬', '성소', '용', '그림자', '재', '정령', '서약'],
+      tail: ['서클', '계위', '랭크', '경지', '계율', '품계', '좌', '등급', '위계', '수련단계'],
+      subs: ['마나를 다루는 자의 경지', '왕실에서 내린 계위', '길드가 매기는 위계', '맹세로 오르는 단계', '재에서 다시 서는 자의 등급']
+    }
+  };
+
+  function genLore(category, count) {
+    const key = LORE[category] ? category : 'faction';
+    // 옛 '세력·국가' 값이 들어와도 세력으로 처리한다
+    const conf = LORE[key];
+    const out = [];
+    const seen = new Set();
+    let guard = 0;
+    while (out.length < (count || 8) && guard < 260) {
+      guard++;
+      let name = '';
+      const r = Math.random();
+      if (key === 'nation') {
+        if (r < 0.45) name = pick(conf.adj) + ' ' + pick(conf.noun);
+        else if (r < 0.7) name = pick(conf.adj) + pick(conf.noun);
+        else if (r < 0.88) name = pick(conf.adj) + '의 ' + pick(conf.noun);
+        else name = pick(conf.adj);
+      } else if (key === 'faction') {
+        if (r < 0.5) name = pick(conf.adj) + ' ' + pick(conf.noun);
+        else if (r < 0.74) name = pick(conf.adj) + pick(conf.noun);
+        else if (r < 0.9) name = pick(conf.adj) + '의 ' + pick(conf.noun);
+        else name = pick(conf.noun);
+      } else if (key === 'race') {
+        if (r < 0.55) name = pick(conf.lead) + pick(conf.tail);
+        else if (r < 0.8) name = pick(conf.lead) + ' ' + pick(conf.tail);
+        else name = pick(conf.lead) + '의 ' + pick(conf.tail);
+      } else if (key === 'item') {
+        if (r < 0.34) name = pick(conf.adj) + pick(conf.type) + ' 「' + pick(conf.name) + '」';
+        else if (r < 0.62) name = pick(conf.adj) + pick(conf.type);
+        else if (r < 0.86) name = pick(conf.adj) + ' ' + pick(conf.type);
+        else name = pick(conf.name) + '의 ' + pick(conf.type);
+      } else if (key === 'rank') {
+        if (r < 0.62) name = pick(conf.lead) + ' ' + pick(conf.tail);
+        else name = pick(conf.lead) + '의 ' + pick(conf.tail);
+      } else {
+        if (r < 0.55) name = pick(conf.lead) + pick(conf.tail);
+        else name = pick(conf.lead) + '의 ' + pick(conf.tail);
+      }
+      if (seen.has(name)) continue;
+      seen.add(name);
+      out.push({ name: name, sub: pick(conf.subs), type: key });
+    }
+    return out;
+  }
+
   /* ---------------- Sheet UI ---------------- */
-  let state = { mode: 'character', style: 'western', placeType: 'kingdom', withEpithet: true, results: [] };
+  let state = { mode: 'character', style: 'western', placeType: 'kingdom', loreCat: 'faction', withEpithet: true, results: [] };
 
   function renderResults(host, onPick, mode) {
     host.innerHTML = state.results.map((item, i) =>
@@ -3882,14 +4239,15 @@ main {
     state.mode = o.mode || 'character';
     state.style = 'western';
     state.placeType = 'kingdom';
+    state.loreCat = LORE[o.category] ? o.category : 'faction';
     state.withEpithet = true;
 
     const body = document.createElement('div');
 
     function refresh() {
-      state.results = state.mode === 'character'
-        ? genNames(state.style, 8, state.withEpithet)
-        : genPlaces(state.placeType, 8);
+      if (state.mode === 'character') state.results = genNames(state.style, 8, state.withEpithet);
+      else if (state.mode === 'lore') state.results = genLore(state.loreCat, 8);
+      else state.results = genPlaces(state.placeType, 8);
     }
 
     function draw() {
@@ -3900,8 +4258,10 @@ main {
             '<svg><use href="#i-users"/></svg>인물 이름</button>' +
           '<button type="button" class="gen-tab' + (state.mode === 'place' ? ' is-active' : '') + '" data-mode="place">' +
             '<svg><use href="#i-pin"/></svg>지명</button>' +
+          '<button type="button" class="gen-tab' + (state.mode === 'lore' ? ' is-active' : '') + '" data-mode="lore">' +
+            '<svg><use href="#i-book"/></svg>설정 이름</button>' +
         '</div>' +
-        '<div class="label-row"><span>' + (state.mode === 'character' ? '스타일' : '유형') + '</span>' +
+        '<div class="label-row"><span>' + (state.mode === 'character' ? '스타일' : (state.mode === 'lore' ? '분류' : '유형')) + '</span>' +
           (state.mode === 'character' ? '<span>칭호</span>' : '<span>8개씩</span>') + '</div>' +
         '<div class="chip-row" id="gen-chips"></div>' +
         (state.mode === 'character'
@@ -3916,8 +4276,10 @@ main {
       const chips = body.querySelector('#gen-chips');
       const items = state.mode === 'character'
         ? Object.keys(STYLE_LABEL).map((k) => ({ value: k, label: STYLE_LABEL[k] }))
-        : Object.keys(PLACE).map((k) => ({ value: k, label: PLACE[k].label }));
-      const current = state.mode === 'character' ? state.style : state.placeType;
+        : (state.mode === 'lore'
+          ? Object.keys(LORE).map((k) => ({ value: k, label: LORE[k].label }))
+          : Object.keys(PLACE).map((k) => ({ value: k, label: PLACE[k].label })));
+      const current = state.mode === 'character' ? state.style : (state.mode === 'lore' ? state.loreCat : state.placeType);
       items.forEach((it) => {
         const b = document.createElement('button');
         b.type = 'button';
@@ -3925,6 +4287,7 @@ main {
         b.textContent = it.label;
         b.addEventListener('click', () => {
           if (state.mode === 'character') state.style = it.value;
+          else if (state.mode === 'lore') state.loreCat = it.value;
           else state.placeType = it.value;
           draw();
           U.haptic(6);
@@ -3962,7 +4325,7 @@ main {
 
     const handle = U.openSheet({
       eyebrow: '이름 공방 · NAME FORGE',
-      title: state.mode === 'place' ? '지명 추천' : '이름 추천',
+      title: state.mode === 'place' ? '지명 추천' : (state.mode === 'lore' ? (state.loreCat === 'nation' ? '국가 이름 추천' : '설정 이름 추천') : '이름 추천'),
       sub: o.contextLabel || '클릭해서 복사하거나 폼에 바로 넣으세요',
       body: body,
       foot: [{ label: '다시 뽑기', icon: 'i-refresh', className: 'btn--gold', onClick: () => {
@@ -4050,7 +4413,8 @@ main {
   }
 
   function agePhrase(age) {
-    const m = String(age || '').match(/(\d{1,4})\s*(?:세|살)?/);
+    if (age === null || age === undefined || age === '') return '';
+    const m = String(age).match(/(\d{1,4})/);
     if (!m) return '';
     const n = Number(m[1]);
     if (!n || n > 400) return '';
@@ -4079,9 +4443,31 @@ main {
   }
 
   // 인물 세부정보 → 영어 판타지 일러스트 프롬프트
+  function bodyPhrase(cm, kg) {
+    const h = Number(cm) || 0, w = Number(kg) || 0;
+    if (!h && !w) return '';
+    const bits = [];
+    if (h) bits.push(h >= 190 ? 'very tall stature' : (h >= 178 ? 'tall stature' : (h <= 158 ? 'petite stature' : 'average height')));
+    if (h && w) {
+      const bmi = w / Math.pow(h / 100, 2);
+      bits.push(bmi < 18.5 ? 'slender build' : (bmi < 23 ? 'athletic build' : (bmi < 27 ? 'sturdy broad build' : 'heavyset powerful build')));
+    } else if (w) {
+      bits.push(w >= 95 ? 'heavy build' : (w <= 50 ? 'slim build' : 'average build'));
+    }
+    return bits.join(', ');
+  }
+
   function buildPortraitPrompt(fields) {
     const f = fields || {};
     const parts = [];
+
+    // 성별을 맨 앞에 확실히 — 모델이 놓치지 않도록 태그 형태로 먼저 넣는다
+    const gender = genderEn(f.gender);
+    const genderTokens = gender === 'female' ? '1girl, female character, feminine features'
+      : (gender === 'male' ? '1boy, male character, masculine features'
+        : (gender === 'androgynous' ? 'androgynous character, ambiguous features' : ''));
+    if (genderTokens) parts.push(genderTokens);
+
     const latinName = nameForPrompt(f.name);
     parts.push(latinName ? 'fantasy character portrait of ' + latinName : 'fantasy character portrait');
 
@@ -4092,13 +4478,15 @@ main {
     const race = raceEn(f.race);
     const role = scanEn(title + ' ' + f.faction, ROLE_EN, 1)[0] ||
       scanEn((title + ' ' + String(f.faction || '')).toLowerCase(), ROLE_WORDS, 1)[0] || 'wanderer';
-    // 성별을 종족·역할 앞에 넣어 "a female elf knight"처럼 자연스럽게 붙인다
-    const gender = genderEn(f.gender);
+    // 종족·역할 앞에도 성별을 붙여 "a female elf knight"처럼 읽히게
     const article = /^[aeiou]/i.test(race) ? 'an ' : 'a ';
     parts.push(article + (gender ? gender + ' ' : '') + race + ' ' + role);
 
-    const age = agePhrase(f.age);
+    const age = agePhrase((f.ageNum !== undefined && f.ageNum !== null && f.ageNum !== '') ? f.ageNum : f.age);
     if (age) parts.push(age);
+
+    const body = bodyPhrase(f.heightCm, f.weightKg);
+    if (body) parts.push(body);
 
     const gear = scanEn(String(f.abilities || '') + ' ' + String(f.title || ''), GEAR_EN, 2);
     if (gear.length) parts.push('wielding ' + gear.join(' and '));
@@ -4413,7 +4801,7 @@ main {
     }
   }
 
-  global.Generator = { open, genNames, genPlaces, STYLE_LABEL, PLACE, buildPortraitPrompt, portraitUrl, generatePortrait, fallbackPortrait };
+  global.Generator = { open, genNames, genPlaces, genLore, STYLE_LABEL, PLACE, LORE, buildPortraitPrompt, bodyPhrase, portraitUrl, generatePortrait, fallbackPortrait };
 })(window);
 
 </script>
@@ -4575,40 +4963,43 @@ main {
   /* 인물 폼에서 골라 쓰는 기본 설정집 항목 — 종족 · 세력 · 능력 · 아이템 */
   function LoreDefaults() {
     const L = (id, category, title, body, tags) => ({ id: id, category: category, title: title, body: body, tags: tags || [] });
-    return [
+    const items = [
       // 종족
       L('l_race_human', 'race', '인간', '가장 흔하고 가장 빨리 잊는 종족. 한 세기 안에 왕국을 세우고 무너뜨린다.', ['인간']),
       L('l_race_elf', 'race', '엘프', '숲과 함께 늙는 종족. 나무의 이름을 외우고, 불을 오래 기억한다.', ['엘프', '숲']),
       L('l_race_dwarf', 'race', '드워프', '돌 아래에서 단련된 종족. 맹세와 빚을 쇠처럼 다룬다.', ['드워프', '장인']),
       L('l_race_spirit', 'race', '정령혈족', '정령의 피를 받아 태어난 자. 물과 달에 가까워 기억을 잃기 쉽다.', ['정령', '호수']),
       L('l_race_half', 'race', '반요(까마귀 혈족)', '짐승의 피가 섞인 자. 그림자와 소문을 먹고 산다.', ['반요', '그림자']),
+      // 국가
+      L('l_fac_royal', 'nation', '아르카디아 왕국', '몰락한 옛 왕가의 나라. 이제는 이름과 빚, 그리고 성문만 남았다.', ['왕실', '발드렌', '국가']),
+      L('l_nation_forest', 'nation', '검은숲 자치령', '숲이 스스로 허락한 자들만 사는 땅. 왕국의 법이 닿지 않는다.', ['숲', '자치령', '국가']),
+      L('l_nation_iron', 'nation', '서리봉우리 의회', '단조 장인들의 의회가 다스리는 산악 국가. 값은 쇠로 매긴다.', ['산', '의회', '국가']),
       // 세력
       L('l_fac_seal', 'faction', '봉인술사회', '이름을 감추고 인장을 읽는 학회. 성소의 문을 지킨다.', ['봉인', '학회']),
       L('l_fac_watch', 'faction', '검은숲 감시자', '검은숲의 경계를 지키는 사냥꾼들. 숲 밖의 일에는 나서지 않는다.', ['숲', '감시자']),
       L('l_fac_iron', 'faction', '무쇠 길드', '서리봉우리 아래의 단조 연합. 값은 쇠로, 약속은 망치로 매긴다.', ['단조', '길드']),
-      L('l_fac_royal', 'faction', '아르카디아 왕실', '몰락한 옛 왕가. 이제는 이름과 빚만 남았다.', ['왕실', '발드렌']),
       L('l_fac_free', 'faction', '무소속 · 정보상', '어느 편에도 서지 않고 소문을 사고파는 자들.', ['정보', '무소속']),
       L('l_fac_sanct', 'faction', '성소 수호자', '일곱 성소를 지키는 맹세의 무리. 인장이 풀리면 가장 먼저 깨어난다.', ['성소', '인장']),
       // 능력 · 체계
-      L('l_mag_ice', 'magic', '빙결의 검술', '베는 순간 공기를 얼려 상처를 늦추는 검술. 서리검과 함께 쓰면 대가가 커진다.', ['검술', '서리']),
-      L('l_mag_seal2', 'magic', '봉인 마법', '이름을 묶어 힘을 가두는 주문. 한 번 읽으면 읽은 자의 기억 일부를 가져간다.', ['봉인', '주문']),
-      L('l_mag_star', 'magic', '별의 지도', '밤하늘을 지도 삼아 거리를 읽는 점술. 흐린 밤에는 쓰지 못한다.', ['별', '지도']),
-      L('l_mag_name', 'magic', '이름의 해독', '참된 이름을 풀어 읽는 재주. 읽을수록 자신의 이름이 흐려진다.', ['이름', '해독']),
-      L('l_mag_fire', 'magic', '화염술', '재에서 다시 서는 불. 끄는 것이 아니라 이름을 부르는 방식으로 다룬다.', ['불', '재']),
-      L('l_mag_rot', 'magic', '부패한 이름의 마법', '부른 이름을 썩히는 주문. 상대의 기록에서 그 이름을 지운다.', ['이름', '부패']),
-      L('l_mag_rebirth', 'magic', '재에서 다시 서는 몸', '불에 타 죽은 자가 재에서 다시 서는 혈통의 힘. 설 때마다 이름을 조금씩 잊는다.', ['불사', '재']),
-      L('l_mag_forest', 'magic', '숲의 길 읽기', '나무 사이의 길을 읽는 감각. 숲이 허락한 자만 빠져나온다.', ['숲', '길']),
-      L('l_mag_hawkeye', 'magic', '매의 눈', '먼 것을 가까이 당겨 보는 눈. 오래 쓰면 색을 잃는다.', ['눈', '사냥']),
-      L('l_mag_runesmith', 'magic', '룬 단조', '쇠에 룬을 새겨 의지를 담는 기술. 새긴 것은 주인을 바꾸지 않는다.', ['룬', '단조']),
-      L('l_mag_sword', 'magic', '정통 검술', '왕실에서 가르치던 검술. 형태보다 거리와 예절을 먼저 배운다.', ['검술', '왕실']),
-      L('l_mag_shadow', 'magic', '그림자 마법', '그림자를 매개로 소리와 기억을 가로채는 술식.', ['그림자', '술식']),
-      L('l_mag_water', 'magic', '물의 정령술', '물의 정령과 이름을 주고받는 술법. 호수 근처에서만 온전히 쓰인다.', ['정령', '물']),
-      L('l_mag_resonance', 'magic', '인장 공명', '성소의 인장과 몸이 공명하는 힘. 인장이 풀리면 대가를 치른다.', ['인장', '공명']),
-      L('l_mag_walkwater', 'magic', '물 위를 걷기', '표면장력이 아닌 이름으로 물을 누르는 재주.', ['물', '걷기']),
-      L('l_mag_duel', 'magic', '외교', '말과 예절로 땅과 사람을 얻는 재주. 무보다 오래 남는다.', ['외교', '왕실']),
-      L('l_mag_crownshard', 'magic', '왕관의 조각을 다루는 재주', '잿빛 왕관의 조각을 만지면 그 조각의 이름이 들린다.', ['왕관', '이름']),
-      L('l_mag_poison', 'magic', '독', '값을 매기지 않고도 사람을 멈추게 하는 수단.', ['독', '정보']),
-      L('l_mag_erase', 'magic', '기억에서 이름 지우기', '기록과 기억 양쪽에서 이름을 빼내는 술식. 대가는 지우는 자의 이름이다.', ['이름', '기억']),
+      L('l_mag_ice', 'rule', '빙결의 검술', '베는 순간 공기를 얼려 상처를 늦추는 검술. 서리검과 함께 쓰면 대가가 커진다.', ['검술', '서리']),
+      L('l_mag_seal2', 'rule', '봉인 마법', '이름을 묶어 힘을 가두는 주문. 한 번 읽으면 읽은 자의 기억 일부를 가져간다.', ['봉인', '주문']),
+      L('l_mag_star', 'rule', '별의 지도', '밤하늘을 지도 삼아 거리를 읽는 점술. 흐린 밤에는 쓰지 못한다.', ['별', '지도']),
+      L('l_mag_name', 'rule', '이름의 해독', '참된 이름을 풀어 읽는 재주. 읽을수록 자신의 이름이 흐려진다.', ['이름', '해독']),
+      L('l_mag_fire', 'rule', '화염술', '재에서 다시 서는 불. 끄는 것이 아니라 이름을 부르는 방식으로 다룬다.', ['불', '재']),
+      L('l_mag_rot', 'rule', '부패한 이름의 마법', '부른 이름을 썩히는 주문. 상대의 기록에서 그 이름을 지운다.', ['이름', '부패']),
+      L('l_mag_rebirth', 'rule', '재에서 다시 서는 몸', '불에 타 죽은 자가 재에서 다시 서는 혈통의 힘. 설 때마다 이름을 조금씩 잊는다.', ['불사', '재']),
+      L('l_mag_forest', 'rule', '숲의 길 읽기', '나무 사이의 길을 읽는 감각. 숲이 허락한 자만 빠져나온다.', ['숲', '길']),
+      L('l_mag_hawkeye', 'rule', '매의 눈', '먼 것을 가까이 당겨 보는 눈. 오래 쓰면 색을 잃는다.', ['눈', '사냥']),
+      L('l_mag_runesmith', 'rule', '룬 단조', '쇠에 룬을 새겨 의지를 담는 기술. 새긴 것은 주인을 바꾸지 않는다.', ['룬', '단조']),
+      L('l_mag_sword', 'rule', '정통 검술', '왕실에서 가르치던 검술. 형태보다 거리와 예절을 먼저 배운다.', ['검술', '왕실']),
+      L('l_mag_shadow', 'rule', '그림자 마법', '그림자를 매개로 소리와 기억을 가로채는 술식.', ['그림자', '술식']),
+      L('l_mag_water', 'rule', '물의 정령술', '물의 정령과 이름을 주고받는 술법. 호수 근처에서만 온전히 쓰인다.', ['정령', '물']),
+      L('l_mag_resonance', 'rule', '인장 공명', '성소의 인장과 몸이 공명하는 힘. 인장이 풀리면 대가를 치른다.', ['인장', '공명']),
+      L('l_mag_walkwater', 'rule', '물 위를 걷기', '표면장력이 아닌 이름으로 물을 누르는 재주.', ['물', '걷기']),
+      L('l_mag_duel', 'rule', '외교', '말과 예절로 땅과 사람을 얻는 재주. 무보다 오래 남는다.', ['외교', '왕실']),
+      L('l_mag_crownshard', 'rule', '왕관의 조각을 다루는 재주', '잿빛 왕관의 조각을 만지면 그 조각의 이름이 들린다.', ['왕관', '이름']),
+      L('l_mag_poison', 'rule', '독', '값을 매기지 않고도 사람을 멈추게 하는 수단.', ['독', '정보']),
+      L('l_mag_erase', 'rule', '기억에서 이름 지우기', '기록과 기억 양쪽에서 이름을 빼내는 술식. 대가는 지우는 자의 이름이다.', ['이름', '기억']),
       // 아이템 · 유물
       L('l_item_glassiel', 'item', '서리검 「글라시엘」', '항구 창고에서 발견된 서리 검. 뽑지 않아도 울고, 뽑으면 겨울이 따라온다.', ['검', '서리']),
       L('l_item_nightdew', 'item', '밤의 이슬(장궁)', '밤이슬을 먹인 활. 쏜 화살은 소리 없이 목표에 닿는다.', ['활', '숲']),
@@ -4616,6 +5007,34 @@ main {
       L('l_item_seal', 'item', '황금 인장', '일곱 성소의 인장을 옮겨 새긴 금판. 읽는 자의 기억을 대가로 받는다.', ['인장', '유물']),
       L('l_item_obsidian', 'item', '흑요석 지팡이', '재에서 구운 흑요석 지팡이. 불의 이름을 부르는 데 쓴다.', ['지팡이', '흑요석'])
     ];
+    // 국가 → 주 종족 (설정집 종족·몬스터 id)
+    const raceOf = {
+      l_fac_royal: ['l_race_human'],
+      l_nation_forest: ['l_race_elf'],
+      l_nation_iron: ['l_race_dwarf']
+    };
+    // 세력 → 소속 국가 (null이면 무소속)
+    const nationOf = {
+      l_fac_seal: 'l_fac_royal',
+      l_fac_watch: 'l_nation_forest',
+      l_fac_iron: 'l_nation_iron',
+      l_fac_free: null,
+      l_fac_sanct: null
+    };
+    // 아이템 → 소지 인물 · 보관 지역 (지도 핀)
+    const holderOf = {
+      l_item_glassiel: { holderCharId: 'c_aelric', locationId: null },
+      l_item_nightdew: { holderCharId: 'c_elindra', locationId: 'm_blackforest' },
+      l_item_axe: { holderCharId: null, locationId: 'm_frost' },
+      l_item_seal: { holderCharId: null, locationId: 'm_moonlake' },
+      l_item_obsidian: { holderCharId: 'c_malachar', locationId: null }
+    };
+    items.forEach((it) => {
+      if (raceOf[it.id]) it.raceIds = raceOf[it.id].slice();
+      if (it.category === 'faction') it.nationId = nationOf[it.id] || null;
+      if (holderOf[it.id]) Object.assign(it, holderOf[it.id]);
+    });
+    return items;
   }
 
   function SampleWorld() {
@@ -4763,16 +5182,16 @@ main {
         }
       ],
       lore: [
-        {          id: 'l1', category: 'magic', title: '봉인술', body: '이름을 감추고 힘을 묶는 마법. 봉인된 존재는 이름을 잃고, 이름을 잃은 자는 존재의 절반을 잃는다. 대가로 성소의 인장은 매 세기 한 사람의 기억을 먹는다.', tags: ['봉인', '이름', '성소', '인장']
+        {          id: 'l1', category: 'rule', title: '봉인술', body: '이름을 감추고 힘을 묶는 마법. 봉인된 존재는 이름을 잃고, 이름을 잃은 자는 존재의 절반을 잃는다. 대가로 성소의 인장은 매 세기 한 사람의 기억을 먹는다.', tags: ['봉인', '이름', '성소', '인장']
         },
         {
-          id: 'l2', category: 'magic', title: '룬 맹세', body: '룬 문자로 새긴 계약은 죽음으로도 풀리지 않는다. 맹세를 어긴 자는 살아 있는 동안 이름을 잃고, 그 이름은 맹세를 받은 자가 대신 가지게 된다.', tags: ['룬', '계약', '서약', '이름']
+          id: 'l2', category: 'rule', title: '룬 맹세', body: '룬 문자로 새긴 계약은 죽음으로도 풀리지 않는다. 맹세를 어긴 자는 살아 있는 동안 이름을 잃고, 그 이름은 맹세를 받은 자가 대신 가지게 된다.', tags: ['룬', '계약', '서약', '이름']
         },
         {
-          id: 'l3', category: 'faction', title: '서약 기사단', body: '아르카디아 왕실에 충성하던 마지막 기사단. 일곱 개의 서약 중 첫 번째는 "왕이 아니라 이름을 지킨다"이다. 왕실이 몰락한 뒤 기사단은 왕도에 남아 성문을 지킨다.', tags: ['기사단', '서약', '왕도']
+          id: 'l3', category: 'faction', title: '서약 기사단', nationId: 'l_fac_royal', body: '아르카디아 왕실에 충성하던 마지막 기사단. 일곱 개의 서약 중 첫 번째는 "왕이 아니라 이름을 지킨다"이다. 왕실이 몰락한 뒤 기사단은 왕도에 남아 성문을 지킨다.', tags: ['기사단', '서약', '왕도']
         },
         {
-          id: 'l4', category: 'faction', title: '잿불 교단', body: '말라카르를 따르는 재의 교단. "태워진 것은 다시 서고, 다시 선 것은 빚을 받는다"는 교리를 따른다. 왕관 조각을 모아 잿빛 왕관을 복원하려 한다.', tags: ['교단', '재', '왕관', '말라카르']
+          id: 'l4', category: 'faction', title: '잿불 교단', nationId: null, body: '말라카르를 따르는 재의 교단. "태워진 것은 다시 서고, 다시 선 것은 빚을 받는다"는 교리를 따른다. 왕관 조각을 모아 잿빛 왕관을 복원하려 한다.', tags: ['교단', '재', '왕관', '말라카르']
         },
         {
           id: 'l5', category: 'race', title: '용혈족', body: '용의 피를 이은 자들. 이마에 뿔이 자라고 황금빛 눈동자를 가진다. 피가 진할수록 불에 강하고, 오래 산다. 발드렌 왕실에는 한 줄기밖에 남지 않았다.', tags: ['용', '혈족', '왕실', '불']
@@ -4819,13 +5238,13 @@ main {
         kind: 'sample',
         image: null,
         markers: [
-          { id: M.kingdom, name: '발드렌', kind: 'kingdom', x: 47, y: 42, climate: '서늘한 대륙성 · 긴 겨울', faction: '아르카디아 왕실(명목상) · 서약 기사단', resources: '밀, 황금빛 석회, 옛 성소의 잔재', danger: '교단의 첩자와 왕실 잔당이 뒤섞인 골목', notes: '왕도. 거리마다 죽은 왕의 이름이 새겨져 있고, 서약 기사단이 성문을 지킨다.' },
-          { id: M.peak, name: '서리봉우리', kind: 'mountain', x: 33, y: 20, climate: '일 년 내내 서리, 산정에는 눈', faction: '무쇠 길드', resources: '청철, 룬석, 얼지 않는 샘', danger: '눈보라와 산길을 지키는 바위거인', notes: '봉우리 아래 무쇠 길드의 대장간 도시가 있다. 글라시엘의 검집이 여기서 만들어졌다.' },
-          { id: M.forest, name: '검은숲', kind: 'forest', x: 70, y: 31, climate: '습하고 그늘진 온대', faction: '검은숲 감시자', resources: '검은 참나무, 밤이슬, 약초', danger: '길을 바꾸는 숲과 대화재의 흔적', notes: '동쪽 절반이 아직 재로 남아 있다. 숲은 낯선 자의 이름을 먼저 묻는다.' },
-          { id: M.desert, name: '잿빛 사막', kind: 'ruin', x: 76, y: 64, climate: '건조, 밤에는 혹한', faction: '잿불 교단의 순례길', resources: '유리화한 모래, 재의 소금', danger: '모래 아래의 옛 성벽과 재에서 서는 것들', notes: '천 년 전 왕도가 탄 자리. 지금은 아무것도 자라지 않는다.' },
-          { id: M.lake, name: '달의 호수', kind: 'lake', x: 42, y: 57, climate: '안개 잦은 호숫가', faction: '성소 수호자', resources: '달빛 이끼, 성소의 물', danger: '호수 아래의 인장과 기억을 잃는 물', notes: '일곱 성소 중 두 번째. 니뮤에가 이곳에서 깨어났다.' },
+          { id: M.kingdom, name: '발드렌', kind: 'kingdom', x: 47, y: 42, climate: '서늘한 대륙성 · 긴 겨울', factionId: 'l_fac_royal', faction: '아르카디아 왕실', resources: '밀, 황금빛 석회, 옛 성소의 잔재', danger: '교단의 첩자와 왕실 잔당이 뒤섞인 골목', notes: '왕도. 거리마다 죽은 왕의 이름이 새겨져 있고, 서약 기사단이 성문을 지킨다.' },
+          { id: M.peak, name: '서리봉우리', kind: 'mountain', x: 33, y: 20, climate: '일 년 내내 서리, 산정에는 눈', factionId: 'l_fac_iron', faction: '무쇠 길드', resources: '청철, 룬석, 얼지 않는 샘', danger: '눈보라와 산길을 지키는 바위거인', notes: '봉우리 아래 무쇠 길드의 대장간 도시가 있다. 글라시엘의 검집이 여기서 만들어졌다.' },
+          { id: M.forest, name: '검은숲', kind: 'forest', x: 70, y: 31, climate: '습하고 그늘진 온대', factionId: 'l_fac_watch', faction: '검은숲 감시자', resources: '검은 참나무, 밤이슬, 약초', danger: '길을 바꾸는 숲과 대화재의 흔적', notes: '동쪽 절반이 아직 재로 남아 있다. 숲은 낯선 자의 이름을 먼저 묻는다.' },
+          { id: M.desert, name: '잿빛 사막', kind: 'ruin', x: 76, y: 64, climate: '건조, 밤에는 혹한', factionId: 'l4', faction: '잿불 교단', resources: '유리화한 모래, 재의 소금', danger: '모래 아래의 옛 성벽과 재에서 서는 것들', notes: '천 년 전 왕도가 탄 자리. 지금은 아무것도 자라지 않는다.' },
+          { id: M.lake, name: '달의 호수', kind: 'lake', x: 42, y: 57, climate: '안개 잦은 호숫가', factionId: 'l_fac_sanct', faction: '성소 수호자', resources: '달빛 이끼, 성소의 물', danger: '호수 아래의 인장과 기억을 잃는 물', notes: '일곱 성소 중 두 번째. 니뮤에가 이곳에서 깨어났다.' },
           { id: M.tower, name: '폐허의 탑', kind: 'ruin', x: 57, y: 74, climate: '메마르고 바람이 많음', faction: '아무도 없다', resources: '봉인석, 옛 서기의 기록', danger: '풀린 인장과 이름을 부르는 소리', notes: '첫 번째 인장이 풀린 곳. 탑 아래에는 일곱 개의 홈이 있는 문이 있다.' },
-          { id: M.port, name: '발드렌 항구', kind: 'port', x: 20, y: 47, climate: '안개와 소금바람', faction: '서약 기사단(세관) · 무소속 상단', resources: '소금, 밀수품, 먼 바다의 소문', danger: '세관과 밀수꾼, 그리고 검은 배', notes: '글라시엘이 발견된 창고가 아직 남아 있다. 바다 건너에서 온 소문이 가장 먼저 닿는 곳.' }
+          { id: M.port, name: '발드렌 항구', kind: 'port', x: 20, y: 47, climate: '안개와 소금바람', factionId: 'l3', faction: '서약 기사단', resources: '소금, 밀수품, 먼 바다의 소문', danger: '세관과 밀수꾼, 그리고 검은 배', notes: '글라시엘이 발견된 창고가 아직 남아 있다. 바다 건너에서 온 소문이 가장 먼저 닿는 곳.' }
         ]
       }
     };
@@ -5307,7 +5726,8 @@ main {
 
   function factions() {
     const w = world();
-    return ((w && w.lore) || []).filter((l) => l.category === 'faction');
+    // 국가와 세력을 함께 노드로 — 국가는 바깥 점선 고리로 구분한다
+    return ((w && w.lore) || []).filter((l) => l.category === 'faction' || l.category === 'nation');
   }
 
   function posOf(w, l, i, total) {
@@ -5316,11 +5736,29 @@ main {
     if (!p) {
       // 원형으로 흩어 놓는다
       const angle = (i / Math.max(1, total)) * Math.PI * 2 - Math.PI / 2;
-      const rx = 110, ry = 170;
-      p = { x: Math.round(180 + Math.cos(angle) * rx), y: Math.round(260 + Math.sin(angle) * ry) };
+      const n = Math.max(1, total);
+      // 노드가 많을수록 고리를 넓혀 이름이 겹치지 않게
+      const rx = 100 + Math.min(80, n * 6.5);
+      const ry = 150 + Math.min(120, n * 9.5);
+      // 안팎으로 번갈아 놓아 이름이 겹치지 않게
+      const k = i % 2 ? 0.7 : 1;
+      p = { x: Math.round(180 + Math.cos(angle) * rx * k), y: Math.round(260 + Math.sin(angle) * ry * k) };
       w.factionNodes[l.id] = p;
     }
     return p;
+  }
+
+  function nationNameOf(w, l) {
+    if (!l || !l.nationId) return '';
+    const n = ((w && w.lore) || []).find((x) => x.id === l.nationId);
+    return n ? n.title : '';
+  }
+
+  function raceNamesOf(w, l) {
+    return ((l && l.raceIds) || []).map((id) => {
+      const r = ((w && w.lore) || []).find((x) => x.id === id);
+      return r ? r.title : '';
+    }).filter(Boolean);
   }
 
   function nodeList() {
@@ -5388,12 +5826,18 @@ main {
     nodes.forEach((n) => {
       const selected = state.selected.indexOf(n.id) > -1;
       const color = n.color || '#c9a24a';
+      const isNation = n.category === 'nation';
+      const races = isNation ? raceNamesOf(w, n) : [];
+      const nation = isNation ? '' : nationNameOf(w, n);
       nhtml +=
         '<g class="fnode' + (selected ? ' is-selected' : '') + '" data-fnode="' + U.esc(n.id) + '" transform="translate(' + n.pos.x + ' ' + n.pos.y + ')">' +
           (selected ? '<circle r="26" fill="none" stroke="#d4af37" stroke-width="1" stroke-dasharray="2 2" opacity=".9"/>' : '') +
+          (isNation ? '<circle r="24" fill="none" stroke="' + color + '" stroke-width="1" stroke-dasharray="1.6 2.6" opacity=".7"/>' : '') +
           '<circle r="21" fill="#1a1411" stroke="' + color + '" stroke-width="1.4" opacity=".95"/>' +
           '<text text-anchor="middle" y="4.4" font-size="11" fill="' + color + '" font-family="AppleMyungjo, Georgia, serif">' + U.esc(String(n.title || '').slice(0, 1)) + '</text>' +
           '<text class="fnode-label" text-anchor="middle" y="33" font-size="7.2" fill="#d8cdb4" stroke="#100d0b" stroke-width="2.4" paint-order="stroke" font-family="-apple-system, sans-serif">' + U.esc(truncate(n.title, 9)) + '</text>' +
+          (races.length ? '<text class="fnode-race" text-anchor="middle" y="41" font-size="5.6" fill="#9c9078" stroke="#100d0b" stroke-width="1.8" paint-order="stroke" font-family="-apple-system, sans-serif">' + U.esc(truncate(races.join(' · '), 14)) + '</text>' : '') +
+          (!isNation ? '<text class="fnode-nation" text-anchor="middle" y="41" font-size="5.6" fill="' + (nation ? '#c0a463' : '#7d7466') + '" stroke="#100d0b" stroke-width="1.8" paint-order="stroke" font-family="-apple-system, sans-serif">' + U.esc(nation || '무소속') + '</text>' : '') +
         '</g>';
     });
 
@@ -6434,6 +6878,15 @@ main {
     '</div>';
   }
 
+  // 지역 핀의 지배 세력 표시명 — 연결된 설정집 항목이 있으면 그 제목을 쓴다
+  function factionName(w, m) {
+    if (m.factionId) {
+      const f = ((w && w.lore) || []).find((x) => x.id === m.factionId);
+      if (f) return f.title;
+    }
+    return m.faction || '';
+  }
+
   function pinHtml(m, w) {
     const kind = kindMeta(m.kind);
     const stopIdx = st.stops.findIndex((s) => s.marker.id === m.id);
@@ -6443,6 +6896,7 @@ main {
     return '<button type="button" class="pin ' + kind.cls + storyCls + '" data-pin="' + U.esc(m.id) + '" style="left:' + m.x + '%;top:' + m.y + '%" aria-label="' + U.esc(m.name) + '">' +
       '<span class="pin__mark"><span>' + U.esc(kind.mark) + '</span></span>' +
       '<span class="pin__label">' + U.esc(m.name) + '</span>' +
+      (factionName(w, m) ? '<span class="pin__faction">⚑ ' + U.esc(factionName(w, m)) + '</span>' : '') +
     '</button>';
   }
 
@@ -6523,7 +6977,7 @@ main {
               '<span class="row-card__badge">' + U.esc(kind.mark) + '</span>' +
               '<span class="row-card__body">' +
                 '<span class="row-card__title">' + U.esc(m.name) + '</span>' +
-                '<span class="row-card__meta">' + U.esc(kind.label) + (m.faction ? ' · ' + U.esc(m.faction) : '') + (m.danger ? ' · ' + U.esc(m.danger) : '') + '</span>' +
+                '<span class="row-card__meta">' + U.esc(kind.label) + (factionName(w, m) ? ' · ⚑ ' + U.esc(factionName(w, m)) : '') + (m.danger ? ' · ' + U.esc(m.danger) : '') + '</span>' +
               '</span>' +
               '<span class="row-card__chev"><svg><use href="#i-chev-right"/></svg></span>' +
             '</button>';
@@ -7206,6 +7660,619 @@ main {
 
 </script>
 <script>
+/* ---- js/rankicon.js ---- */
+/* =========================================================
+   ARCANUM · 등급 아이콘 — 기본 팩(30종) + 설명 기반 문장(SVG) 생성기
+   - 기본 아이콘: 이모지 24종 + 커스텀 SVG 문장 6종
+   - 설명을 넣으면 모티브(검·방패·불꽃·얼음…) + 색(금·청·적·자·녹·흑·백)
+     + 외곽 프레임(원형 룬 / 방패형 / 육각 마법진)을 읽어 인라인 SVG를 만든다.
+   - 저장 형식: world.rankSystems[].icon 그대로 문자열.
+       'svg:<encodeURIComponent(svg markup)>'  또는  'data:image/svg+xml...'  또는  이모지·글자
+   ========================================================= */
+(function (global) {
+  'use strict';
+
+  /* ---------------------------------------------------------
+     색 팔레트
+     --------------------------------------------------------- */
+  const PALETTES = [
+    { name: '백', keys: ['하얀빛', '하얀', '백색', '흰색', '흰빛', '설백', '순백', '은백', '백', '흰'],
+      main: '#ece9f4', light: '#ffffff', deep: '#a8a4b8' },
+    { name: '흑', keys: ['검은빛', '검은색', '검은', '검정색', '검정', '까만', '흑색', '암흑', '칠흑', '흑'],
+      main: '#b3aec8', light: '#ddd8ec', deep: '#6b6580' },
+    { name: '금', keys: ['황금빛', '황금색', '황금', '금빛', '골드', '금색', '노란', '노랑', '금'],
+      main: '#e8c46a', light: '#fff0bd', deep: '#a5812c' },
+    { name: '청', keys: ['푸른빛', '푸른', '푸르스름', '파아란', '파란', '파랑', '하늘빛', '하늘색',
+      '청록', '쪽빛', '남색', '청색', '시린', '청'],
+      main: '#6ba8e6', light: '#c3e2ff', deep: '#2f679e' },
+    { name: '적', keys: ['붉은빛', '붉은', '빨간색', '빨간', '빨강', '진홍', '핏빛', '혈색', '적색', '홍색', '주홍', '적'],
+      main: '#e2584f', light: '#ffb4a8', deep: '#96271f' },
+    { name: '자', keys: ['보라빛', '보라색', '보랏빛', '보라', '자색', '자줏빛', '제비꽃', '자'],
+      main: '#b07ce8', light: '#e0c8ff', deep: '#6a3f9e' },
+    { name: '녹', keys: ['초록빛', '초록색', '초록', '녹색', '풀빛', '에메랄드', '비취', '녹'],
+      main: '#63bf7a', light: '#b8eec4', deep: '#2f7a44' },
+    { name: '철', keys: ['강철빛', '강철', '무쇠', '잿빛', '은색', '은빛', '회색', '철색', '철'],
+      main: '#aab4c0', light: '#dfe6ee', deep: '#5f6a76' }
+  ];
+
+  const COLOR_KEYS = [];
+  PALETTES.forEach((p) => p.keys.forEach((k) => COLOR_KEYS.push({ k: k, p: p })));
+  COLOR_KEYS.sort((a, b) => b.k.length - a.k.length);
+
+  const GOLD = PALETTES.find((p) => p.name === '금');
+  const DESIGN = { main: 'currentColor', light: 'currentColor', deep: 'currentColor' };
+
+  /* ---------------------------------------------------------
+     모티브 (48×48 좌표계, 중심 24,24)
+     --------------------------------------------------------- */
+  function snowflake(c) {
+    const arm = '<g><path d="M24 8.4v31.2"/>' +
+      '<path d="M24 14.6 19.5 10.1M24 14.6 28.5 10.1"/>' +
+      '<path d="M24 33.4 19.5 37.9M24 33.4 28.5 37.9"/>' +
+      '<path d="M24 24 20.6 20.6M24 24 27.4 20.6M24 24 20.6 27.4M24 24 27.4 27.4"/></g>';
+    return '<g stroke="' + c.main + '" stroke-width="1.9" stroke-linecap="round" fill="none">' +
+      arm + '<g transform="rotate(60 24 24)">' + arm + '</g>' +
+      '<g transform="rotate(120 24 24)">' + arm + '</g></g>' +
+      '<circle cx="24" cy="24" r="2.3" fill="' + c.main + '"/>';
+  }
+
+  function pine(x, base, h, w, c) {
+    const top = base - h;
+    return '<path d="M' + x + ' ' + top + ' ' + (x + w) + ' ' + (base - h * 0.34) +
+      'h-' + (w * 0.28).toFixed(1) + 'L' + (x + w * 0.86) + ' ' + base + 'h-' + (w * 1.72).toFixed(1) +
+      'L' + (x - w * 0.6) + ' ' + (base - h * 0.34) + 'h' + (w * 0.28).toFixed(1) + 'Z" ' +
+      'fill="' + c.main + '" fill-opacity=".26" stroke="' + c.main + '" stroke-width="1.6" stroke-linejoin="round"/>';
+  }
+
+  function star4(x, y, r) {
+    return '<path d="M' + x + ' ' + (y - r) + 'L' + (x + r * 0.28) + ' ' + (y - r * 0.28) + ' ' +
+      (x + r) + ' ' + y + ' ' + (x + r * 0.28) + ' ' + (y + r * 0.28) + ' ' +
+      x + ' ' + (y + r) + ' ' + (x - r * 0.28) + ' ' + (y + r * 0.28) + ' ' +
+      (x - r) + ' ' + y + ' ' + (x - r * 0.28) + ' ' + (y - r * 0.28) + 'Z"/>';
+  }
+
+  const MOTIFS = {
+    blade: {
+      label: '검',
+      keys: ['대검', '장검', '성검', '장도', '세이버', '레이피어', '검', '칼', '도'],
+      draw: (c) => '<path d="M24 5.2 28.4 12.2V27h-8.8V12.2Z" fill="' + c.main + '" opacity=".9"/>' +
+        '<path d="M24 5.2 28.4 12.2V27H24Z" fill="' + c.light + '" opacity=".4"/>' +
+        '<path d="M15.2 27.6h17.6" stroke="' + c.main + '" stroke-width="2.6" stroke-linecap="round"/>' +
+        '<path d="M24 30.2v6.2" stroke="' + c.main + '" stroke-width="2.6" stroke-linecap="round"/>' +
+        '<circle cx="24" cy="38.6" r="2.1" fill="' + c.main + '"/>'
+    },
+    shield: {
+      label: '방패',
+      keys: ['방패'],
+      draw: (c) => '<path d="M24 6.4 35.8 11v9.2c0 8.6-5.6 14-11.8 16.6C17.8 34.2 12.2 28.8 12.2 20.2V11Z" ' +
+        'fill="' + c.main + '" fill-opacity=".2" stroke="' + c.main + '" stroke-width="2" stroke-linejoin="round"/>' +
+        '<path d="M24 13 30.6 15.5v4.9c0 5-3.2 8.4-6.6 10.2-3.4-1.8-6.6-5.2-6.6-10.2v-4.9Z" ' +
+        'stroke="' + c.light + '" stroke-width="1.5" stroke-linejoin="round" opacity=".9"/>'
+    },
+    flame: {
+      label: '불꽃',
+      keys: ['불꽃', '화염', '불길', '불', '인화'],
+      draw: (c) => '<path d="M24.2 4.4c2.4 5 5.9 8.2 7.8 12.3 2 4.2 1.9 8.6-.7 11.6-2.3 2.7-5.9 4-9.6 3.2-4.9-1-8-5.2-7.4-10.2.5-3.8 2.6-7 5.4-9.4-.5 3 .4 5.2 2.2 6.2-.2-4.9 1-9.7 2.3-13.7Z" ' +
+        'fill="' + c.main + '" fill-opacity=".2" stroke="' + c.main + '" stroke-width="1.9" stroke-linejoin="round"/>' +
+        '<path d="M25.4 18.6c2.6 3.2 4.2 5.4 4.2 8.1 0 2.8-2 4.8-4.6 4.8s-4.6-2-4.6-4.8c0-2.7 1.6-4.9 4.2-8.1Z" fill="' + c.main + '" opacity=".9"/>' +
+        '<path d="M16.2 37.6h15.6" stroke="' + c.main + '" stroke-width="2.2" stroke-linecap="round" opacity=".85"/>'
+    },
+    frost: {
+      label: '얼음',
+      keys: ['얼음', '빙결', '빙정', '설한', '눈꽃', '눈보라', '서리', '한기', '빙'],
+      draw: (c) => snowflake(c)
+    },
+    bolt: {
+      label: '번개',
+      keys: ['번개', '뇌전', '천둥', '벼락', '뇌명', '뢰'],
+      draw: (c) => '<path d="M27.6 4.6 13.4 26.6h8.4L18 43.4 34.6 20.4h-8.8Z" ' +
+        'fill="' + c.main + '" fill-opacity=".22" stroke="' + c.main + '" stroke-width="2" stroke-linejoin="round"/>'
+    },
+    moon: {
+      label: '달',
+      keys: ['반월', '달빛', '월광', '달'],
+      draw: (c) => '<mask id="RI_MOON" maskUnits="userSpaceOnUse" x="0" y="0" width="48" height="48">' +
+        '<rect width="48" height="48" fill="#fff"/><circle cx="34.5" cy="19.5" r="13.2" fill="#000"/></mask>' +
+        '<circle cx="24" cy="24" r="16" fill="' + c.main + '" mask="url(#RI_MOON)" opacity=".95"/>' +
+        '<path d="M35.5 33.4l1.3 2.9 2.9 1.3-2.9 1.3-1.3 2.9-1.3-2.9-2.9-1.3 2.9-1.3z" fill="' + c.light + '" opacity=".9"/>'
+    },
+    sun: {
+      label: '태양',
+      keys: ['태양', '햇빛', '햇살', '일광', '해'],
+      draw: (c) => {
+        let rays = '';
+        for (let i = 0; i < 8; i++) {
+          const a = (i * Math.PI) / 4;
+          const x1 = 24 + Math.cos(a) * 12.4, y1 = 24 + Math.sin(a) * 12.4;
+          const x2 = 24 + Math.cos(a) * 17, y2 = 24 + Math.sin(a) * 17;
+          rays += '<path d="M' + x1.toFixed(1) + ' ' + y1.toFixed(1) + 'L' + x2.toFixed(1) + ' ' + y2.toFixed(1) + '"/>';
+        }
+        return '<g stroke="' + c.main + '" stroke-width="2.1" stroke-linecap="round">' + rays + '</g>' +
+          '<circle cx="24" cy="24" r="8.4" fill="' + c.main + '" fill-opacity=".22" stroke="' + c.main + '" stroke-width="2"/>' +
+          '<circle cx="24" cy="24" r="3.2" fill="' + c.main + '"/>';
+      }
+    },
+    crown: {
+      label: '왕관',
+      keys: ['왕관', '면류관', '티아라', '관'],
+      draw: (c) => '<path d="M10.6 32.6h26.8l-2.7-16.4-6.5 5.9L24 10.4l-4.2 11.7-6.5-5.9Z" ' +
+        'fill="' + c.main + '" fill-opacity=".22" stroke="' + c.main + '" stroke-width="2" stroke-linejoin="round"/>' +
+        '<path d="M10.6 36.4h26.8" stroke="' + c.main + '" stroke-width="2.4" stroke-linecap="round"/>' +
+        '<circle cx="24" cy="18.6" r="2.1" fill="' + c.light + '"/>' +
+        '<circle cx="16.3" cy="26.6" r="1.6" fill="' + c.light + '" opacity=".85"/>' +
+        '<circle cx="31.7" cy="26.6" r="1.6" fill="' + c.light + '" opacity=".85"/>'
+    },
+    dragon: {
+      label: '용',
+      keys: ['드래곤', '비룡', '와이번', '용의', '용'],
+      draw: (c) => '<path d="M6.4 28.4c3.6-1.2 6.6-3 9.2-5.6l-.6-4.2c0-6.4 5.2-11.4 12.2-11.4h4.6L34 2.6l1.6 6.6 5.8-3.4-1.6 7.2c3.4 1 5.6 3.6 6.4 7.2.6 2.8.2 5.4-1 7.6l1.6 3.6-4.6-.4c-1.4 2.4-3.6 4-6.4 4.6l-2.4 5.6 1.2 4.8-5.2-2.6-3.4 3-2.6-4.6c-4.6-1-8.6-3.4-11.4-7.2l-4.2 1.8 1-4.2-3.8-.6Z" ' +
+        'fill="' + c.main + '" fill-opacity=".22" stroke="' + c.main + '" stroke-width="1.7" stroke-linejoin="round"/>' +
+        '<circle cx="29.4" cy="18.4" r="1.8" fill="' + c.light + '"/>' +
+        '<path d="M15 25.6c3.4-1.4 7-1.6 10.6-.6" stroke="' + c.main + '" stroke-width="1.2" opacity=".65" stroke-linecap="round"/>' +
+        '<path d="M23.8 27.4c2 1.6 4.2 2.4 6.6 2.2" stroke="' + c.main + '" stroke-width="1.1" opacity=".5" stroke-linecap="round"/>'
+    },
+    feather: {
+      label: '깃털',
+      keys: ['깃털', '날깃', '깃'],
+      draw: (c) => '<path d="M35.6 8.4c-13.2 1.6-20.4 8.2-22.4 20.4l-2.6 8.8 8.2-3.2c11.2-3.6 16.2-10.8 16.8-26Z" ' +
+        'fill="' + c.main + '" fill-opacity=".18" stroke="' + c.main + '" stroke-width="1.9" stroke-linejoin="round"/>' +
+        '<path d="M32.4 12.2 14.8 33.2" stroke="' + c.main + '" stroke-width="1.5" stroke-linecap="round"/>' +
+        '<path d="M27.4 15.2 23.8 19.4M30.2 20 25.4 25.4M24 13.4 20.6 17" stroke="' + c.main + '" stroke-width="1.1" opacity=".55" stroke-linecap="round"/>'
+    },
+    skull: {
+      label: '해골',
+      keys: ['해골', '두개골', '骷髅', '骷髅'],
+      draw: (c) => '<path d="M24 7.6c-8.4 0-13.6 5.6-13.6 12.8 0 4 1.6 6.8 4.2 8.5v4.5c0 1 .8 1.8 1.8 1.8h15.2c1 0 1.8-.8 1.8-1.8v-4.5c2.6-1.7 4.2-4.5 4.2-8.5C37.6 13.2 32.4 7.6 24 7.6Z" ' +
+        'fill="' + c.main + '" fill-opacity=".16" stroke="' + c.main + '" stroke-width="1.9" stroke-linejoin="round"/>' +
+        '<ellipse cx="18.4" cy="21.2" rx="4" ry="3.6" fill="' + c.main + '" opacity=".85"/>' +
+        '<ellipse cx="29.6" cy="21.2" rx="4" ry="3.6" fill="' + c.main + '" opacity=".85"/>' +
+        '<path d="M24 25.4l2.3 4.2h-4.6z" fill="' + c.main + '" opacity=".8"/>' +
+        '<path d="M20 35.2v-3.8M24 35.2v-3.8M28 35.2v-3.8" stroke="' + c.main + '" stroke-width="1.4" opacity=".65"/>'
+    },
+    eye: {
+      label: '눈',
+      keys: ['눈동자', '안목', '천리안', '눈'],
+      draw: (c) => '<path d="M5.4 24c6.4-8.4 12.2-11.8 18.6-11.8S36.2 15.6 42.6 24c-6.4 8.4-12.2 11.8-18.6 11.8S11.8 32.4 5.4 24Z" ' +
+        'fill="' + c.main + '" fill-opacity=".12" stroke="' + c.main + '" stroke-width="1.9" stroke-linejoin="round"/>' +
+        '<circle cx="24" cy="24" r="6.6" stroke="' + c.main + '" stroke-width="1.7"/>' +
+        '<circle cx="24" cy="24" r="2.9" fill="' + c.main + '"/>' +
+        '<path d="M24 4.4v3M24 40.6v3M6.6 6.6 8.8 8.8M39.2 39.2l2.2 2.2M41.4 6.6 39.2 8.8M8.8 39.2 6.6 41.4" stroke="' + c.main + '" stroke-width="1.4" opacity=".5" stroke-linecap="round"/>'
+    },
+    rune: {
+      label: '마법진',
+      keys: ['마법진', '마법원', '주문진', '룬문자', '룬', '마법'],
+      draw: (c) => '<circle cx="24" cy="24" r="15.6" stroke="' + c.main + '" stroke-width="1.6" opacity=".9"/>' +
+        '<circle cx="24" cy="24" r="11.2" stroke="' + c.main + '" stroke-width="1.2" stroke-dasharray="1.6 3.2" opacity=".75"/>' +
+        '<path d="M24 10.6 35.6 30.6H12.4Z" stroke="' + c.main + '" stroke-width="1.4" stroke-linejoin="round" opacity=".85"/>' +
+        '<path d="M24 37.4 12.4 17.4h23.2Z" stroke="' + c.main + '" stroke-width="1.2" stroke-linejoin="round" opacity=".45"/>' +
+        '<circle cx="24" cy="24" r="2.4" fill="' + c.main + '"/>'
+    },
+    wave: {
+      label: '물',
+      keys: ['물결', '파도', '물방울', '파랑새', '물'],
+      draw: (c) => '<path d="M24 5.4c3.2 4 5 6.4 5 8.8a5 5 0 0 1-10 0c0-2.4 1.8-4.8 5-8.8Z" ' +
+        'fill="' + c.main + '" fill-opacity=".28" stroke="' + c.main + '" stroke-width="1.6" stroke-linejoin="round"/>' +
+        '<path d="M4.6 27.4c3.2-4.2 6.5-4.2 9.7 0s6.5 4.2 9.7 0 6.5-4.2 9.7 0 6.5 4.2 9.7 0" stroke="' + c.main + '" stroke-width="2.1" stroke-linecap="round" fill="none"/>' +
+        '<path d="M4.6 35c3.2-4.2 6.5-4.2 9.7 0s6.5 4.2 9.7 0 6.5-4.2 9.7 0 6.5 4.2 9.7 0" stroke="' + c.main + '" stroke-width="1.7" stroke-linecap="round" fill="none" opacity=".55"/>'
+    },
+    forest: {
+      label: '숲',
+      keys: ['숲', '수풀', '나무', '고목', '림'],
+      draw: (c) => pine(14.6, 34, 15, 4.4, c) + pine(33.4, 34, 15, 4.4, c) + pine(24, 38.6, 22, 6, c) +
+        '<path d="M24 38.6v2.6M14.6 34v2.6M33.4 34v2.6" stroke="' + c.main + '" stroke-width="1.7" stroke-linecap="round" opacity=".8"/>'
+    },
+    crystal: {
+      label: '수정',
+      keys: ['수정', '크리스탈', '결정', '보석', '원석', '영석'],
+      draw: (c) => '<path d="M24 5.4 33.6 16 24 42.6 14.4 16Z" fill="' + c.main + '" fill-opacity=".22" stroke="' + c.main + '" stroke-width="1.9" stroke-linejoin="round"/>' +
+        '<path d="M14.4 16h19.2M24 5.4 20.6 16 24 42.6M24 5.4 27.4 16 24 42.6" stroke="' + c.main + '" stroke-width="1.2" opacity=".6" stroke-linejoin="round"/>'
+    },
+    star: {
+      label: '별',
+      keys: ['별빛', '성표', '별'],
+      draw: (c) => '<path d="M24 4.4 27.4 20.6 43.6 24 27.4 27.4 24 43.6 20.6 27.4 4.4 24 20.6 20.6Z" ' +
+        'fill="' + c.main + '" fill-opacity=".9" stroke="' + c.main + '" stroke-width="1.1" stroke-linejoin="round"/>' +
+        '<circle cx="24" cy="24" r="2.6" fill="' + c.light + '" opacity=".8"/>'
+    },
+    chain: {
+      label: '사슬',
+      keys: ['쇠사슬', '족쇄', '사슬', '고리'],
+      draw: (c) => '<g stroke="' + c.main + '" stroke-width="2.5" fill="none" stroke-linecap="round">' +
+        '<ellipse cx="24" cy="15.6" rx="8.6" ry="5.2" transform="rotate(-18 24 15.6)"/>' +
+        '<ellipse cx="24" cy="32.4" rx="5.2" ry="8.6" transform="rotate(-18 24 32.4)"/>' +
+        '<ellipse cx="24" cy="24" rx="3.4" ry="5.6" transform="rotate(-18 24 24)"/></g>'
+    },
+    scales: {
+      label: '저울',
+      keys: ['저울', '천칭', '형량', '재판'],
+      draw: (c) => '<path d="M24 8.2v30.4M9.4 13.4h29.2" stroke="' + c.main + '" stroke-width="2.2" stroke-linecap="round"/>' +
+        '<circle cx="24" cy="10.2" r="2.1" fill="' + c.main + '"/>' +
+        '<path d="M9.4 14v6.2M38.6 14v6.2" stroke="' + c.main + '" stroke-width="1.5" opacity=".8"/>' +
+        '<path d="M3.6 20.4h11.6l-5.8 8.2Z" fill="' + c.main + '" fill-opacity=".24" stroke="' + c.main + '" stroke-width="1.4" stroke-linejoin="round"/>' +
+        '<path d="M32.8 20.4h11.6L38.6 28.6Z" fill="' + c.main + '" fill-opacity=".24" stroke="' + c.main + '" stroke-width="1.4" stroke-linejoin="round"/>' +
+        '<path d="M15.6 38.6h16.8" stroke="' + c.main + '" stroke-width="2.4" stroke-linecap="round"/>'
+    },
+    spear: {
+      label: '창',
+      keys: ['창날', '장창', '창', '투창'],
+      draw: (c) => '<path d="M24 4.4 28.8 14.4v3.6h-9.6v-3.6Z" fill="' + c.main + '" fill-opacity=".9" stroke="' + c.main + '" stroke-width="1.2" stroke-linejoin="round"/>' +
+        '<path d="M24 4.4v13.6" stroke="' + c.light + '" stroke-width="1" opacity=".45"/>' +
+        '<path d="M19.2 18.4h9.6" stroke="' + c.main + '" stroke-width="2.2" stroke-linecap="round"/>' +
+        '<path d="M24 20.4v23" stroke="' + c.main + '" stroke-width="2.4" stroke-linecap="round"/>'
+    },
+    bow: {
+      label: '활',
+      keys: ['장궁', '곡궁', '활'],
+      draw: (c) => '<path d="M13.4 5.4c9.2 6.6 13.8 12.2 13.8 18.6S22.6 35.8 13.4 42.6" stroke="' + c.main + '" stroke-width="2.3" stroke-linecap="round" fill="none"/>' +
+        '<path d="M13.4 5.4v37.2" stroke="' + c.main + '" stroke-width="1" opacity=".55" stroke-dasharray="2 2.6"/>' +
+        '<path d="M16.6 24h19.6" stroke="' + c.main + '" stroke-width="1.9" stroke-linecap="round"/>' +
+        '<path d="M36.2 24 31.4 20.6M36.2 24 31.4 27.4" stroke="' + c.main + '" stroke-width="1.9" stroke-linecap="round"/>'
+    },
+    grimoire: {
+      label: '마도서',
+      keys: ['마도서', '고서', '서적', '마서', '책'],
+      draw: (c) => '<path d="M24 13.6c-4.2-2.6-8.8-3.2-14.4-3.2v23.2c5.6 0 10.2.6 14.4 3.2 4.2-2.6 8.8-3.2 14.4-3.2V10.4c-5.6 0-10.2.6-14.4 3.2Z" ' +
+        'fill="' + c.main + '" fill-opacity=".18" stroke="' + c.main + '" stroke-width="1.9" stroke-linejoin="round"/>' +
+        '<path d="M24 13.6v23.2" stroke="' + c.main + '" stroke-width="1.4" opacity=".8"/>' +
+        '<path d="M13.6 16.4c2.6.1 5 .5 7 1.4M13.6 21c2.6.1 5 .5 7 1.4M33.4 16.4c-2.6.1-5 .5-7 1.4" stroke="' + c.main + '" stroke-width="1.2" opacity=".55" stroke-linecap="round"/>' +
+        '<circle cx="24" cy="26.6" r="2.1" fill="' + c.light + '" opacity=".9"/>'
+    },
+    wings: {
+      label: '날개',
+      keys: ['날개', '학익', '익'],
+      draw: (c) => {
+        const one = '<path d="M23.2 34.4c-3.6-8.8-10.6-14.6-19.6-16 3.2 4.2 4.8 8 5.4 12 3.4-1.2 6.2-.8 8.2 1.2-1.8 1-2.9 2.6-3.4 4.8 3.6 1 6.2 3 8.6 6" ' +
+          'fill="' + c.main + '" fill-opacity=".22" stroke="' + c.main + '" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>';
+        return '<g>' + one + '</g><g transform="translate(48 0) scale(-1 1)">' + one + '</g>' +
+          '<path d="M24 22.4v15.2" stroke="' + c.main + '" stroke-width="2" stroke-linecap="round" opacity=".9"/>' +
+          '<circle cx="24" cy="20.4" r="2.2" fill="' + c.main + '"/>';
+      }
+    },
+    candle: {
+      label: '촛불',
+      keys: ['촛불', '촛대', '양초', '초롱', '등불'],
+      draw: (c) => '<path d="M24 5.6c3 3.4 4.7 5.7 4.7 8a4.7 4.7 0 0 1-9.4 0c0-2.3 1.7-4.6 4.7-8Z" ' +
+        'fill="' + c.main + '" fill-opacity=".45" stroke="' + c.main + '" stroke-width="1.5" stroke-linejoin="round"/>' +
+        '<path d="M24 17.4v3.2" stroke="' + c.main + '" stroke-width="1.6" stroke-linecap="round"/>' +
+        '<path d="M19.4 20.6h9.2v15.8h-9.2Z" fill="' + c.main + '" fill-opacity=".22" stroke="' + c.main + '" stroke-width="1.8" stroke-linejoin="round"/>' +
+        '<path d="M19.4 22.6c-1.4 1.4-1.6 4.2-.4 5.4" stroke="' + c.main + '" stroke-width="1.2" opacity=".6" stroke-linecap="round"/>' +
+        '<path d="M15.6 38.4h16.8" stroke="' + c.main + '" stroke-width="2.2" stroke-linecap="round"/>'
+    },
+    phoenix: {
+      label: '불새',
+      keys: ['불사조', '봉황', '피닉스'],
+      draw: (c) => '<path d="M24 8.4c3.6 3.4 5.4 7.4 5.4 11.8 0 3-1 5.4-2.4 7.4 5-2 8.6-6.4 9.6-12.4 2.6 3.6 3.6 7.4 3 11.4-1 6.4-6 11-12.4 11.4v2.4h-6.4V38c-6.4-.4-11.4-5-12.4-11.4-.6-4 .4-7.8 3-11.4 1 6 4.6 10.4 9.6 12.4-1.4-2-2.4-4.4-2.4-7.4 0-4.4 1.8-8.4 5.4-11.8Z" ' +
+        'fill="' + c.main + '" fill-opacity=".24" stroke="' + c.main + '" stroke-width="1.8" stroke-linejoin="round"/>' +
+        '<circle cx="24" cy="18.4" r="2.2" fill="' + c.light + '"/>'
+    }
+  };
+
+  const MOTIF_KEYS = [];
+  Object.keys(MOTIFS).forEach((id) => {
+    (MOTIFS[id].keys || []).forEach((k) => MOTIF_KEYS.push({ k: k, id: id }));
+  });
+  MOTIF_KEYS.sort((a, b) => b.k.length - a.k.length);
+
+  const ELEMENT = { flame: 1, frost: 1, bolt: 1, wave: 1, forest: 1 };
+
+  /* ---------------------------------------------------------
+     외곽 프레임
+     --------------------------------------------------------- */
+  const FRAMES = {
+    runes: {
+      label: '원형 룬',
+      keys: ['원형룬', '원형 룬', '원형', '둥근', '룬틀', '원테'],
+      box: { scale: 0.72, cy: 24.6 },
+      draw: (c) => '<circle cx="24" cy="24" r="21" stroke="' + c.main + '" stroke-width="1.6" opacity=".85" fill="none"/>' +
+        '<circle cx="24" cy="24" r="18.4" stroke="' + c.main + '" stroke-width="1.1" stroke-dasharray="1.8 3.6" opacity=".6" fill="none"/>' +
+        '<circle cx="24" cy="3" r="1.9" fill="' + c.main + '" opacity=".9"/>' +
+        '<circle cx="24" cy="45" r="1.9" fill="' + c.main + '" opacity=".9"/>' +
+        '<circle cx="3" cy="24" r="1.9" fill="' + c.main + '" opacity=".9"/>' +
+        '<circle cx="45" cy="24" r="1.9" fill="' + c.main + '" opacity=".9"/>'
+    },
+    shield: {
+      label: '방패형',
+      keys: ['방패형', '방패 테두리', '방패 프레임', '방패틀'],
+      box: { scale: 0.6, cy: 24.8 },
+      draw: (c) => '<path d="M24 2.6 42.8 9.6v11.9c0 11.4-8 18.7-18.8 22.6C13.2 40.2 5.2 32.9 5.2 21.5V9.6Z" ' +
+        'fill="' + c.main + '" fill-opacity=".07" stroke="' + c.main + '" stroke-width="1.7" stroke-linejoin="round"/>' +
+        '<path d="M24 6.6 38.9 12.2v9.3c0 9.2-6.4 15.2-14.9 18.4C15.5 36.7 9.1 30.7 9.1 21.5v-9.3Z" ' +
+        'stroke="' + c.main + '" stroke-width=".9" opacity=".45" fill="none" stroke-dasharray="2 2.6"/>'
+    },
+    hex: {
+      label: '육각 마법진',
+      keys: ['육각마법진', '육각형', '육각', '마법진 틀'],
+      box: { scale: 0.68, cy: 24.4 },
+      draw: (c) => '<path d="M24 2.6 42.8 13.3v21.4L24 45.4 5.2 34.7V13.3Z" fill="' + c.main + '" fill-opacity=".07" ' +
+        'stroke="' + c.main + '" stroke-width="1.7" stroke-linejoin="round"/>' +
+        '<path d="M24 7 38.2 15.2v17.6L24 41 9.8 32.8V15.2Z" stroke="' + c.main + '" stroke-width="1" ' +
+        'stroke-dasharray="2 3" opacity=".6" fill="none" stroke-linejoin="round"/>' +
+        '<circle cx="24" cy="3.6" r="1.7" fill="' + c.main + '"/>' +
+        '<circle cx="41.6" cy="13.8" r="1.7" fill="' + c.main + '"/>' +
+        '<circle cx="41.6" cy="34.2" r="1.7" fill="' + c.main + '"/>' +
+        '<circle cx="24" cy="44.4" r="1.7" fill="' + c.main + '"/>' +
+        '<circle cx="6.4" cy="34.2" r="1.7" fill="' + c.main + '"/>' +
+        '<circle cx="6.4" cy="13.8" r="1.7" fill="' + c.main + '"/>'
+    }
+  };
+
+  const FRAME_KEYS = [];
+  Object.keys(FRAMES).forEach((id) => {
+    (FRAMES[id].keys || []).forEach((k) => FRAME_KEYS.push({ k: k, id: id }));
+  });
+  FRAME_KEYS.sort((a, b) => b.k.length - a.k.length);
+
+  /* ---------------------------------------------------------
+     기본 아이콘 팩 — 판타지 문장 5종(모두 같은 계열의 인라인 SVG).
+     등급 색(--rank-color)을 그대로 따라가서 목록·배지 어디서나 톤이 맞는다.
+     --------------------------------------------------------- */
+  const PRESETS = [
+    { motif: 'rune', frame: 'hex', label: '아케인 마법진', title: '아케인 마법진' },
+    { motif: 'blade', frame: 'runes', label: '판타지 장검', title: '장검' },
+    { motif: 'shield', frame: 'runes', label: '기사 문장', title: '방패 문장' },
+    { motif: 'flame', frame: 'runes', label: '불꽃', title: '불꽃' },
+    { motif: 'crown', frame: 'runes', label: '왕관', title: '왕관' }
+  ];
+
+  /* ---------------------------------------------------------
+     유틸
+     --------------------------------------------------------- */
+  function rng(seed) {
+    let s = (seed >>> 0) || 1;
+    return function () {
+      s ^= s << 13; s >>>= 0;
+      s ^= s >> 17;
+      s ^= s << 5; s >>>= 0;
+      return s / 4294967296;
+    };
+  }
+
+  function escHtml(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function isValidSvg(markup) {
+    if (!markup || !/^<svg[\s>]/i.test(markup)) return false;
+    if (/<script|on[a-z]+\s*=|javascript:|<foreignobject|<!entity/i.test(markup)) return false;
+    return true;
+  }
+
+  const SVG_TAG = '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">';
+
+  function encodeSvg(markup) {
+    return 'svg:' + encodeURIComponent(markup.replace(/\s+/g, ' ').replace(/>\s+</g, '><').trim());
+  }
+
+  function decodeSvg(icon) {
+    const raw = String(icon || '');
+    if (/^svg:/i.test(raw)) {
+      try { return decodeURIComponent(raw.slice(4)); } catch (e) { return ''; }
+    }
+    return raw;
+  }
+
+  function isCustom(icon) {
+    const raw = String(icon || '').trim();
+    return /^svg:/i.test(raw) || /^data:image\//i.test(raw) || /^<svg[\s>]/i.test(raw);
+  }
+
+  /* ---------------------------------------------------------
+     compose — spec {main, accents[], palette, frame, seed, title}
+     --------------------------------------------------------- */
+  function compose(spec) {
+    const rnd = rng(spec.seed || 1);
+    const pal = spec.palette || GOLD;
+    const c = { main: pal.main, light: pal.light, deep: pal.deep };
+    const frameId = FRAMES[spec.frame] ? spec.frame : 'runes';
+    const frame = FRAMES[frameId];
+    const main = MOTIFS[spec.main] ? spec.main : 'blade';
+    const accents = (spec.accents || []).filter((a) => MOTIFS[a] && a !== main).slice(0, 2);
+
+    let pieces = '';
+    pieces += '<g>' + frame.draw(c) + '</g>';
+
+    // 보조 모티브: 원소는 네 모서리의 작은 결정으로, 물체는 아래쪽 작은 문장으로
+    accents.forEach((id, i) => {
+      if (ELEMENT[id]) {
+        const pts = frameId === 'shield' ? [[14.6, 15.4], [33.4, 15.4], [14.6, 30], [33.4, 30]]
+          : [[12.2, 12.6], [35.8, 12.6], [12.2, 35.4], [35.8, 35.4]];
+        pts.forEach((pt, j) => {
+          const sc = 0.26 + ((i + j) % 2) * 0.04;
+          pieces += '<g opacity=".8" transform="translate(' + pt[0] + ' ' + pt[1] + ') scale(' + sc.toFixed(2) + ') translate(-24 -24)">' +
+            MOTIFS[id].draw(c) + '</g>';
+        });
+      } else {
+        const y = frameId === 'shield' ? 37.4 : 38.6;
+        const sc = frameId === 'shield' ? 0.24 : 0.28;
+        pieces += '<g opacity=".95" transform="translate(24 ' + y + ') scale(' + sc.toFixed(3) + ') translate(-24 -24)">' +
+          MOTIFS[id].draw(c) + '</g>';
+      }
+    });
+
+    // 주 모티브
+    const box = frame.box;
+    const scale = box.scale * (0.95 + rnd() * 0.1);
+    const rot = (rnd() - 0.5) * 3.5;
+    const mirror = rnd() < 0.5 ? -1 : 1;
+    pieces += '<g transform="translate(24 ' + box.cy + ') rotate(' + rot.toFixed(1) + ') ' +
+      'scale(' + (scale * mirror).toFixed(3) + ' ' + scale.toFixed(3) + ') translate(-24 -24)">' +
+      MOTIFS[main].draw(c) + '</g>';
+
+    // 반짝임 한두 개 — 문장이 살아 보이게
+    const sparks = 1 + Math.floor(rnd() * 2);
+    for (let i = 0; i < sparks; i++) {
+      const a = rnd() * Math.PI * 2;
+      const r = 15 + rnd() * 4;
+      const x = 24 + Math.cos(a) * r;
+      const y = 24 + Math.sin(a) * r * 0.9;
+      const s = 1.2 + rnd() * 1.1;
+      pieces += '<g fill="' + c.light + '" opacity="' + (0.5 + rnd() * 0.35).toFixed(2) + '">' + star4(x, y, s) + '</g>';
+    }
+
+    const title = escHtml(String(spec.title || '문장').slice(0, 40));
+    return SVG_TAG + '<title>' + title + '</title>' + pieces + '</svg>';
+  }
+
+  /* ---------------------------------------------------------
+     parse — 설명 → spec
+     --------------------------------------------------------- */
+  const MASK = '\u0000';
+
+  function parse(text, seed) {
+    const raw = String(text == null ? '' : text).trim();
+    let rest = ' ' + raw + ' ';
+    // 마스킹해도 길이가 그대로라, 찾은 자리 i가 곧 원문에서의 자리다.
+    function take(key) {
+      const i = rest.indexOf(key);
+      if (i === -1) return -1;
+      rest = rest.slice(0, i) + new Array(key.length + 1).join(MASK) + rest.slice(i + key.length);
+      return i;
+    }
+
+    let frame = null;
+    FRAME_KEYS.some((f) => {
+      if (take(f.k) > -1) { frame = f.id; return true; }
+      return false;
+    });
+
+    let palette = null;
+    COLOR_KEYS.some((p) => {
+      if (take(p.k) > -1) { palette = p.p; return true; }
+      return false;
+    });
+
+    const hits = [];
+    MOTIF_KEYS.forEach((m) => {
+      if (hits.length >= 4) return;
+      if (hits.some((h) => h.id === m.id)) return;
+      const at = take(m.k);
+      if (at > -1) hits.push({ id: m.id, at: at });
+    });
+    hits.sort((a, b) => a.at - b.at);
+    const found = hits.map((h) => h.id);
+
+    // '마법진'이면 기본 외곽도 육각 마법진이 자연스럽다
+    if (!frame && found.indexOf('rune') > -1) frame = 'hex';
+
+    let main = null;
+    let accents = [];
+    if (found.length === 1) {
+      main = found[0];
+    } else if (found.length > 1) {
+      const objects = found.filter((id) => !ELEMENT[id]);
+      const elements = found.filter((id) => ELEMENT[id]);
+      if (objects.length) {
+        main = objects[objects.length - 1];
+        accents = elements.concat(objects.slice(0, -1));
+      } else {
+        main = found[found.length - 1];
+        accents = found.slice(0, -1);
+      }
+    }
+    if (!main) main = 'blade';
+
+    const spec = {
+      main: main,
+      accents: accents,
+      palette: palette || GOLD,
+      frame: frame || 'runes',
+      seed: (seed >>> 0) || ((Date.now() % 100000) + 7),
+      title: raw || '문장'
+    };
+    return spec;
+  }
+
+  function describe(spec) {
+    const parts = [];
+    if (spec.palette) parts.push(spec.palette.name);
+    parts.push(MOTIFS[spec.main].label);
+    (spec.accents || []).forEach((a) => { if (MOTIFS[a]) parts.push(MOTIFS[a].label); });
+    parts.push(FRAMES[spec.frame || 'runes'].label);
+    return parts.join(' · ');
+  }
+
+  function build(desc, seed) {
+    const spec = parse(desc, seed);
+    const markup = compose(spec);
+    return { value: encodeSvg(markup), markup: markup, spec: spec, summary: describe(spec) };
+  }
+
+  /* ---------------------------------------------------------
+     기본 팩 → 아이콘 문자열 (한 번 만들면 같은 값 — 선택 표시가 안정적)
+     --------------------------------------------------------- */
+  function design(motif, frame, title) {
+    return encodeSvg(compose({
+      main: motif, accents: [], palette: DESIGN,
+      frame: frame || 'runes', seed: 11, title: title || MOTIFS[motif].label
+    }));
+  }
+
+  let packCache = null;
+  function pack() {
+    if (!packCache) {
+      packCache = PRESETS.map((p) => ({ value: design(p.motif, p.frame, p.title), label: p.label, kind: 'design' }));
+    }
+    return packCache.map((x) => ({ value: x.value, label: x.label, kind: x.kind }));
+  }
+
+  /* ---------------------------------------------------------
+     렌더 — 이모지 / 글자 / svg: / data URI 모두 같은 자리에서
+     --------------------------------------------------------- */
+  function render(icon, opts) {
+    const o = opts || {};
+    const cls = 'rank-icon' + (o.cls ? ' ' + o.cls : '');
+    const raw = String(icon == null ? '' : icon).trim();
+
+    if (isCustom(raw)) {
+      if (/^data:image\//i.test(raw)) {
+        return '<img class="' + cls + ' rank-icon--img" src="' + escHtml(raw) + '" alt="">';
+      }
+      const markup = decodeSvg(raw);
+      if (isValidSvg(markup)) {
+        return '<span class="' + cls + ' rank-icon--svg" aria-hidden="true">' + markup + '</span>';
+      }
+    }
+    return '<span class="' + cls + ' rank-icon--text" aria-hidden="true">' + escHtml(raw || '⚔') + '</span>';
+  }
+
+  function name(icon) {
+    const raw = String(icon || '').trim();
+    if (!isCustom(raw)) return raw || '⚔';
+    if (/^data:image\//i.test(raw)) return '이미지 아이콘';
+    const m = decodeSvg(raw).match(/<title>([^<]*)<\/title>/i);
+    return m ? m[1] : '문장 아이콘';
+  }
+
+  function text(icon) {
+    const raw = String(icon || '').trim();
+    if (!isCustom(raw)) return raw || '⚔';
+    return '✦';
+  }
+
+  global.RankIcon = {
+    pack: pack,
+    design: design,
+    build: build,
+    parse: parse,
+    describe: describe,
+    compose: compose,
+    render: render,
+    name: name,
+    text: text,
+    isCustom: isCustom,
+    isValidSvg: isValidSvg,
+    encodeSvg: encodeSvg,
+    PRESETS: PRESETS,
+    MOTIFS: MOTIFS,
+    FRAMES: FRAMES,
+    PALETTES: PALETTES
+  };
+})(window);
+
+</script>
+<script>
 /* ---- js/app.js ---- */
 /* =========================================================
    ARCANUM · app (views, forms, backup, navigation)
@@ -7218,13 +8285,16 @@ main {
   const $$ = U.$$;
   const esc = U.esc;
 
+  // 설정집 분류 — '마법·능력체계'는 v1.4에서 '기타 규칙'으로 합쳤다(능력은 ⚔️ 능력·등급이 맡는다)
   const CATS = {
-    magic: '마법·능력체계',
-    faction: '세력·국가',
+    nation: '국가',
+    faction: '세력',
     race: '종족·몬스터',
     item: '아이템·유물',
     rule: '기타 규칙'
   };
+
+  const FACTION_CATS = ['nation', 'faction'];
 
   // 설정집 안의 '⚔️ 능력·등급' 섹션 (등록된 rankSystems를 보여 준다)
   const RANKS_CAT = '__ranks';
@@ -7243,6 +8313,16 @@ main {
   };
 
   const RANK_COLORS = ['#d4af37', '#c9a24a', '#7fa9d8', '#8fbf8f', '#c9738a', '#a98fd0', '#c98a5a', '#9aa7b0'];
+
+  // 등급 아이콘 — 이모지·글자·인라인 SVG를 같은 자리에서 그린다
+  const RankIcon = global.RankIcon || {
+    render: (v) => esc(v || '⚔️'),
+    text: (v) => v || '⚔️',
+    name: (v) => v || '⚔️',
+    isCustom: () => false,
+    pack: () => [{ value: '⚔️', label: '검' }],
+    build: () => null
+  };
 
   /* ---------------------------------------------------------
      data helpers
@@ -7537,6 +8617,16 @@ main {
   /* ---------------------------------------------------------
      characters
      --------------------------------------------------------- */
+  // 나이 · 키 · 몸무게를 '27세 · 175cm · 63kg' 형태로. 아무것도 없으면 '알 수 없음'
+  function charBodyText(c) {
+    const o = c || {};
+    const bits = [];
+    if (o.ageNum) bits.push(o.ageNum + '세');
+    if (o.heightCm) bits.push(o.heightCm + 'cm');
+    if (o.weightKg) bits.push(o.weightKg + 'kg');
+    return bits.length ? bits.join(' · ') : '알 수 없음';
+  }
+
   function charCard(c, w) {
     const ranks = rankList(w, c);
     return '<button class="char-card" data-char="' + esc(c.id) + '">' +
@@ -7574,7 +8664,7 @@ main {
     const s = rank.system;
     return '<span class="rank-badge' + (o.small ? ' rank-badge--sm' : '') + (rank.primary ? ' is-primary' : '') +
       '" style="--rank-color:' + esc(s.color) + '" aria-label="' + esc(s.name + ' ' + rank.label) + '">' +
-      '<span class="rank-badge__icon">' + esc(s.icon) + '</span>' +
+      '<span class="rank-badge__icon">' + RankIcon.render(s.icon) + '</span>' +
       (o.small ? '' : '<span class="rank-badge__name">' + esc(s.name) + '</span>') +
       '<span class="rank-badge__tier">' + esc(rank.label) + '</span>' +
     '</span>';
@@ -7592,7 +8682,8 @@ main {
         if (!(c.ranks || []).some((r) => r.systemId === sid && Number(r.tier) === tier)) return false;
       }
       if (q) {
-        const hay = [c.name, c.title, c.race, c.gender, c.faction, c.abilities, c.personality, c.notes, c.age].join(' ').toLowerCase();
+        const hay = [c.name, c.title, c.race, c.gender, c.faction, c.abilities, c.personality, c.notes,
+          c.age, c.ageNum, c.heightCm, c.weightKg].join(' ').toLowerCase();
         if (hay.indexOf(q) === -1) return false;
       }
       return true;
@@ -7694,7 +8785,7 @@ main {
       (c.race ? '<span class="mini-chip">' + esc(c.race) + '</span>' : '') +
       (c.gender ? '<span class="mini-chip">' + esc(c.gender) + '</span>' : '') +
       (c.faction ? '<span class="mini-chip">' + esc(c.faction) + '</span>' : '') +
-      (c.age ? '<span class="mini-chip">' + esc(c.age) + '</span>' : '') +
+      '<span class="mini-chip">' + esc(charBodyText(c)) + '</span>' +
     '</div>';
     const ranks = rankList(w, c);
     if (ranks.length) {
@@ -7703,7 +8794,7 @@ main {
     const defs = [];
     if (c.abilities) defs.push(['능력 / 무기', c.abilities]);
     if (c.gender) defs.push(['성별', c.gender]);
-    if (c.age) defs.push(['나이 / 신체', c.age]);
+    defs.push(['나이 · 신체', charBodyText(c)]);
     if (c.race) defs.push(['종족', c.race]);
     if (c.faction) defs.push(['소속', c.faction]);
     if (defs.length) html += '<dl class="def-list">' + defs.map((d) => '<div class="def"><dt>' + esc(d[0]) + '</dt><dd>' + esc(d[1]) + '</dd></div>').join('') + '</dl>';
@@ -7895,7 +8986,7 @@ main {
   /* ---------------------------------------------------------
      AI 일러스트 (인물 세부정보 → 영어 프롬프트 → 초상화)
      --------------------------------------------------------- */
-  function bindIllustrationPanel(hostBody, form, imgField) {
+  function bindIllustrationPanel(hostBody, form, imgField, getExtra) {
     const host = hostBody.querySelector('#char-ai');
     if (!host) return;
 
@@ -7927,9 +9018,24 @@ main {
         const el = form.querySelector('[name="' + n + '"]');
         return el && typeof el.value === 'string' ? el.value.trim() : '';
       };
+      const numOf = (n) => {
+        const v = Number(get(n));
+        return (isFinite(v) && v > 0) ? Math.round(v) : null;
+      };
+      // 종족·소속·능력은 설정집 선택기에서, 성별은 지금 폼에 입력된 값에서 바로 읽는다
+      const extra = (typeof getExtra === 'function' ? getExtra() : null) || {};
       return {
-        name: get('name'), title: get('title'), race: get('race'), faction: get('faction'),
-        age: get('age'), abilities: get('abilities'), notes: get('notes')
+        name: get('name'),
+        title: get('title'),
+        gender: extra.gender || get('gender'),
+        race: extra.race || get('race'),
+        faction: extra.faction || get('faction'),
+        abilities: extra.abilities || get('abilities'),
+        notes: get('notes'),
+        age: get('age'),
+        ageNum: numOf('ageNum'),
+        heightCm: numOf('heightCm'),
+        weightKg: numOf('weightKg')
       };
     }
 
@@ -8036,6 +9142,18 @@ main {
     return { body, form, sheet, submit };
   }
 
+  /* 예전 '마법·능력체계'에서 온 특기 이름 — 지우지 않고 보여만 준다(설정집 기타 규칙에 보관) */
+  function legacyAbilityRow(w, c) {
+    const ids = (c && c.abilityIds) || [];
+    if (!ids.length) return '';
+    const names = ids.map((id) => (w.lore || []).find((l) => l.id === id)).filter(Boolean).map((l) => l.title);
+    if (!names.length) return '';
+    return '<div class="legacy-traits mt-8"><span class="legacy-traits__label">특기</span>' +
+      names.slice(0, 6).map((n) => '<span class="mini-chip">' + esc(n) + '</span>').join('') +
+      (names.length > 6 ? '<span class="mini-chip">+' + (names.length - 6) + '</span>' : '') +
+      '<span class="legacy-traits__note">설정집 · 기타 규칙에 보관</span></div>';
+  }
+
   function openCharacterForm(id) {
     const w = W();
     const c = id ? w.characters.find((x) => x.id === id) : null;
@@ -8046,32 +9164,39 @@ main {
       '</div>', '✨ 버튼으로 판타지 이름을 바로 채울 수 있어요.', true) +
       U.field('칭호 / 별명', U.textInput('title', c ? c.title : '', { placeholder: '예: 서리검의 계승자' })) +
       '<div class="field"><span class="field__label">종족</span><div id="char-race"></div></div>' +
-      '<div class="field"><span class="field__label">소속 / 세력</span><div id="char-faction"></div></div>' +
-      U.field('나이 / 신체', U.textInput('age', c ? c.age : '', { placeholder: '27세 · 182cm' })) +
+      '<div class="field"><span class="field__label">소속 / 세력 <span class="muted" style="font-size:10px">설정집 · 국가·세력</span></span><div id="char-faction"></div></div>' +
+      '<div class="field"><span class="field__label">나이 · 신체</span>' +
+        '<div class="stat-grid">' +
+          '<label class="stat"><span>나이 <b>(세)</b></span><input class="input" type="number" name="ageNum" inputmode="numeric" min="0" max="9999" placeholder="27" value="' + (c && c.ageNum ? c.ageNum : '') + '"></label>' +
+          '<label class="stat"><span>키 <b>(cm)</b></span><input class="input" type="number" name="heightCm" inputmode="numeric" min="0" max="300" placeholder="175" value="' + (c && c.heightCm ? c.heightCm : '') + '"></label>' +
+          '<label class="stat"><span>몸무게 <b>(kg)</b></span><input class="input" type="number" name="weightKg" inputmode="numeric" min="0" max="500" placeholder="63" value="' + (c && c.weightKg ? c.weightKg : '') + '"></label>' +
+        '</div>' +
+        '<span class="field-hint">비워 두면 <b>알 수 없음</b>으로 표시돼요. 나이·키·몸무게는 AI 초상화의 체형에도 반영됩니다.</span>' +
+      '</div>' +
       '<div class="field"><span class="field__label">성별</span>' +
         '<div class="chip-row gender-picks">' +
-          ['남성', '여성', '기타/미상'].map((g) =>
+          ['남성', '여성', '기타/미상', '알 수 없음'].map((g) =>
             '<button type="button" class="chip' + (c && c.gender === g ? ' chip--active' : '') + '" data-gender="' + esc(g) + '">' + esc(g) + '</button>').join('') +
         '</div>' +
         '<input class="input mt-8" name="gender" id="gender-input" placeholder="직접 입력 (예: 남성, 여성, 논바이너리)" value="' + esc(c && c.gender ? c.gender : '') + '">' +
         '<span class="field-hint">빠른 선택을 누르면 채워지고, 다른 표현은 직접 고쳐 쓸 수 있어요. AI 초상화에도 반영돼요.</span>' +
       '</div>' +
-      '<div class="field"><span class="field__label">능력 <span class="muted" style="font-size:10px">설정집 · 마법·능력체계</span></span>' +
-        '<div id="char-abils"></div></div>' +
+      '<div class="field"><span class="field__label">능력 <span class="muted" style="font-size:10px">설정집 · ⚔️ 능력·등급</span></span>' +
+        '<div id="char-ranks"></div>' +
+        '<button type="button" class="lore-add mt-8" id="char-rank-add"><svg><use href="#i-plus"/></svg>설정집에 새 능력 추가</button>' +
+        legacyAbilityRow(w, c) +
+        '<span class="field-hint">설정집의 <b>⚔️ 능력·등급</b> 체계와 단계를 그대로 골라요. 능력이 여러 개면 [능력 추가]로 행을 더하고, 비워 두면 ‘없음’이에요.</span>' +
+      '</div>' +
       '<div class="field"><span class="field__label">무기 / 장비 <span class="muted" style="font-size:10px">설정집 · 아이템·유물</span></span>' +
         '<div id="char-weaps"></div></div>' +
       U.field('성격 · 배경 메모', U.textArea('notes', c ? c.notes : '', '어떤 사람인지, 무엇을 숨기고 있는지…', 5)) +
-      '<div class="field"><span class="field__label">강함 / 등급</span>' +
-        '<div id="char-ranks"></div>' +
-        '<span class="field-hint">체계와 단계를 한 줄에서 고르고, 능력이 여러 개면 [능력 추가]로 행을 더해요. 아무것도 고르지 않으면 ‘없음’이에요.</span>' +
-      '</div>' +
       '<div class="field"><span class="field__label">대표 이미지</span><div id="char-img"></div>' +
       '<span class="field-hint">폰 사진첩에서 고르면 자동으로 줄여서 저장해요.</span></div>' +
       '<div class="ai-art" id="char-ai"></div>' +
       (c ? '<button type="button" class="btn btn--danger btn--block mt-14" id="char-delete"><svg><use href="#i-trash"/></svg>인물 삭제</button>' : '');
 
     let img = null;
-    let racePick = null, factionPick = null, abilityPick = null, weaponPick = null;
+    let racePick = null, factionPick = null, weaponPick = null;
     const rankSel = new Map();
     (c && c.ranks ? c.ranks : []).forEach((r) => rankSel.set(r.systemId, Number(r.tier)));
 
@@ -8084,7 +9209,25 @@ main {
       onReady: ({ body, form, sheet }) => {
         img = buildImageField(c ? c.image : null, { maxDim: 900, label: '초상 사진 올리기' });
         body.querySelector('#char-img').appendChild(img.el);
-        bindIllustrationPanel(body, form, img);
+        bindIllustrationPanel(body, form, img, () => {
+          const byId = new Map((w.lore || []).map((l) => [l.id, l]));
+          const raceItem = byId.get((racePick && racePick.ids()[0]) || '');
+          const facItem = byId.get((factionPick && factionPick.ids()[0]) || '');
+          const abl = [];
+          (w.rankSystems || []).forEach((sys) => {
+            const t = rankSel.get(sys.id);
+            if (typeof t === 'number' && t >= 0 && t < sys.tiers.length) abl.push(sys.name + ' ' + sys.tiers[t]);
+          });
+          const legacy = (c && (c.abilityIds || [])).map((id) => (byId.get(id) || {}).title).filter(Boolean);
+          const gi = form.querySelector('#gender-input');
+          const chip = form.querySelector('.gender-picks .chip--active');
+          return {
+            gender: (gi && gi.value.trim()) || (chip ? chip.textContent.trim() : ''),
+            race: raceItem ? raceItem.title : (racePick ? racePick.legacy() : ''),
+            faction: facItem ? facItem.title : (factionPick ? factionPick.legacy() : ''),
+            abilities: abl.concat(legacy).join(' · ')
+          };
+        });
 
         const rkHost = body.querySelector('#char-ranks');
         if (rkHost) {
@@ -8093,6 +9236,11 @@ main {
             .map((r) => ({ systemId: r.systemId, tier: Number(r.tier) || 0 }));
           const paintRanks = () => drawRankPicker(rkHost, w, rkRows, rankSel, () => openRankSystems(paintRanks));
           paintRanks();
+          const addSys = body.querySelector('#char-rank-add');
+          if (addSys) addSys.addEventListener('click', () => {
+            U.haptic(6);
+            openRankForm(null, paintRanks);
+          });
         }
 
         // 성별 빠른 선택 칩 + 직접 입력
@@ -8103,14 +9251,9 @@ main {
           legacy: c && !c.raceId ? (c.race || '') : ''
         });
         factionPick = buildLorePicker(body.querySelector('#char-faction'), w, {
-          category: 'faction', multi: false,
+          category: 'faction', categories: FACTION_CATS, multi: false,
           ids: c && c.factionId ? [c.factionId] : [],
           legacy: c && !c.factionId ? (c.faction || '') : ''
-        });
-        abilityPick = buildLorePicker(body.querySelector('#char-abils'), w, {
-          category: 'magic', multi: true,
-          ids: c ? (c.abilityIds || []) : [],
-          legacy: c ? (c.abilityText || '') : ''
         });
         weaponPick = buildLorePicker(body.querySelector('#char-weaps'), w, {
           category: 'item', multi: true,
@@ -8170,16 +9313,23 @@ main {
           U.toast('이름을 먼저 적어 주세요', { icon: 'i-x' });
           return false;
         }
+        const numOf = (k, max) => {
+          const v = Number(String(fd.get(k) || '').trim());
+          return (isFinite(v) && v > 0) ? Math.min(max, Math.round(v)) : null;
+        };
         const data = {
           name: name,
           title: String(fd.get('title') || '').trim(),
           gender: String(fd.get('gender') || '').trim().slice(0, 20),
-          age: String(fd.get('age') || '').trim(),
+          ageNum: numOf('ageNum', 9999),
+          heightCm: numOf('heightCm', 300),
+          weightKg: numOf('weightKg', 500),
           notes: String(fd.get('notes') || '').trim(),
           image: img.get()
         };
+        data.age = charBodyText(data);   // 예전 필드(age 문자열)도 함께 유지 — 백업·복원 호환
         // 종족 · 세력 · 능력 · 무기는 설정집 항목 id로 저장하고, 표시용 이름을 함께 접어 둔다
-        if (!racePick || !factionPick || !abilityPick || !weaponPick) {
+        if (!racePick || !factionPick || !weaponPick) {
           U.toast('설정집 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.', { icon: 'i-x' });
           return false;
         }
@@ -8190,11 +9340,15 @@ main {
         data.race = raceItem ? raceItem.title : racePick.legacy();
         data.factionId = factionItem ? factionItem.id : null;
         data.faction = factionItem ? factionItem.title : factionPick.legacy();
-        data.abilityIds = abilityPick.ids().filter((x) => loreById.has(x));
+        // 능력은 이제 ⚔️ 능력·등급(체계+단계)이 맡는다.
+        // 예전 설정집 '마법·능력체계'에서 온 abilityIds는 '기타 규칙'에 그대로 두고 이름만 보존한다.
+        data.abilityIds = (c && Array.isArray(c.abilityIds)) ? c.abilityIds.slice() : [];
         data.weaponIds = weaponPick.ids().filter((x) => loreById.has(x));
-        data.abilityText = [abilityPick.legacy(), weaponPick.legacy()].filter(Boolean).join(' · ');
-        const abilNames = data.abilityIds.map((x) => loreById.get(x).title)
+        const legacyText = c ? (c.abilityText || '') : '';
+        const abilNames = data.abilityIds.map((x) => (loreById.get(x) || {}).title).filter(Boolean)
           .concat(data.weaponIds.map((x) => loreById.get(x).title));
+        const weaponLegacy = weaponPick.legacy();
+        data.abilityText = [legacyText, weaponLegacy].filter(Boolean).join(' · ');
         data.abilities = abilNames.concat(data.abilityText ? [data.abilityText] : []).join(' · ');
         const ranks = [];
         (w.rankSystems || []).forEach((s) => {
@@ -8220,7 +9374,8 @@ main {
      --------------------------------------------------------- */
   function factionItems() {
     const w = W();
-    return ((w && w.lore) || []).filter((l) => l.category === 'faction');
+    // 세력 관계도 · 소속 선택은 '국가'와 '세력'을 함께 다룬다
+    return ((w && w.lore) || []).filter((l) => FACTION_CATS.indexOf(l.category) > -1);
   }
 
   function renderRelations() {
@@ -8238,7 +9393,7 @@ main {
         : w.characters.length + '명 · ' + w.relations.length + '관계') + '</span></div>' +
       '<div class="segmented" role="tablist">' +
         '<button type="button" class="seg' + (mode === 'char' ? ' is-on' : '') + '" data-relmode="char">인물 관계도</button>' +
-        '<button type="button" class="seg' + (mode === 'faction' ? ' is-on' : '') + '" data-relmode="faction">세력 관계도</button>' +
+        '<button type="button" class="seg' + (mode === 'faction' ? ' is-on' : '') + '" data-relmode="faction">국가 · 세력 관계도</button>' +
       '</div>' +
       '<div class="graph-toolbar">' +
         '<button type="button" class="gbtn" data-graph="link"><svg><use href="#i-plus"/></svg>관계 추가</button>' +
@@ -8317,10 +9472,24 @@ main {
     if (!l) return;
     const rels = (w.factionRelations || []).filter((r) => r.a === id || r.b === id);
     const members = w.characters.filter((c) => c.factionId === id);
+    const isNation = l.category === 'nation';
+    const races = loreRaceNames(w, l);
+    const natName = isNation ? '' : loreNationName(w, l);
+    const subFactions = isNation ? (w.lore || []).filter((x) => x.category === 'faction' && x.nationId === id) : [];
+    const regions = (w.map.markers || []).filter((m) => m.factionId === id);
     const body = document.createElement('div');
     body.innerHTML =
       (l.body ? '<p class="prose">' + esc(l.body) + '</p>' : '') +
       ((l.tags || []).length ? '<div class="tag-row">' + l.tags.map((t) => '<span class="mini-chip">#' + esc(t) + '</span>').join('') + '</div>' : '') +
+      (races.length ? '<div class="label-row"><span>주 종족</span><span>' + races.length + '</span></div><div class="mini-chips">' +
+        races.map((r) => '<span class="mini-chip mini-chip--race">' + esc(r) + '</span>').join('') + '</div>' : '') +
+      (!isNation ? '<div class="label-row"><span>소속 국가</span></div><div class="mini-chips">' +
+        (natName ? '<button class="mini-chip mini-chip--faction" data-open-faction="' + esc(l.nationId) + '">⚑ ' + esc(natName) + '</button>'
+          : '<span class="mini-chip">무소속</span>') + '</div>' : '') +
+      (subFactions.length ? '<div class="label-row"><span>소속 세력</span><span>' + subFactions.length + '</span></div><div class="mini-chips">' +
+        subFactions.map((f) => '<button class="mini-chip" data-open-faction="' + esc(f.id) + '">' + esc(f.title) + '</button>').join('') + '</div>' : '') +
+      (regions.length ? '<div class="label-row"><span>지배 지역</span><span>' + regions.length + '</span></div><div class="mini-chips">' +
+        regions.map((m) => '<button class="mini-chip mini-chip--region" data-open-region="' + esc(m.id) + '">' + esc(m.name) + '</button>').join('') + '</div>' : '') +
       '<div class="label-row"><span>관계</span><span>' + rels.length + '</span></div>' +
       (rels.length ? '<div class="list">' + rels.map((r) => {
         const other = r.a === id ? r.b : r.a;
@@ -8348,7 +9517,9 @@ main {
       const rel = e.target.closest('[data-frel]');
       if (rel) { sheet.close(); setTimeout(() => openFactionRelForm(null, null, rel.getAttribute('data-frel')), 160); return; }
       const ch = e.target.closest('[data-open-char]');
-      if (ch) { sheet.close(); setTimeout(() => openCharacterDetail(ch.getAttribute('data-open-char')), 160); }
+      if (ch) { sheet.close(); setTimeout(() => openCharacterDetail(ch.getAttribute('data-open-char')), 160); return; }
+      const rg = e.target.closest('[data-open-region]');
+      if (rg) { sheet.close(); setTimeout(() => openRegionDetail(rg.getAttribute('data-open-region')), 160); }
     });
   }
 
@@ -8842,16 +10013,26 @@ main {
 
   function regionDetailBody(w, m) {
     const kind = MapView.KINDS[m.kind] || MapView.KINDS.city;
+    const facItem = m.factionId ? (w.lore || []).find((x) => x.id === m.factionId && (x.category === 'faction' || x.category === 'nation')) : null;
+    const facName = facItem ? facItem.title : (m.faction || '');
     const defs = [];
     if (m.climate) defs.push(['기후', m.climate]);
-    if (m.faction) defs.push(['지배 세력', m.faction]);
     if (m.resources) defs.push(['특산물', m.resources]);
     if (m.danger) defs.push(['위험 요소', m.danger]);
     const events = w.events.filter((e) => (e.locations || []).indexOf(m.id) > -1);
     const eps = w.episodes.filter((e) => (e.locations || []).indexOf(m.id) > -1);
-    let html = '<div class="mini-chips" style="margin-bottom:12px"><span class="mini-chip">' + esc(kind.label) + '</span></div>';
+    let html = '<div class="mini-chips" style="margin-bottom:12px"><span class="mini-chip">' + esc(kind.label) + '</span>' +
+      (facItem
+        ? '<button class="mini-chip mini-chip--faction" data-open-faction="' + esc(facItem.id) + '">⚑ ' + esc(facName) + '</button>'
+        : (facName ? '<span class="mini-chip">⚑ ' + esc(facName) + '</span>' : '')) +
+      '</div>';
     if (defs.length) html += '<dl class="def-list">' + defs.map((d) => '<div class="def"><dt>' + esc(d[0]) + '</dt><dd>' + esc(d[1]) + '</dd></div>').join('') + '</dl>';
     if (m.notes) html += '<div class="divider"></div><p class="prose">' + esc(m.notes) + '</p>';
+    const stored = (w.lore || []).filter((l) => l.category === 'item' && l.locationId === m.id);
+    if (stored.length) {
+      html += '<div class="divider"></div><div class="label-row"><span>보관 유물</span><span>' + stored.length + '</span></div>' +
+        '<div class="mini-chips">' + stored.map((l) => '<span class="mini-chip">' + esc(l.title) + '</span>').join('') + '</div>';
+    }
     if (events.length || eps.length) {
       html += '<div class="divider"></div><div class="label-row"><span>이곳에서</span></div><div class="list">';
       events.forEach((e) => { html += '<div class="row-card"><span class="row-card__badge" style="font-size:10px">' + esc(e.era || '') + '</span><span class="row-card__body"><span class="row-card__title">' + esc(e.title) + '</span><span class="row-card__meta">' + esc(String(e.year || 0)) + '년</span></span></div>'; });
@@ -8867,6 +10048,12 @@ main {
     if (!m) return;
     const body = document.createElement('div');
     body.innerHTML = regionDetailBody(w, m);
+    body.addEventListener('click', (e) => {
+      const fac = e.target.closest('[data-open-faction]');
+      if (!fac) return;
+      sheet.close();
+      setTimeout(() => openFactionDetail(fac.getAttribute('data-open-faction')), 160);
+    });
     const sheet = U.openSheet({
       eyebrow: 'REGION',
       title: m.name,
@@ -8898,6 +10085,7 @@ main {
     const m = id ? w.map.markers.find((z) => z.id === id) : null;
     const kindItems = Object.keys(MapView.KINDS).map((k) => ({ value: k, label: MapView.KINDS[k].label }));
     let kind = m ? m.kind : 'city';
+    let factionPick = null;
     let px = m ? m.x : (typeof x === 'number' ? x : 50);
     let py = m ? m.y : (typeof y === 'number' ? y : 50);
 
@@ -8911,7 +10099,10 @@ main {
       '</div>' +
       '<div class="field"><span class="field__label">유형</span><div id="pin-kind"></div></div>' +
       U.field('기후', U.textInput('climate', m ? m.climate : '', { placeholder: '안개와 소금바람' })) +
-      U.field('지배 세력', U.textInput('faction', m ? m.faction : '', { placeholder: '서약 기사단 · 무소속 상단' })) +
+      '<div class="field"><span class="field__label">지배 세력 <span class="muted" style="font-size:10px">설정집 · 세력·국가</span></span>' +
+        '<div id="pin-faction"></div>' +
+        '<span class="field-hint">설정집의 세력을 고르면 이 지역이 그 세력의 지배지로 함께 표시돼요.</span>' +
+      '</div>' +
       U.field('주요 특산물', U.textInput('resources', m ? m.resources : '', { placeholder: '소금, 밀수품, 먼 바다의 소문' })) +
       U.field('위험 요소', U.textInput('danger', m ? m.danger : '', { placeholder: '모래 아래의 옛 성벽…' })) +
       U.field('메모', U.textArea('notes', m ? m.notes : '', '이곳의 분위기, 사건, 숨은 것들…', 4)) +
@@ -8926,6 +10117,11 @@ main {
       onReady: ({ body, form }) => {
         const picker = U.chipPicker(kindItems, kind, { multi: false, onChange: (v) => { kind = v; } });
         body.querySelector('#pin-kind').appendChild(picker);
+        factionPick = buildLorePicker(body.querySelector('#pin-faction'), w, {
+          category: 'faction', categories: FACTION_CATS, multi: false,
+          ids: (m && m.factionId) ? [m.factionId] : [],
+          legacy: (m && !m.factionId) ? (m.faction || '') : ''
+        });
         body.querySelector('#gen-place').addEventListener('click', () => {
           Generator.open({
             mode: 'place',
@@ -8940,10 +10136,13 @@ main {
       onSubmit: (fd) => {
         const name = String(fd.get('name') || '').trim();
         if (!name) { U.toast('지역명을 적어 주세요', { icon: 'i-x' }); return false; }
+        const facId = (factionPick && factionPick.ids()[0]) || null;
+        const facItem = facId ? (w.lore || []).find((x) => x.id === facId) : null;
         const data = {
           name: name, kind: kind, x: px, y: py,
           climate: String(fd.get('climate') || '').trim(),
-          faction: String(fd.get('faction') || '').trim(),
+          factionId: facItem ? facItem.id : null,
+          faction: facItem ? facItem.title : ((factionPick && factionPick.legacy()) || '').trim(),
           resources: String(fd.get('resources') || '').trim(),
           danger: String(fd.get('danger') || '').trim(),
           notes: String(fd.get('notes') || '').trim()
@@ -8985,7 +10184,8 @@ main {
 
     host.querySelector('[data-new-lore]').addEventListener('click', () => {
       if (App.filters.loreCat === RANKS_CAT) openRankForm(null, () => refreshView());
-      else openLoreForm(null);
+      // 지금 보고 있는 분류로 바로 새 항목을 연다(세력 탭 → 세력 폼)
+      else openLoreForm(null, { category: App.filters.loreCat === '전체' ? 'rule' : App.filters.loreCat });
     });
     host.querySelector('#lore-search').addEventListener('input', (e) => {
       App.filters.loreQuery = e.target.value;
@@ -9007,7 +10207,13 @@ main {
         return;
       }
       const edit = e.target.closest('[data-lore-edit]');
-      if (edit) openLoreForm(edit.dataset.loreEdit);
+      if (edit) { openLoreForm(edit.dataset.loreEdit); return; }
+      const oc = e.target.closest('[data-open-char]');
+      if (oc) { openCharacterDetail(oc.getAttribute('data-open-char')); return; }
+      const or = e.target.closest('[data-open-region]');
+      if (or) { openRegionDetail(or.getAttribute('data-open-region')); return; }
+      const of = e.target.closest('[data-open-faction]');
+      if (of) { openFactionDetail(of.getAttribute('data-open-faction')); }
     }));
   }
 
@@ -9028,7 +10234,7 @@ main {
       (list.length
         ? '<div class="rank-sys-list">' + list.map((s) =>
             '<button type="button" class="rank-sys" data-rank-edit="' + esc(s.id) + '">' +
-              '<span class="rank-sys__icon" style="--rank-color:' + esc(s.color) + '">' + esc(s.icon) + '</span>' +
+              '<span class="rank-sys__icon" style="--rank-color:' + esc(s.color) + '">' + RankIcon.render(s.icon) + '</span>' +
               '<span class="rank-sys__body">' +
                 '<span class="rank-sys__name">' + esc(s.name) + '</span>' +
                 (s.description ? '<span class="rank-sys__desc">' + esc(s.description) + '</span>' : '') +
@@ -9052,22 +10258,59 @@ main {
     });
   }
 
+  /* 인물 · 지역처럼 설정집 밖 목록을 칩으로 고르는 작은 선택기 */
+  function buildChipSelect(host, list, opts) {
+    const o = opts || {};
+    const noneLabel = o.noneLabel || '없음';
+    let ids = Array.isArray(o.ids) ? o.ids.slice() : [];
+
+    function draw() {
+      host.innerHTML = '<div class="chip-row">' +
+        '<button type="button" class="chip chip--small' + (!ids.length ? ' chip--active' : '') + '" data-pick="__none">' + esc(noneLabel) + '</button>' +
+        (list || []).map((it) => '<button type="button" class="chip chip--small' + (ids.indexOf(it.id) > -1 ? ' chip--active' : '') +
+          '" data-pick="' + esc(it.id) + '">' + esc(it.title) + '</button>').join('') +
+        '</div>' +
+        (!(list || []).length ? '<span class="field-hint">아직 고를 항목이 없어요.</span>' : '');
+      host.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => {
+        const v = b.getAttribute('data-pick');
+        if (v === '__none') ids = [];
+        else if (o.multi) {
+          const i = ids.indexOf(v);
+          if (i > -1) ids.splice(i, 1); else ids.push(v);
+        } else {
+          ids = ids[0] === v ? [] : [v];
+        }
+        U.haptic(6);
+        draw();
+        if (o.onChange) o.onChange(ids.slice());
+      }));
+    }
+    draw();
+    return { ids: () => ids.slice(), redraw: draw };
+  }
+
   /* 설정집 항목 고르기 (종족·세력·능력·무기) — 설정집에 있는 것만 고를 수 있다 */
   function buildLorePicker(host, w, opts) {
     const o = opts || {};
     const category = o.category;
+    const cats = (Array.isArray(o.categories) && o.categories.length) ? o.categories : [category];
+    const noneLabel = o.noneLabel || '없음';
     let ids = Array.isArray(o.ids) ? o.ids.slice() : [];
     const legacy = o.legacy || '';
     let legacyOn = !!legacy && !ids.length;
 
-    function items() { return (w.lore || []).filter((l) => l.category === category); }
+    function items() {
+      const list = (w.lore || []).filter((l) => cats.indexOf(l.category) > -1);
+      // 국가를 먼저, 그다음 세력
+      return list.sort((a, b) => cats.indexOf(a.category) - cats.indexOf(b.category));
+    }
 
     function draw() {
       const list = items();
       const short = legacy.length > 14 ? legacy.slice(0, 14) + '…' : legacy;
       host.innerHTML =
         '<div class="chip-row lore-pick">' +
-          '<button type="button" class="chip chip--small lore-pick__none' + (!ids.length && !legacyOn ? ' chip--active' : '') + '" data-lore-pick="__none">없음</button>' +
+          '<button type="button" class="chip chip--small lore-pick__none' + (!ids.length && !legacyOn ? ' chip--active' : '') + '" data-lore-pick="__none">' + esc(noneLabel) + '</button>' +
           list.map((l) => '<button type="button" class="chip chip--small' + (ids.indexOf(l.id) > -1 ? ' chip--active' : '') +
             '" data-lore-pick="' + esc(l.id) + '">' + esc(l.title) + '</button>').join('') +
           (legacy ? '<button type="button" class="chip chip--small' + (legacyOn ? ' chip--active' : '') +
@@ -9119,6 +10362,31 @@ main {
     };
   }
 
+  /* 국가의 주 종족 / 세력의 소속 국가 / 유물의 소지 인물·보관 지역 */
+  function loreNationName(w, l) {
+    const n = (w.lore || []).find((x) => x.id === l.nationId);
+    return n ? n.title : '';
+  }
+
+  function itemHolders(w, l) {
+    const ids = new Set();
+    if (l.holderCharId) ids.add(l.holderCharId);
+    (w.characters || []).forEach((c) => { if ((c.weaponIds || []).indexOf(l.id) > -1) ids.add(c.id); });
+    return (w.characters || []).filter((c) => ids.has(c.id));
+  }
+
+  function itemLocation(w, l) {
+    return (w.map.markers || []).find((m) => m.id === l.locationId) || null;
+  }
+
+  /* 세력의 주 종족 이름들 (설정집 raceIds → 종족 제목) */
+  function loreRaceNames(w, l) {
+    return ((l && l.raceIds) || []).map((id) => {
+      const r = (w.lore || []).find((x) => x.id === id);
+      return r ? r.title : '';
+    }).filter(Boolean);
+  }
+
   function drawLoreList() {
     const w = W();
     const host = $('#lore-list');
@@ -9133,23 +10401,42 @@ main {
     if (!list.length) {
       host.innerHTML = w.lore.length
         ? '<div class="empty"><div class="empty__sigil">✦</div><p>조건에 맞는 설정이 없어요.</p></div>'
-        : emptyBlock('설정집이 비어 있어요', '마법 체계, 세력, 유물… 세계의 규칙을 적어 두세요.', 'add-lore', '첫 설정 쓰기');
+        : emptyBlock('설정집이 비어 있어요', '국가, 세력, 종족, 유물… 세계의 규칙을 적어 두세요.', 'add-lore', '첫 설정 쓰기');
       host.querySelectorAll('[data-act="add-lore"]').forEach((b) => b.addEventListener('click', () => openLoreForm(null)));
       return;
     }
     host.innerHTML = list.map((l) => {
       const open = !!App.openLore[l.id];
+      const raceNames = l.category === 'nation' ? loreRaceNames(w, l) : [];
+      const natName = l.category === 'faction' ? loreNationName(w, l) : '';
+      const holders = l.category === 'item' ? itemHolders(w, l) : [];
+      const loc = l.category === 'item' ? itemLocation(w, l) : null;
+      const metaLine = raceNames.length ? raceNames.join(' · ')
+        : (natName ? '⚑ ' + (natName || '무소속')
+          : (l.category === 'item'
+            ? [(holders.length ? holders.map((c) => c.name).join(', ') : '무소속'), loc ? loc.name : ''].filter(Boolean).join(' · ')
+            : ''));
       return '<article class="lore-card' + (open ? ' is-open' : '') + '" data-lore="' + esc(l.id) + '">' +
         '<button type="button" class="lore-card__head" data-lore-head="' + esc(l.id) + '">' +
           '<span style="flex:1;min-width:0">' +
             '<span class="lore-card__cat">' + esc(CATS[l.category] || '기타') + '</span>' +
             '<span class="lore-card__title" style="display:block">' + esc(l.title) + '</span>' +
+            (metaLine ? '<span class="lore-card__races">' + esc(metaLine) + '</span>' : '') +
           '</span>' +
           '<span class="lore-card__toggle"><svg><use href="#i-chev-down"/></svg></span>' +
         '</button>' +
         (open
           ? '<div class="lore-card__body">' + esc(l.body) +
             ((l.tags || []).length ? '<div class="tag-row">' + l.tags.map((t) => '<span class="mini-chip">#' + esc(t) + '</span>').join('') + '</div>' : '') +
+            (l.category === 'nation' && raceNames.length ? '<div class="label-row"><span>주 종족</span></div><div class="mini-chips">' +
+              raceNames.map((r) => '<span class="mini-chip mini-chip--race">' + esc(r) + '</span>').join('') + '</div>' : '') +
+            (l.category === 'faction' ? '<div class="label-row"><span>소속 국가</span></div><div class="mini-chips">' +
+              (natName ? '<button class="mini-chip mini-chip--faction" data-open-faction="' + esc(l.nationId) + '">⚑ ' + esc(natName) + '</button>'
+                : '<span class="mini-chip">무소속</span>') + '</div>' : '') +
+            (l.category === 'item' ? '<div class="label-row"><span>소지 · 보관</span></div><div class="mini-chips">' +
+              (holders.length ? holders.map((c) => '<button class="mini-chip" data-open-char="' + esc(c.id) + '">' + esc(c.name) + '</button>').join('')
+                : '<span class="mini-chip">무소속</span>') +
+              (loc ? '<button class="mini-chip" data-open-region="' + esc(loc.id) + '">📍 ' + esc(loc.name) + '</button>' : '') + '</div>' : '') +
             '<div class="btn-row mt-14"><button class="btn btn--sm" data-lore-edit="' + esc(l.id) + '"><svg><use href="#i-edit"/></svg>수정</button></div>' +
             '</div>'
           : '') +
@@ -9161,11 +10448,35 @@ main {
     const o = opts || {};
     const w = W();
     const l = id ? w.lore.find((x) => x.id === id) : null;
-    let category = l ? l.category : (o.category || 'magic');
+    let category = l ? l.category : (o.category || 'rule');
+    let racePick = null, nationPick = null, holderPick = null, locPick = null;
     const cats = Object.keys(CATS).map((k) => ({ value: k, label: CATS[k] }));
     const html =
       '<div class="field"><span class="field__label">분류</span><div id="lore-cat-pick"></div></div>' +
-      U.field('제목', U.textInput('title', l ? l.title : '', { placeholder: category === 'race' ? '예: 엘프' : (category === 'faction' ? '예: 서약 기사단' : (category === 'item' ? '예: 서리검 「글라시엘」' : '예: 봉인술')) }), null, true) +
+      '<div class="field" id="lore-race-field" style="display:none">' +
+        '<span class="field__label">주 종족 <span class="muted" style="font-size:10px">설정집 · 종족·몬스터</span></span>' +
+        '<div id="lore-races"></div>' +
+        '<span class="field-hint">이 국가를 이루는 종족이에요. 여러 종족을 고를 수 있고, 국가 카드 · 관계도에 함께 보여요.</span>' +
+      '</div>' +
+      '<div class="field" id="lore-nation-field" style="display:none">' +
+        '<span class="field__label">소속 국가 <span class="muted" style="font-size:10px">설정집 · 국가</span></span>' +
+        '<div id="lore-nations"></div>' +
+        '<span class="field-hint">이 세력이 속한 국가예요. 기본은 <b>무소속</b>이고, 관계도 노드에 소속 국가가 표시돼요.</span>' +
+      '</div>' +
+      '<div class="field" id="lore-holder-field" style="display:none">' +
+        '<span class="field__label">소지 인물 <span class="muted" style="font-size:10px">인물</span></span>' +
+        '<div id="lore-holder"></div>' +
+        '<span class="field-hint">이 유물을 가진 인물이에요. 인물 폼에서 무기로 연결한 인물도 함께 표시돼요.</span>' +
+      '</div>' +
+      '<div class="field" id="lore-loc-field" style="display:none">' +
+        '<span class="field__label">보관 지역 <span class="muted" style="font-size:10px">지도 · 지역 핀</span></span>' +
+        '<div id="lore-loc"></div>' +
+        '<span class="field-hint">이 유물이 있는 지역이에요. 지도 핀 상세에서 바로 이동할 수 있어요.</span>' +
+      '</div>' +
+      U.field('제목', '<div class="input-with-action">' +
+        '<input class="input" name="title" required placeholder="' + esc(category === 'race' ? '예: 엘프' : (category === 'faction' ? '예: 서약 기사단' : (category === 'item' ? '예: 서리검 「글라시엘」' : '예: 봉인술'))) + '" value="' + esc(l ? l.title : '') + '">' +
+        '<button type="button" class="mini-action" id="gen-lore-title"><svg><use href="#i-sparkles"/></svg>이름 추천</button>' +
+      '</div>', '✨ 버튼을 누르면 고른 분류에 어울리는 이름 8개를 추천해요.', true) +
       U.field('내용', U.textArea('body', l ? l.body : '', '규칙, 원리, 대가, 예외…', 7)) +
       U.field('태그', U.textInput('tags', l ? (l.tags || []).join(', ') : '', { placeholder: '봉인, 이름, 성소 (쉼표로 구분)' }));
 
@@ -9175,7 +10486,50 @@ main {
       full: true,
       html: html,
       onReady: ({ body, form }) => {
-        body.querySelector('#lore-cat-pick').appendChild(U.chipPicker(cats, category, { multi: false, onChange: (v) => { category = v; } }));
+        const raceField = body.querySelector('#lore-race-field');
+        const nationField = body.querySelector('#lore-nation-field');
+        const holderField = body.querySelector('#lore-holder-field');
+        const locField = body.querySelector('#lore-loc-field');
+
+        racePick = buildLorePicker(body.querySelector('#lore-races'), w, {
+          category: 'race', multi: true,
+          ids: (l && Array.isArray(l.raceIds)) ? l.raceIds : []
+        });
+        nationPick = buildLorePicker(body.querySelector('#lore-nations'), w, {
+          category: 'nation', multi: false, noneLabel: '무소속',
+          ids: (l && l.nationId) ? [l.nationId] : []
+        });
+        holderPick = buildChipSelect(body.querySelector('#lore-holder'), (w.characters || []).map((c) => ({ id: c.id, title: c.name })), {
+          ids: (l && l.holderCharId) ? [l.holderCharId] : [], noneLabel: '없음'
+        });
+        locPick = buildChipSelect(body.querySelector('#lore-loc'), (w.map.markers || []).map((m) => ({ id: m.id, title: m.name })), {
+          ids: (l && l.locationId) ? [l.locationId] : [], noneLabel: '없음'
+        });
+
+        function syncCategoryFields() {
+          if (raceField) raceField.style.display = category === 'nation' ? '' : 'none';
+          if (nationField) nationField.style.display = category === 'faction' ? '' : 'none';
+          if (holderField) holderField.style.display = category === 'item' ? '' : 'none';
+          if (locField) locField.style.display = category === 'item' ? '' : 'none';
+        }
+        body.querySelector('#lore-cat-pick').appendChild(U.chipPicker(cats, category, {
+          multi: false,
+          onChange: (v) => { category = v; syncCategoryFields(); }
+        }));
+        syncCategoryFields();
+        const genTitle = body.querySelector('#gen-lore-title');
+        if (genTitle) genTitle.addEventListener('click', () => {
+          Generator.open({
+            mode: 'lore',
+            category: category,
+            contextLabel: '마음에 드는 이름을 제목 칸에 넣어요',
+            onPick: (item) => {
+              const el = form.querySelector('[name="title"]');
+              if (el) el.value = item.name;
+              U.toast('이름을 넣었어요 · ' + item.name, { icon: 'i-sparkles' });
+            }
+          });
+        });
         if (l) {
           const del = document.createElement('button');
           del.type = 'button';
@@ -9206,6 +10560,28 @@ main {
         if (!title) { U.toast('제목을 적어 주세요', { icon: 'i-x' }); return false; }
         const tags = String(fd.get('tags') || '').split(',').map((t) => t.trim()).filter(Boolean);
         const data = { category: category, title: title, body: String(fd.get('body') || '').trim(), tags: tags };
+        // 국가 → 주 종족 / 세력 → 소속 국가 / 아이템 → 소지 인물 · 보관 지역
+        if (category === 'nation') {
+          const raceIds = racePick.ids().filter((id) => (w.lore || []).some((x) => x.id === id && x.category === 'race'));
+          data.raceIds = raceIds.filter((id, i, arr) => arr.indexOf(id) === i);
+        } else if (l && l.raceIds) {
+          delete l.raceIds;
+        }
+        if (category === 'faction') {
+          const nid = (nationPick.ids()[0]) || null;
+          data.nationId = (nid && (w.lore || []).some((x) => x.id === nid && x.category === 'nation')) ? nid : null;
+        } else if (l && 'nationId' in l) {
+          delete l.nationId;
+        }
+        if (category === 'item') {
+          const hid = (holderPick.ids()[0]) || null;
+          const lid = (locPick.ids()[0]) || null;
+          data.holderCharId = (hid && (w.characters || []).some((c) => c.id === hid)) ? hid : null;
+          data.locationId = (lid && (w.map.markers || []).some((m) => m.id === lid)) ? lid : null;
+        } else if (l) {
+          delete l.holderCharId;
+          delete l.locationId;
+        }
         let saved = null;
         if (l) { Object.assign(l, data); saved = l; }
         else { saved = Object.assign({ id: U.uid('l') }, data); w.lore.push(saved); }
@@ -9682,7 +11058,7 @@ main {
             '<span class="rank-row__label">체계</span>' +
             '<select class="select" data-row-sys="' + i + '" aria-label="능력·등급 체계">' +
               systems.map((s) => '<option value="' + esc(s.id) + '"' + (s.id === sys.id ? ' selected' : '') + '>' +
-                esc(s.icon + ' ' + s.name) + '</option>').join('') +
+                esc(RankIcon.text(s.icon) + ' ' + s.name) + '</option>').join('') +
             '</select>' +
           '</label>' +
           '<label class="rank-row__cell rank-row__cell--tier">' +
@@ -9754,7 +11130,7 @@ main {
         (systems.length
           ? '<div class="rank-sys-list">' + systems.map((s) =>
               '<button type="button" class="rank-sys" data-rank-edit="' + esc(s.id) + '">' +
-                '<span class="rank-sys__icon" style="--rank-color:' + esc(s.color) + '">' + esc(s.icon) + '</span>' +
+                '<span class="rank-sys__icon" style="--rank-color:' + esc(s.color) + '">' + RankIcon.render(s.icon) + '</span>' +
                 '<span class="rank-sys__body">' +
                   '<span class="rank-sys__name">' + esc(s.name) + '</span>' +
                   (s.description ? '<span class="rank-sys__desc">' + esc(s.description) + '</span>' : '') +
@@ -9784,20 +11160,124 @@ main {
     draw();
   }
 
+  /* ---------------------------------------------------------
+     + 아이콘 만들기 — 설명 한 줄 → 인라인 SVG 문장
+     --------------------------------------------------------- */
+  const ICON_EXAMPLES = ['푸른 얼음 검', '황금 용의 왕관', '검은 달과 촛불', '붉은 번개', '육각 마법진', '철의 사슬'];
+
+  function openIconForge(startIcon, onPick) {
+    const body = document.createElement('div');
+    let sheet = null;
+    let seed = (Date.now() % 900000) + 17;
+    let made = null;
+    const initial = (startIcon && RankIcon.isCustom(startIcon)) ? RankIcon.name(startIcon) : '';
+
+    body.innerHTML =
+      '<p class="prose small" style="margin-bottom:14px">하고 싶은 문장을 한 줄로 적으면 <b>모티브 · 색 · 외곽 틀</b>을 읽어 인라인 SVG 문장으로 그려요.</p>' +
+      '<div class="field"><span class="field__label">설명</span>' +
+        '<input class="input" id="forge-desc" maxlength="40" autocomplete="off" placeholder="예: 푸른 얼음 검" value="' + esc(initial) + '">' +
+        '<div class="chip-row mt-8" id="forge-ex" style="flex-wrap:wrap">' +
+          ICON_EXAMPLES.map((e) => '<button type="button" class="chip chip--small" data-ex="' + esc(e) + '">' + esc(e) + '</button>').join('') +
+        '</div>' +
+      '</div>' +
+      '<button type="button" class="btn btn--gold btn--block" id="forge-make"><svg><use href="#i-sparkles"/></svg><span>아이콘 생성</span></button>' +
+      '<div class="forge-stage">' +
+        '<div class="forge-preview" id="forge-preview"><span class="muted" style="font-size:26px">✦</span></div>' +
+        '<div class="forge-meta"><b id="forge-name">설명을 적고 [아이콘 생성]</b>' +
+          '<span id="forge-detail">마법진 · 검 · 방패 · 불꽃 · 왕관, 금·청·적·자·녹·흑·백, 원형 룬 · 방패형 · 육각 마법진</span></div>' +
+      '</div>' +
+      '<div class="btn-row mt-8">' +
+        '<button type="button" class="btn btn--sm btn--ghost" id="forge-again" disabled>다시 생성</button>' +
+        '<button type="button" class="btn btn--sm btn--gold" id="forge-use" disabled>이 아이콘 쓰기</button>' +
+      '</div>' +
+      '<div class="divider"></div>' +
+      '<div class="field"><span class="field__label">이모지 · 글자로 직접</span>' +
+        '<div class="input-with-action">' +
+          '<input class="input" id="forge-manual" maxlength="8" placeholder="예: ⚔ 또는 天" autocomplete="off">' +
+          '<button type="button" class="mini-action" id="forge-manual-use">적용</button>' +
+        '</div>' +
+        '<span class="field-hint">직접 넣은 글자·이모지는 그대로 아이콘이 돼요.</span>' +
+      '</div>';
+
+    const descEl = body.querySelector('#forge-desc');
+    const previewEl = body.querySelector('#forge-preview');
+    const nameEl = body.querySelector('#forge-name');
+    const detailEl = body.querySelector('#forge-detail');
+    const againBtn = body.querySelector('#forge-again');
+    const useBtn = body.querySelector('#forge-use');
+
+    function generate(bump) {
+      const desc = String(descEl.value || '').trim();
+      if (!desc) { U.toast('설명을 먼저 적어 주세요', { icon: 'i-x' }); descEl.focus(); return; }
+      if (bump) seed = (seed * 7919 + 13) % 900000;
+      let r = null;
+      try { r = RankIcon.build(desc, seed); } catch (e) { r = null; }
+      if (!r) { U.toast('아이콘을 만들지 못했어요. 다른 낱말로 해 보세요.', { icon: 'i-x' }); return; }
+      made = r;
+      previewEl.innerHTML = RankIcon.render(r.value);
+      nameEl.textContent = RankIcon.name(r.value);
+      detailEl.textContent = r.summary;
+      againBtn.disabled = false;
+      useBtn.disabled = false;
+      U.haptic(8);
+    }
+
+    function apply(value, message) {
+      if (!value) return;
+      if (onPick) onPick(value);
+      if (sheet) sheet.close();
+      U.toast(message || '아이콘을 적용했어요', { icon: 'i-sparkles' });
+    }
+
+    body.querySelector('#forge-make').addEventListener('click', () => generate(false));
+    againBtn.addEventListener('click', () => generate(true));
+    useBtn.addEventListener('click', () => { if (made) apply(made.value, '아이콘을 만들었어요'); });
+    body.querySelectorAll('[data-ex]').forEach((b) => b.addEventListener('click', () => {
+      descEl.value = b.getAttribute('data-ex');
+      U.haptic(6);
+      generate(false);
+    }));
+    descEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); generate(false); } });
+    const manualEl = body.querySelector('#forge-manual');
+    body.querySelector('#forge-manual-use').addEventListener('click', () => {
+      const v = Array.from(String(manualEl.value || '').trim()).slice(0, 4).join('');
+      if (!v) { U.toast('글자나 이모지를 넣어 주세요', { icon: 'i-x' }); return; }
+      apply(v, '아이콘을 적용했어요');
+    });
+
+    sheet = U.openSheet({
+      eyebrow: 'ICON FORGE',
+      title: '+ 아이콘 만들기',
+      sub: '설명만 적으면 이 세계관의 문장이 됩니다.',
+      full: true,
+      body: body
+    });
+    if (initial) generate(false);
+    else descEl.focus();
+  }
+
   function openRankForm(id, onDone) {
     const w = W();
     if (!w) return;
     const sys = id ? (w.rankSystems || []).find((s) => s.id === id) : null;
     let color = sys ? sys.color : RANK_COLORS[0];
+    let icon = sys ? (sys.icon || '⚔️') : '⚔️';
 
     const html =
-      U.field('체계 이름', U.textInput('name', sys ? sys.name : '', { placeholder: '예: 마법 서클 · 검사 계위 · 모험가 랭크' }), '세계관마다 여러 체계를 만들 수 있어요.', true) +
+      U.field('체계 이름', '<div class="input-with-action">' +
+        '<input class="input" name="name" required placeholder="예: 마법 서클 · 검사 계위 · 모험가 랭크" value="' + esc(sys ? sys.name : '') + '">' +
+        '<button type="button" class="mini-action" id="gen-rank-name"><svg><use href="#i-sparkles"/></svg>이름 추천</button>' +
+      '</div>', '세계관마다 여러 체계를 만들 수 있어요. ✨ 로 이름을 뽑을 수도 있어요.', true) +
       U.field('설명', U.textInput('description', sys ? (sys.description || '') : '', { placeholder: '예: 마나를 다루는 마법사의 경지' }), '인물 폼에서 체계를 고를 때 이 한 줄이 함께 보여요.') +
-      '<div class="field--slim">' +
-        U.field('아이콘', U.textInput('icon', sys ? sys.icon : '⚔', { placeholder: '⚔' })) +
-        '<div class="field"><span class="field__label">색상</span><div class="rank-colors" id="rank-colors"></div>' +
-          '<input type="hidden" name="color" value="' + esc(color) + '"></div>' +
+      '<div class="field"><span class="field__label">아이콘' +
+          '<span class="icon-now"><span class="icon-now__badge" id="icon-now-badge"></span><b id="icon-now"></b></span>' +
+        '</span>' +
+        '<div class="icon-row" id="icon-row"></div>' +
+        '<input type="hidden" name="icon" id="icon-value" value="' + esc(icon) + '">' +
+        '<span class="field-hint">아이콘을 탭하면 바로 바뀌어요. 원하는 게 없으면 <b>+ 아이콘 만들기</b>에 &lsquo;푸른 얼음 검&rsquo;처럼 적어 보세요.</span>' +
       '</div>' +
+      '<div class="field"><span class="field__label">색상</span><div class="rank-colors" id="rank-colors"></div>' +
+        '<input type="hidden" name="color" value="' + esc(color) + '"></div>' +
       '<div class="field"><span class="field__label">단계 <b>*</b></span>' +
         '<div class="rank-stepper">' +
           '<button type="button" class="rstep" data-tier-step="-1" aria-label="단계 줄이기">−</button>' +
@@ -9818,7 +11298,21 @@ main {
       sub: '이름과 단계만 정하면 인물에 바로 붙일 수 있어요.',
       full: true,
       html: html,
-      onReady: ({ body, sheet }) => {
+      onReady: ({ body, form, sheet }) => {
+        const genRankName = body.querySelector('#gen-rank-name');
+        if (genRankName) genRankName.addEventListener('click', () => {
+          Generator.open({
+            mode: 'lore',
+            category: 'rank',
+            contextLabel: '마음에 드는 이름을 체계 이름 칸에 넣어요',
+            onPick: (item) => {
+              const el = form.querySelector('[name="name"]');
+              if (el) el.value = item.name;
+              U.toast('이름을 넣었어요 · ' + item.name, { icon: 'i-sparkles' });
+            }
+          });
+        });
+
         const prefixInput = body.querySelector('#tier-prefix');
         const countOut = body.querySelector('[data-tier-count]');
         const range = body.querySelector('#tier-range');
@@ -9863,7 +11357,8 @@ main {
           });
         }
 
-        drawTiers((sys ? sys.tiers : []).slice(0, count));
+        // 새 체계는 이름 칸이 처음부터 count개 펼쳐져 있어야 한다(비우면 1단계·2단계로 저장)
+        drawTiers((sys ? sys.tiers : new Array(count).fill('')).slice(0, count));
         syncCount();
 
         body.querySelectorAll('[data-tier-step]').forEach((b) => b.addEventListener('click', () => {
@@ -9872,6 +11367,38 @@ main {
         }));
         range.addEventListener('input', () => resize(Number(range.value)));
         prefixInput.addEventListener('input', refreshPlaceholders);
+
+        // --- 아이콘: 기본 5종 + [+ 아이콘 만들기] ---
+        const iconInput = body.querySelector('#icon-value');
+        const iconRow = body.querySelector('#icon-row');
+        const iconNameOut = body.querySelector('#icon-now');
+        const iconBadge = body.querySelector('#icon-now-badge');
+
+        function paintIcons() {
+          const cur = iconInput.value;
+          icon = cur;
+          iconRow.innerHTML =
+            RankIcon.pack().map((p) =>
+              '<button type="button" class="icon-cell' + (p.value === cur ? ' is-on' : '') + '" data-icon-pick="' + esc(p.value) + '" aria-label="기본 아이콘 ' + esc(p.label) + '" aria-pressed="' + (p.value === cur) + '">' +
+                RankIcon.render(p.value) + '</button>').join('') +
+            '<button type="button" class="icon-forge" id="icon-forge"><svg><use href="#i-sparkles"/></svg><span>+ 아이콘 만들기</span></button>';
+          iconBadge.innerHTML = RankIcon.render(cur);
+          iconNameOut.textContent = RankIcon.name(cur);
+          iconRow.querySelectorAll('[data-icon-pick]').forEach((b) => b.addEventListener('click', () => {
+            iconInput.value = b.getAttribute('data-icon-pick');
+            U.haptic(6);
+            paintIcons();
+          }));
+          const forge = iconRow.querySelector('#icon-forge');
+          if (forge) forge.addEventListener('click', () => {
+            U.haptic(6);
+            openIconForge(cur, (picked) => {
+              iconInput.value = picked;
+              paintIcons();
+            });
+          });
+        }
+        paintIcons();
 
         const colorHost = body.querySelector('#rank-colors');
         colorHost.innerHTML = RANK_COLORS.map((c) =>
@@ -9917,9 +11444,10 @@ main {
           return v || ((i + 1) + (unit || '단계'));
         });
         if (!tiers.length) { U.toast('단계를 하나 이상 만들어 주세요', { icon: 'i-x' }); return false; }
-        const icon = String(fd.get('icon') || '').trim().slice(0, 2) || '⚔';
+        const iconRaw = String(fd.get('icon') || '').trim() || icon || '⚔️';
+        const iconVal = RankIcon.isCustom(iconRaw) ? iconRaw : (Array.from(iconRaw).slice(0, 4).join('') || '⚔️');
         const description = String(fd.get('description') || '').trim().slice(0, 80);
-        const data = { name: name, icon: icon, color: color, tiers: tiers, description: description };
+        const data = { name: name, icon: iconVal, color: color, tiers: tiers, description: description };
         if (sys) Object.assign(sys, data);
         else w.rankSystems.push(Object.assign({ id: U.uid('rk') }, data));
         // 단계가 줄면 범위를 벗어난 인물 등급을 정리한다
@@ -9961,7 +11489,7 @@ main {
       '<div class="divider"></div>' +
       '<div class="label-row"><span>앱 정보</span></div>' +
       '<div class="def-list">' +
-        '<div class="def"><dt>버전</dt><dd>아르카눔 v1.3 · PWA</dd></div>' +
+        '<div class="def"><dt>버전</dt><dd>아르카눔 v1.4 · PWA</dd></div>' +
         '<div class="def"><dt>저장</dt><dd>' + (Store.isDbBroken() ? 'localStorage (자동 저장)' : 'IndexedDB + localStorage 이중 저장') + '</dd></div>' +
         '<div class="def"><dt>오프라인</dt><dd>홈 화면에 추가하면 인터넷 없이도 열립니다.</dd></div>' +
       '</div>';
@@ -10033,7 +11561,8 @@ main {
       }
       if (file && canShareFiles(file)) {
         try {
-          await navigator.share({ files: [file], title: name });
+          // files만 넘긴다 — title/text를 함께 넘기면 iOS가 '텍스트 (n바이트)' 파일을 하나 더 저장한다
+          await navigator.share({ files: [file] });
           U.toast('[파일에 저장] → ' + folder + ' 폴더 · 같은 이름이 있으면 [대치]를 누르세요', { icon: 'i-download', duration: 3800 });
           return 'shared';
         } catch (err) {
@@ -10172,7 +11701,12 @@ main {
     $('#fab').addEventListener('click', () => {
       if (App.tab === 'characters') openCharacterForm(null);
       else if (App.tab === 'timeline') openEventForm(null);
-      else if (App.tab === 'lore') openLoreForm(null);
+      else if (App.tab === 'lore') {
+        // 지금 보고 있는 설정집 분류로 바로 새 항목(능력·등급이면 체계) 폼을 연다
+        const cat = App.filters.loreCat;
+        if (cat === RANKS_CAT) openRankForm(null, () => refreshView());
+        else openLoreForm(null, { category: (cat && cat !== '전체') ? cat : 'rule' });
+      }
       else if (App.tab === 'episodes') openEpisodeForm(null);
       else if (App.tab === 'map') openPinForm(50, 50, null);
     });

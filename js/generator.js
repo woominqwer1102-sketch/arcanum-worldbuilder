@@ -201,8 +201,93 @@
     return out;
   }
 
+  /* ---------------- Codex (설정집) 이름 ---------------- */
+  const LORE = {
+    nation: {
+      label: '국가',
+      adj: ['아르카디아', '발드렌', '엘드렌', '테리안', '노스가르드', '크로반', '세른', '아스텔', '로웬', '카르디아', '드라켄', '벨로나'],
+      noun: ['왕국', '제국', '왕조', '공국', '연방', '자치령', '성국', '연합', '왕가', '제후국'],
+      subs: ['수도와 성문이 있는 나라', '몰락한 옛 제국의 후신', '서약으로 묶인 연방', '숲과 산으로 나뉜 땅', '재건 중인 왕국']
+    },
+    faction: {
+      label: '세력',
+      adj: ['서약', '잿불', '무쇠', '황금', '검은숲', '성소', '백야', '은빛', '붉은', '잊힌', '칠흑', '여명', '서리', '달빛'],
+      noun: ['기사단', '길드', '교단', '학회', '수호자', '감시자', '결사', '상단', '성좌', '의회', '순례단', '용병단', '서기단', '수도회', '경비대'],
+      subs: ['서약으로 묶인 무리', '값을 먼저 말하는 조직', '몰락한 옛 권력의 잔당', '이름을 감춘 결사', '성소를 지키는 맹세의 무리']
+    },
+    race: {
+      label: '종족 · 몬스터',
+      lead: ['용', '정령', '서리', '잿불', '달그림자', '검은숲', '무쇠', '백야', '심연', '폭풍', '뼈', '불꽃', '달'],
+      tail: ['혈족', '종족', '족', '거인', '망자', '요', '수인', '정령', '귀', '봉인체'],
+      subs: ['피에 힘이 깃든 종족', '오래 살고 오래 기억하는 자들', '숲과 함께 늙는 무리', '돌 아래에서 단련된 자들', '그림자와 소문을 먹고 사는 자들']
+    },
+    item: {
+      label: '아이템 · 유물',
+      adj: ['서리', '잿불', '황금', '흑요석', '무쇠', '달빛', '뼈', '칠흑', '백은', '성소의', '서약의', '재의'],
+      type: ['검', '장검', '단검', '방패', '지팡이', '인장', '성배', '반지', '망치', '활', '투구', '갑주', '두루마리', '목걸이', '왕관'],
+      name: ['글라시엘', '발라르', '아르젠', '카르넬', '세리온', '모르간트', '엘드라', '자르투스', '이슬렌', '벨라드'],
+      subs: ['뽑으면 겨울이 따라오는 유물', '읽는 자의 기억을 대가로 받는 물건', '주인을 바꾸지 않는 무기', '봉인이 남은 옛 유물', '값을 쇠로 매긴 장비']
+    },
+    rule: {
+      label: '기타 규칙',
+      lead: ['봉인', '이름', '인장', '룬', '그림자', '재', '성소', '맹세', '혈', '달', '빙결', '화염'],
+      tail: ['술', '주문', '마법', '의식', '규칙', '계약', '맹세', '공명', '해독', '금기', '법'],
+      subs: ['대가가 따르는 술식', '이름을 묶는 규칙', '한 세기마다 갱신되는 계약', '어기면 이름을 잃는 맹세', '세계가 지키는 오래된 금기']
+    },
+    rank: {
+      label: '능력 · 등급',
+      lead: ['마법', '기사', '모험가', '성좌', '검', '룬', '성소', '용', '그림자', '재', '정령', '서약'],
+      tail: ['서클', '계위', '랭크', '경지', '계율', '품계', '좌', '등급', '위계', '수련단계'],
+      subs: ['마나를 다루는 자의 경지', '왕실에서 내린 계위', '길드가 매기는 위계', '맹세로 오르는 단계', '재에서 다시 서는 자의 등급']
+    }
+  };
+
+  function genLore(category, count) {
+    const key = LORE[category] ? category : 'faction';
+    // 옛 '세력·국가' 값이 들어와도 세력으로 처리한다
+    const conf = LORE[key];
+    const out = [];
+    const seen = new Set();
+    let guard = 0;
+    while (out.length < (count || 8) && guard < 260) {
+      guard++;
+      let name = '';
+      const r = Math.random();
+      if (key === 'nation') {
+        if (r < 0.45) name = pick(conf.adj) + ' ' + pick(conf.noun);
+        else if (r < 0.7) name = pick(conf.adj) + pick(conf.noun);
+        else if (r < 0.88) name = pick(conf.adj) + '의 ' + pick(conf.noun);
+        else name = pick(conf.adj);
+      } else if (key === 'faction') {
+        if (r < 0.5) name = pick(conf.adj) + ' ' + pick(conf.noun);
+        else if (r < 0.74) name = pick(conf.adj) + pick(conf.noun);
+        else if (r < 0.9) name = pick(conf.adj) + '의 ' + pick(conf.noun);
+        else name = pick(conf.noun);
+      } else if (key === 'race') {
+        if (r < 0.55) name = pick(conf.lead) + pick(conf.tail);
+        else if (r < 0.8) name = pick(conf.lead) + ' ' + pick(conf.tail);
+        else name = pick(conf.lead) + '의 ' + pick(conf.tail);
+      } else if (key === 'item') {
+        if (r < 0.34) name = pick(conf.adj) + pick(conf.type) + ' 「' + pick(conf.name) + '」';
+        else if (r < 0.62) name = pick(conf.adj) + pick(conf.type);
+        else if (r < 0.86) name = pick(conf.adj) + ' ' + pick(conf.type);
+        else name = pick(conf.name) + '의 ' + pick(conf.type);
+      } else if (key === 'rank') {
+        if (r < 0.62) name = pick(conf.lead) + ' ' + pick(conf.tail);
+        else name = pick(conf.lead) + '의 ' + pick(conf.tail);
+      } else {
+        if (r < 0.55) name = pick(conf.lead) + pick(conf.tail);
+        else name = pick(conf.lead) + '의 ' + pick(conf.tail);
+      }
+      if (seen.has(name)) continue;
+      seen.add(name);
+      out.push({ name: name, sub: pick(conf.subs), type: key });
+    }
+    return out;
+  }
+
   /* ---------------- Sheet UI ---------------- */
-  let state = { mode: 'character', style: 'western', placeType: 'kingdom', withEpithet: true, results: [] };
+  let state = { mode: 'character', style: 'western', placeType: 'kingdom', loreCat: 'faction', withEpithet: true, results: [] };
 
   function renderResults(host, onPick, mode) {
     host.innerHTML = state.results.map((item, i) =>
@@ -242,14 +327,15 @@
     state.mode = o.mode || 'character';
     state.style = 'western';
     state.placeType = 'kingdom';
+    state.loreCat = LORE[o.category] ? o.category : 'faction';
     state.withEpithet = true;
 
     const body = document.createElement('div');
 
     function refresh() {
-      state.results = state.mode === 'character'
-        ? genNames(state.style, 8, state.withEpithet)
-        : genPlaces(state.placeType, 8);
+      if (state.mode === 'character') state.results = genNames(state.style, 8, state.withEpithet);
+      else if (state.mode === 'lore') state.results = genLore(state.loreCat, 8);
+      else state.results = genPlaces(state.placeType, 8);
     }
 
     function draw() {
@@ -260,8 +346,10 @@
             '<svg><use href="#i-users"/></svg>인물 이름</button>' +
           '<button type="button" class="gen-tab' + (state.mode === 'place' ? ' is-active' : '') + '" data-mode="place">' +
             '<svg><use href="#i-pin"/></svg>지명</button>' +
+          '<button type="button" class="gen-tab' + (state.mode === 'lore' ? ' is-active' : '') + '" data-mode="lore">' +
+            '<svg><use href="#i-book"/></svg>설정 이름</button>' +
         '</div>' +
-        '<div class="label-row"><span>' + (state.mode === 'character' ? '스타일' : '유형') + '</span>' +
+        '<div class="label-row"><span>' + (state.mode === 'character' ? '스타일' : (state.mode === 'lore' ? '분류' : '유형')) + '</span>' +
           (state.mode === 'character' ? '<span>칭호</span>' : '<span>8개씩</span>') + '</div>' +
         '<div class="chip-row" id="gen-chips"></div>' +
         (state.mode === 'character'
@@ -276,8 +364,10 @@
       const chips = body.querySelector('#gen-chips');
       const items = state.mode === 'character'
         ? Object.keys(STYLE_LABEL).map((k) => ({ value: k, label: STYLE_LABEL[k] }))
-        : Object.keys(PLACE).map((k) => ({ value: k, label: PLACE[k].label }));
-      const current = state.mode === 'character' ? state.style : state.placeType;
+        : (state.mode === 'lore'
+          ? Object.keys(LORE).map((k) => ({ value: k, label: LORE[k].label }))
+          : Object.keys(PLACE).map((k) => ({ value: k, label: PLACE[k].label })));
+      const current = state.mode === 'character' ? state.style : (state.mode === 'lore' ? state.loreCat : state.placeType);
       items.forEach((it) => {
         const b = document.createElement('button');
         b.type = 'button';
@@ -285,6 +375,7 @@
         b.textContent = it.label;
         b.addEventListener('click', () => {
           if (state.mode === 'character') state.style = it.value;
+          else if (state.mode === 'lore') state.loreCat = it.value;
           else state.placeType = it.value;
           draw();
           U.haptic(6);
@@ -322,7 +413,7 @@
 
     const handle = U.openSheet({
       eyebrow: '이름 공방 · NAME FORGE',
-      title: state.mode === 'place' ? '지명 추천' : '이름 추천',
+      title: state.mode === 'place' ? '지명 추천' : (state.mode === 'lore' ? (state.loreCat === 'nation' ? '국가 이름 추천' : '설정 이름 추천') : '이름 추천'),
       sub: o.contextLabel || '클릭해서 복사하거나 폼에 바로 넣으세요',
       body: body,
       foot: [{ label: '다시 뽑기', icon: 'i-refresh', className: 'btn--gold', onClick: () => {
@@ -410,7 +501,8 @@
   }
 
   function agePhrase(age) {
-    const m = String(age || '').match(/(\d{1,4})\s*(?:세|살)?/);
+    if (age === null || age === undefined || age === '') return '';
+    const m = String(age).match(/(\d{1,4})/);
     if (!m) return '';
     const n = Number(m[1]);
     if (!n || n > 400) return '';
@@ -439,9 +531,31 @@
   }
 
   // 인물 세부정보 → 영어 판타지 일러스트 프롬프트
+  function bodyPhrase(cm, kg) {
+    const h = Number(cm) || 0, w = Number(kg) || 0;
+    if (!h && !w) return '';
+    const bits = [];
+    if (h) bits.push(h >= 190 ? 'very tall stature' : (h >= 178 ? 'tall stature' : (h <= 158 ? 'petite stature' : 'average height')));
+    if (h && w) {
+      const bmi = w / Math.pow(h / 100, 2);
+      bits.push(bmi < 18.5 ? 'slender build' : (bmi < 23 ? 'athletic build' : (bmi < 27 ? 'sturdy broad build' : 'heavyset powerful build')));
+    } else if (w) {
+      bits.push(w >= 95 ? 'heavy build' : (w <= 50 ? 'slim build' : 'average build'));
+    }
+    return bits.join(', ');
+  }
+
   function buildPortraitPrompt(fields) {
     const f = fields || {};
     const parts = [];
+
+    // 성별을 맨 앞에 확실히 — 모델이 놓치지 않도록 태그 형태로 먼저 넣는다
+    const gender = genderEn(f.gender);
+    const genderTokens = gender === 'female' ? '1girl, female character, feminine features'
+      : (gender === 'male' ? '1boy, male character, masculine features'
+        : (gender === 'androgynous' ? 'androgynous character, ambiguous features' : ''));
+    if (genderTokens) parts.push(genderTokens);
+
     const latinName = nameForPrompt(f.name);
     parts.push(latinName ? 'fantasy character portrait of ' + latinName : 'fantasy character portrait');
 
@@ -452,13 +566,15 @@
     const race = raceEn(f.race);
     const role = scanEn(title + ' ' + f.faction, ROLE_EN, 1)[0] ||
       scanEn((title + ' ' + String(f.faction || '')).toLowerCase(), ROLE_WORDS, 1)[0] || 'wanderer';
-    // 성별을 종족·역할 앞에 넣어 "a female elf knight"처럼 자연스럽게 붙인다
-    const gender = genderEn(f.gender);
+    // 종족·역할 앞에도 성별을 붙여 "a female elf knight"처럼 읽히게
     const article = /^[aeiou]/i.test(race) ? 'an ' : 'a ';
     parts.push(article + (gender ? gender + ' ' : '') + race + ' ' + role);
 
-    const age = agePhrase(f.age);
+    const age = agePhrase((f.ageNum !== undefined && f.ageNum !== null && f.ageNum !== '') ? f.ageNum : f.age);
     if (age) parts.push(age);
+
+    const body = bodyPhrase(f.heightCm, f.weightKg);
+    if (body) parts.push(body);
 
     const gear = scanEn(String(f.abilities || '') + ' ' + String(f.title || ''), GEAR_EN, 2);
     if (gear.length) parts.push('wielding ' + gear.join(' and '));
@@ -773,5 +889,5 @@
     }
   }
 
-  global.Generator = { open, genNames, genPlaces, STYLE_LABEL, PLACE, buildPortraitPrompt, portraitUrl, generatePortrait, fallbackPortrait };
+  global.Generator = { open, genNames, genPlaces, genLore, STYLE_LABEL, PLACE, LORE, buildPortraitPrompt, bodyPhrase, portraitUrl, generatePortrait, fallbackPortrait };
 })(window);

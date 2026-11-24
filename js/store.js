@@ -114,6 +114,27 @@
       if (!c.id) c.id = 'c_' + Math.random().toString(36).slice(2, 9);
       if (typeof c.gender !== 'string') c.gender = '';
       if (!c.gender && genderSeed && genderSeed[c.id]) c.gender = genderSeed[c.id];
+      // 나이 · 키 · 몸무게 — 숫자 칸이 없던 예전 저장본은 '27세 · 182cm' 문자열에서 한 번 풀어 둔다
+      const toNum = (v, max) => {
+        const n = Number(v);
+        return (isFinite(n) && n > 0) ? Math.min(max, Math.round(n)) : null;
+      };
+      c.ageNum = toNum(c.ageNum, 9999);
+      c.heightCm = toNum(c.heightCm, 300);
+      c.weightKg = toNum(c.weightKg, 500);
+      if (!c.ageNum && !c.heightCm && !c.weightKg && typeof c.age === 'string' && c.age) {
+        const a = c.age.match(/(\d{1,4})\s*(?:세|살)/);
+        const h = c.age.match(/(\d{2,3})\s*(?:cm|센티)/i);
+        const w2 = c.age.match(/(\d{2,3})\s*(?:kg|킬로)/i);
+        if (a) c.ageNum = toNum(a[1], 9999);
+        if (h) c.heightCm = toNum(h[1], 300);
+        if (w2) c.weightKg = toNum(w2[1], 500);
+      }
+      const bodyBits = [];
+      if (c.ageNum) bodyBits.push(c.ageNum + '세');
+      if (c.heightCm) bodyBits.push(c.heightCm + 'cm');
+      if (c.weightKg) bodyBits.push(c.weightKg + 'kg');
+      c.age = bodyBits.length ? bodyBits.join(' · ') : (typeof c.age === 'string' ? c.age : '');
       // 설정집 연결 (종족 · 세력 · 능력 · 아이템)
       if (typeof c.raceId !== 'string') c.raceId = null;
       if (typeof c.factionId !== 'string') c.factionId = null;
@@ -173,8 +194,50 @@
     }
     w.lore.forEach((l) => {
       if (!l.id) l.id = 'l_' + Math.random().toString(36).slice(2, 9);
-      if (!l.category) l.category = 'etc';
       if (!Array.isArray(l.tags)) l.tags = [];
+      // v1.4 — '마법·능력체계'(magic)를 '기타 규칙'(rule)으로 통합한다.
+      // 인물의 abilityIds는 설정집 항목 id를 그대로 가리키므로 연결은 끊기지 않는다.
+      if (l.category === 'magic') {
+        l.category = 'rule';
+        if (l.tags.indexOf('능력') === -1) l.tags.unshift('능력');
+      }
+      if (!l.category || l.category === 'etc') l.category = 'rule';
+    });
+    // v1.4 — 옛 '세력·국가'(faction)를 '국가'(nation)와 '세력'(faction)으로 나눈다(세계관마다 한 번만).
+    // 관계도·인물·지역 연결은 id를 그대로 쓰므로 이름만 나뉘고 관계는 끊기지 않는다.
+    if (!w.loreSplit) {
+      const NATION_WORDS = /왕국|제국|왕조|황실|왕실|왕가|공국|연방|자치령|제후|왕좌|성국|국가|제정|왕권/;
+      w.lore.forEach((l) => {
+        if (l.category !== 'faction') return;
+        const hay = [l.title, (l.tags || []).join(' ')].join(' ');
+        if (NATION_WORDS.test(hay)) l.category = 'nation';
+      });
+      w.loreSplit = true;
+    }
+
+    // 국가의 주 종족(raceIds) · 세력의 소속 국가(nationId) · 지역의 지배 세력(factionId)
+    if (!Array.isArray(w.map.terrainStamps)) w.map.terrainStamps = [];
+    const raceIdSet = new Set(w.lore.filter((l) => l.category === 'race').map((l) => l.id));
+    const nationIdSet = new Set(w.lore.filter((l) => l.category === 'nation').map((l) => l.id));
+    const factionIdSet = new Set(w.lore.filter((l) => l.category === 'faction').map((l) => l.id));
+    const placeIdSet = new Set([].concat(Array.from(nationIdSet), Array.from(factionIdSet)));
+    w.lore.forEach((l) => {
+      if (l.category === 'nation') {
+        l.raceIds = (Array.isArray(l.raceIds) ? l.raceIds : [])
+          .filter((id) => raceIdSet.has(id))
+          .filter((id, i, arr) => arr.indexOf(id) === i);
+      } else if (l.raceIds) {
+        delete l.raceIds;
+      }
+      if (l.category === 'faction') {
+        if (typeof l.nationId !== 'string' || !nationIdSet.has(l.nationId)) l.nationId = null;
+      } else if ('nationId' in l) {
+        delete l.nationId;
+      }
+    });
+    w.map.markers.forEach((m) => {
+      if (typeof m.factionId !== 'string' || !placeIdSet.has(m.factionId)) m.factionId = null;
+      if (typeof m.faction !== 'string') m.faction = '';
     });
     w.map.markers.forEach((m) => {
       if (!m.id) m.id = 'm_' + Math.random().toString(36).slice(2, 9);
@@ -182,6 +245,19 @@
       if (typeof m.y !== 'number') m.y = 50;
       if (!m.kind) m.kind = 'city';
     });
+    // 유물의 소지 인물 · 보관 지역 연결 정리
+    const charIdSet = new Set(w.characters.map((c) => c.id));
+    const markerIdSet = new Set(w.map.markers.map((m) => m.id));
+    w.lore.forEach((l) => {
+      if (l.category !== 'item') {
+        if ('holderCharId' in l) delete l.holderCharId;
+        if ('locationId' in l) delete l.locationId;
+        return;
+      }
+      if (l.holderCharId && !charIdSet.has(l.holderCharId)) l.holderCharId = null;
+      if (l.locationId && !markerIdSet.has(l.locationId)) l.locationId = null;
+    });
+
     linkLoreRefs(w);
     return w;
   }
@@ -196,12 +272,12 @@
     }
     if (c.factionId) {
       const l = map.get(c.factionId);
-      if (l && l.category === 'faction') c.faction = l.title;
+      if (l && (l.category === 'faction' || l.category === 'nation')) c.faction = l.title;
       else c.factionId = null;
     }
     c.abilityIds = (c.abilityIds || []).filter((id) => {
       const l = map.get(id);
-      return !!l && l.category === 'magic';
+      return !!l && l.category === 'rule';
     });
     c.weaponIds = (c.weaponIds || []).filter((id) => {
       const l = map.get(id);
@@ -232,9 +308,9 @@
       if (!(c.abilityIds || []).length && !(c.weaponIds || []).length && !c.abilityText && c.abilities && w.lore.length) {
         const rest = [];
         String(c.abilities).split('·').map((t) => t.trim()).filter(Boolean).forEach((token) => {
-          const hit = byTitle.get('magic|' + token) || byTitle.get('item|' + token);
+          const hit = byTitle.get('rule|' + token) || byTitle.get('item|' + token);
           if (!hit) { rest.push(token); return; }
-          if (hit.category === 'magic') c.abilityIds.push(hit.id);
+          if (hit.category === 'rule') c.abilityIds.push(hit.id);
           else c.weaponIds.push(hit.id);
         });
         if (rest.length) c.abilityText = rest.join(' · ');
@@ -247,6 +323,33 @@
   function syncLoreLinks(w) {
     if (!w) return;
     linkLoreRefs(w);
+    // 항목이 지워지면 그 항목을 가리키던 국가·세력·지역·유물 연결도 함께 정리한다
+    const raceIds = new Set((w.lore || []).filter((l) => l.category === 'race').map((l) => l.id));
+    const nationIds = new Set((w.lore || []).filter((l) => l.category === 'nation').map((l) => l.id));
+    const factionIds = new Set((w.lore || []).filter((l) => l.category === 'faction').map((l) => l.id));
+    const placeIds = new Set([].concat(Array.from(nationIds), Array.from(factionIds)));
+    (w.lore || []).forEach((l) => {
+      if (l.category === 'nation') {
+        l.raceIds = (Array.isArray(l.raceIds) ? l.raceIds : []).filter((id) => raceIds.has(id));
+      } else if (l.raceIds) {
+        delete l.raceIds;
+      }
+      if (l.category === 'faction') {
+        if (l.nationId && !nationIds.has(l.nationId)) l.nationId = null;
+      } else if ('nationId' in l) {
+        delete l.nationId;
+      }
+    });
+    const charIds = new Set((w.characters || []).map((c) => c.id));
+    const markerIds = new Set((((w.map || {}).markers) || []).map((m) => m.id));
+    (w.lore || []).forEach((l) => {
+      if (l.category !== 'item') return;
+      if (l.holderCharId && !charIds.has(l.holderCharId)) l.holderCharId = null;
+      if (l.locationId && !markerIds.has(l.locationId)) l.locationId = null;
+    });
+    (((w.map || {}).markers) || []).forEach((m) => {
+      if (m.factionId && !placeIds.has(m.factionId)) m.factionId = null;
+    });
   }
 
   function randomPos(index) {

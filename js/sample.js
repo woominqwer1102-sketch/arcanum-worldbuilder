@@ -154,40 +154,43 @@
   /* 인물 폼에서 골라 쓰는 기본 설정집 항목 — 종족 · 세력 · 능력 · 아이템 */
   function LoreDefaults() {
     const L = (id, category, title, body, tags) => ({ id: id, category: category, title: title, body: body, tags: tags || [] });
-    return [
+    const items = [
       // 종족
       L('l_race_human', 'race', '인간', '가장 흔하고 가장 빨리 잊는 종족. 한 세기 안에 왕국을 세우고 무너뜨린다.', ['인간']),
       L('l_race_elf', 'race', '엘프', '숲과 함께 늙는 종족. 나무의 이름을 외우고, 불을 오래 기억한다.', ['엘프', '숲']),
       L('l_race_dwarf', 'race', '드워프', '돌 아래에서 단련된 종족. 맹세와 빚을 쇠처럼 다룬다.', ['드워프', '장인']),
       L('l_race_spirit', 'race', '정령혈족', '정령의 피를 받아 태어난 자. 물과 달에 가까워 기억을 잃기 쉽다.', ['정령', '호수']),
       L('l_race_half', 'race', '반요(까마귀 혈족)', '짐승의 피가 섞인 자. 그림자와 소문을 먹고 산다.', ['반요', '그림자']),
+      // 국가
+      L('l_fac_royal', 'nation', '아르카디아 왕국', '몰락한 옛 왕가의 나라. 이제는 이름과 빚, 그리고 성문만 남았다.', ['왕실', '발드렌', '국가']),
+      L('l_nation_forest', 'nation', '검은숲 자치령', '숲이 스스로 허락한 자들만 사는 땅. 왕국의 법이 닿지 않는다.', ['숲', '자치령', '국가']),
+      L('l_nation_iron', 'nation', '서리봉우리 의회', '단조 장인들의 의회가 다스리는 산악 국가. 값은 쇠로 매긴다.', ['산', '의회', '국가']),
       // 세력
       L('l_fac_seal', 'faction', '봉인술사회', '이름을 감추고 인장을 읽는 학회. 성소의 문을 지킨다.', ['봉인', '학회']),
       L('l_fac_watch', 'faction', '검은숲 감시자', '검은숲의 경계를 지키는 사냥꾼들. 숲 밖의 일에는 나서지 않는다.', ['숲', '감시자']),
       L('l_fac_iron', 'faction', '무쇠 길드', '서리봉우리 아래의 단조 연합. 값은 쇠로, 약속은 망치로 매긴다.', ['단조', '길드']),
-      L('l_fac_royal', 'faction', '아르카디아 왕실', '몰락한 옛 왕가. 이제는 이름과 빚만 남았다.', ['왕실', '발드렌']),
       L('l_fac_free', 'faction', '무소속 · 정보상', '어느 편에도 서지 않고 소문을 사고파는 자들.', ['정보', '무소속']),
       L('l_fac_sanct', 'faction', '성소 수호자', '일곱 성소를 지키는 맹세의 무리. 인장이 풀리면 가장 먼저 깨어난다.', ['성소', '인장']),
       // 능력 · 체계
-      L('l_mag_ice', 'magic', '빙결의 검술', '베는 순간 공기를 얼려 상처를 늦추는 검술. 서리검과 함께 쓰면 대가가 커진다.', ['검술', '서리']),
-      L('l_mag_seal2', 'magic', '봉인 마법', '이름을 묶어 힘을 가두는 주문. 한 번 읽으면 읽은 자의 기억 일부를 가져간다.', ['봉인', '주문']),
-      L('l_mag_star', 'magic', '별의 지도', '밤하늘을 지도 삼아 거리를 읽는 점술. 흐린 밤에는 쓰지 못한다.', ['별', '지도']),
-      L('l_mag_name', 'magic', '이름의 해독', '참된 이름을 풀어 읽는 재주. 읽을수록 자신의 이름이 흐려진다.', ['이름', '해독']),
-      L('l_mag_fire', 'magic', '화염술', '재에서 다시 서는 불. 끄는 것이 아니라 이름을 부르는 방식으로 다룬다.', ['불', '재']),
-      L('l_mag_rot', 'magic', '부패한 이름의 마법', '부른 이름을 썩히는 주문. 상대의 기록에서 그 이름을 지운다.', ['이름', '부패']),
-      L('l_mag_rebirth', 'magic', '재에서 다시 서는 몸', '불에 타 죽은 자가 재에서 다시 서는 혈통의 힘. 설 때마다 이름을 조금씩 잊는다.', ['불사', '재']),
-      L('l_mag_forest', 'magic', '숲의 길 읽기', '나무 사이의 길을 읽는 감각. 숲이 허락한 자만 빠져나온다.', ['숲', '길']),
-      L('l_mag_hawkeye', 'magic', '매의 눈', '먼 것을 가까이 당겨 보는 눈. 오래 쓰면 색을 잃는다.', ['눈', '사냥']),
-      L('l_mag_runesmith', 'magic', '룬 단조', '쇠에 룬을 새겨 의지를 담는 기술. 새긴 것은 주인을 바꾸지 않는다.', ['룬', '단조']),
-      L('l_mag_sword', 'magic', '정통 검술', '왕실에서 가르치던 검술. 형태보다 거리와 예절을 먼저 배운다.', ['검술', '왕실']),
-      L('l_mag_shadow', 'magic', '그림자 마법', '그림자를 매개로 소리와 기억을 가로채는 술식.', ['그림자', '술식']),
-      L('l_mag_water', 'magic', '물의 정령술', '물의 정령과 이름을 주고받는 술법. 호수 근처에서만 온전히 쓰인다.', ['정령', '물']),
-      L('l_mag_resonance', 'magic', '인장 공명', '성소의 인장과 몸이 공명하는 힘. 인장이 풀리면 대가를 치른다.', ['인장', '공명']),
-      L('l_mag_walkwater', 'magic', '물 위를 걷기', '표면장력이 아닌 이름으로 물을 누르는 재주.', ['물', '걷기']),
-      L('l_mag_duel', 'magic', '외교', '말과 예절로 땅과 사람을 얻는 재주. 무보다 오래 남는다.', ['외교', '왕실']),
-      L('l_mag_crownshard', 'magic', '왕관의 조각을 다루는 재주', '잿빛 왕관의 조각을 만지면 그 조각의 이름이 들린다.', ['왕관', '이름']),
-      L('l_mag_poison', 'magic', '독', '값을 매기지 않고도 사람을 멈추게 하는 수단.', ['독', '정보']),
-      L('l_mag_erase', 'magic', '기억에서 이름 지우기', '기록과 기억 양쪽에서 이름을 빼내는 술식. 대가는 지우는 자의 이름이다.', ['이름', '기억']),
+      L('l_mag_ice', 'rule', '빙결의 검술', '베는 순간 공기를 얼려 상처를 늦추는 검술. 서리검과 함께 쓰면 대가가 커진다.', ['검술', '서리']),
+      L('l_mag_seal2', 'rule', '봉인 마법', '이름을 묶어 힘을 가두는 주문. 한 번 읽으면 읽은 자의 기억 일부를 가져간다.', ['봉인', '주문']),
+      L('l_mag_star', 'rule', '별의 지도', '밤하늘을 지도 삼아 거리를 읽는 점술. 흐린 밤에는 쓰지 못한다.', ['별', '지도']),
+      L('l_mag_name', 'rule', '이름의 해독', '참된 이름을 풀어 읽는 재주. 읽을수록 자신의 이름이 흐려진다.', ['이름', '해독']),
+      L('l_mag_fire', 'rule', '화염술', '재에서 다시 서는 불. 끄는 것이 아니라 이름을 부르는 방식으로 다룬다.', ['불', '재']),
+      L('l_mag_rot', 'rule', '부패한 이름의 마법', '부른 이름을 썩히는 주문. 상대의 기록에서 그 이름을 지운다.', ['이름', '부패']),
+      L('l_mag_rebirth', 'rule', '재에서 다시 서는 몸', '불에 타 죽은 자가 재에서 다시 서는 혈통의 힘. 설 때마다 이름을 조금씩 잊는다.', ['불사', '재']),
+      L('l_mag_forest', 'rule', '숲의 길 읽기', '나무 사이의 길을 읽는 감각. 숲이 허락한 자만 빠져나온다.', ['숲', '길']),
+      L('l_mag_hawkeye', 'rule', '매의 눈', '먼 것을 가까이 당겨 보는 눈. 오래 쓰면 색을 잃는다.', ['눈', '사냥']),
+      L('l_mag_runesmith', 'rule', '룬 단조', '쇠에 룬을 새겨 의지를 담는 기술. 새긴 것은 주인을 바꾸지 않는다.', ['룬', '단조']),
+      L('l_mag_sword', 'rule', '정통 검술', '왕실에서 가르치던 검술. 형태보다 거리와 예절을 먼저 배운다.', ['검술', '왕실']),
+      L('l_mag_shadow', 'rule', '그림자 마법', '그림자를 매개로 소리와 기억을 가로채는 술식.', ['그림자', '술식']),
+      L('l_mag_water', 'rule', '물의 정령술', '물의 정령과 이름을 주고받는 술법. 호수 근처에서만 온전히 쓰인다.', ['정령', '물']),
+      L('l_mag_resonance', 'rule', '인장 공명', '성소의 인장과 몸이 공명하는 힘. 인장이 풀리면 대가를 치른다.', ['인장', '공명']),
+      L('l_mag_walkwater', 'rule', '물 위를 걷기', '표면장력이 아닌 이름으로 물을 누르는 재주.', ['물', '걷기']),
+      L('l_mag_duel', 'rule', '외교', '말과 예절로 땅과 사람을 얻는 재주. 무보다 오래 남는다.', ['외교', '왕실']),
+      L('l_mag_crownshard', 'rule', '왕관의 조각을 다루는 재주', '잿빛 왕관의 조각을 만지면 그 조각의 이름이 들린다.', ['왕관', '이름']),
+      L('l_mag_poison', 'rule', '독', '값을 매기지 않고도 사람을 멈추게 하는 수단.', ['독', '정보']),
+      L('l_mag_erase', 'rule', '기억에서 이름 지우기', '기록과 기억 양쪽에서 이름을 빼내는 술식. 대가는 지우는 자의 이름이다.', ['이름', '기억']),
       // 아이템 · 유물
       L('l_item_glassiel', 'item', '서리검 「글라시엘」', '항구 창고에서 발견된 서리 검. 뽑지 않아도 울고, 뽑으면 겨울이 따라온다.', ['검', '서리']),
       L('l_item_nightdew', 'item', '밤의 이슬(장궁)', '밤이슬을 먹인 활. 쏜 화살은 소리 없이 목표에 닿는다.', ['활', '숲']),
@@ -195,6 +198,34 @@
       L('l_item_seal', 'item', '황금 인장', '일곱 성소의 인장을 옮겨 새긴 금판. 읽는 자의 기억을 대가로 받는다.', ['인장', '유물']),
       L('l_item_obsidian', 'item', '흑요석 지팡이', '재에서 구운 흑요석 지팡이. 불의 이름을 부르는 데 쓴다.', ['지팡이', '흑요석'])
     ];
+    // 국가 → 주 종족 (설정집 종족·몬스터 id)
+    const raceOf = {
+      l_fac_royal: ['l_race_human'],
+      l_nation_forest: ['l_race_elf'],
+      l_nation_iron: ['l_race_dwarf']
+    };
+    // 세력 → 소속 국가 (null이면 무소속)
+    const nationOf = {
+      l_fac_seal: 'l_fac_royal',
+      l_fac_watch: 'l_nation_forest',
+      l_fac_iron: 'l_nation_iron',
+      l_fac_free: null,
+      l_fac_sanct: null
+    };
+    // 아이템 → 소지 인물 · 보관 지역 (지도 핀)
+    const holderOf = {
+      l_item_glassiel: { holderCharId: 'c_aelric', locationId: null },
+      l_item_nightdew: { holderCharId: 'c_elindra', locationId: 'm_blackforest' },
+      l_item_axe: { holderCharId: null, locationId: 'm_frost' },
+      l_item_seal: { holderCharId: null, locationId: 'm_moonlake' },
+      l_item_obsidian: { holderCharId: 'c_malachar', locationId: null }
+    };
+    items.forEach((it) => {
+      if (raceOf[it.id]) it.raceIds = raceOf[it.id].slice();
+      if (it.category === 'faction') it.nationId = nationOf[it.id] || null;
+      if (holderOf[it.id]) Object.assign(it, holderOf[it.id]);
+    });
+    return items;
   }
 
   function SampleWorld() {
@@ -342,16 +373,16 @@
         }
       ],
       lore: [
-        {          id: 'l1', category: 'magic', title: '봉인술', body: '이름을 감추고 힘을 묶는 마법. 봉인된 존재는 이름을 잃고, 이름을 잃은 자는 존재의 절반을 잃는다. 대가로 성소의 인장은 매 세기 한 사람의 기억을 먹는다.', tags: ['봉인', '이름', '성소', '인장']
+        {          id: 'l1', category: 'rule', title: '봉인술', body: '이름을 감추고 힘을 묶는 마법. 봉인된 존재는 이름을 잃고, 이름을 잃은 자는 존재의 절반을 잃는다. 대가로 성소의 인장은 매 세기 한 사람의 기억을 먹는다.', tags: ['봉인', '이름', '성소', '인장']
         },
         {
-          id: 'l2', category: 'magic', title: '룬 맹세', body: '룬 문자로 새긴 계약은 죽음으로도 풀리지 않는다. 맹세를 어긴 자는 살아 있는 동안 이름을 잃고, 그 이름은 맹세를 받은 자가 대신 가지게 된다.', tags: ['룬', '계약', '서약', '이름']
+          id: 'l2', category: 'rule', title: '룬 맹세', body: '룬 문자로 새긴 계약은 죽음으로도 풀리지 않는다. 맹세를 어긴 자는 살아 있는 동안 이름을 잃고, 그 이름은 맹세를 받은 자가 대신 가지게 된다.', tags: ['룬', '계약', '서약', '이름']
         },
         {
-          id: 'l3', category: 'faction', title: '서약 기사단', body: '아르카디아 왕실에 충성하던 마지막 기사단. 일곱 개의 서약 중 첫 번째는 "왕이 아니라 이름을 지킨다"이다. 왕실이 몰락한 뒤 기사단은 왕도에 남아 성문을 지킨다.', tags: ['기사단', '서약', '왕도']
+          id: 'l3', category: 'faction', title: '서약 기사단', nationId: 'l_fac_royal', body: '아르카디아 왕실에 충성하던 마지막 기사단. 일곱 개의 서약 중 첫 번째는 "왕이 아니라 이름을 지킨다"이다. 왕실이 몰락한 뒤 기사단은 왕도에 남아 성문을 지킨다.', tags: ['기사단', '서약', '왕도']
         },
         {
-          id: 'l4', category: 'faction', title: '잿불 교단', body: '말라카르를 따르는 재의 교단. "태워진 것은 다시 서고, 다시 선 것은 빚을 받는다"는 교리를 따른다. 왕관 조각을 모아 잿빛 왕관을 복원하려 한다.', tags: ['교단', '재', '왕관', '말라카르']
+          id: 'l4', category: 'faction', title: '잿불 교단', nationId: null, body: '말라카르를 따르는 재의 교단. "태워진 것은 다시 서고, 다시 선 것은 빚을 받는다"는 교리를 따른다. 왕관 조각을 모아 잿빛 왕관을 복원하려 한다.', tags: ['교단', '재', '왕관', '말라카르']
         },
         {
           id: 'l5', category: 'race', title: '용혈족', body: '용의 피를 이은 자들. 이마에 뿔이 자라고 황금빛 눈동자를 가진다. 피가 진할수록 불에 강하고, 오래 산다. 발드렌 왕실에는 한 줄기밖에 남지 않았다.', tags: ['용', '혈족', '왕실', '불']
@@ -398,13 +429,13 @@
         kind: 'sample',
         image: null,
         markers: [
-          { id: M.kingdom, name: '발드렌', kind: 'kingdom', x: 47, y: 42, climate: '서늘한 대륙성 · 긴 겨울', faction: '아르카디아 왕실(명목상) · 서약 기사단', resources: '밀, 황금빛 석회, 옛 성소의 잔재', danger: '교단의 첩자와 왕실 잔당이 뒤섞인 골목', notes: '왕도. 거리마다 죽은 왕의 이름이 새겨져 있고, 서약 기사단이 성문을 지킨다.' },
-          { id: M.peak, name: '서리봉우리', kind: 'mountain', x: 33, y: 20, climate: '일 년 내내 서리, 산정에는 눈', faction: '무쇠 길드', resources: '청철, 룬석, 얼지 않는 샘', danger: '눈보라와 산길을 지키는 바위거인', notes: '봉우리 아래 무쇠 길드의 대장간 도시가 있다. 글라시엘의 검집이 여기서 만들어졌다.' },
-          { id: M.forest, name: '검은숲', kind: 'forest', x: 70, y: 31, climate: '습하고 그늘진 온대', faction: '검은숲 감시자', resources: '검은 참나무, 밤이슬, 약초', danger: '길을 바꾸는 숲과 대화재의 흔적', notes: '동쪽 절반이 아직 재로 남아 있다. 숲은 낯선 자의 이름을 먼저 묻는다.' },
-          { id: M.desert, name: '잿빛 사막', kind: 'ruin', x: 76, y: 64, climate: '건조, 밤에는 혹한', faction: '잿불 교단의 순례길', resources: '유리화한 모래, 재의 소금', danger: '모래 아래의 옛 성벽과 재에서 서는 것들', notes: '천 년 전 왕도가 탄 자리. 지금은 아무것도 자라지 않는다.' },
-          { id: M.lake, name: '달의 호수', kind: 'lake', x: 42, y: 57, climate: '안개 잦은 호숫가', faction: '성소 수호자', resources: '달빛 이끼, 성소의 물', danger: '호수 아래의 인장과 기억을 잃는 물', notes: '일곱 성소 중 두 번째. 니뮤에가 이곳에서 깨어났다.' },
+          { id: M.kingdom, name: '발드렌', kind: 'kingdom', x: 47, y: 42, climate: '서늘한 대륙성 · 긴 겨울', factionId: 'l_fac_royal', faction: '아르카디아 왕실', resources: '밀, 황금빛 석회, 옛 성소의 잔재', danger: '교단의 첩자와 왕실 잔당이 뒤섞인 골목', notes: '왕도. 거리마다 죽은 왕의 이름이 새겨져 있고, 서약 기사단이 성문을 지킨다.' },
+          { id: M.peak, name: '서리봉우리', kind: 'mountain', x: 33, y: 20, climate: '일 년 내내 서리, 산정에는 눈', factionId: 'l_fac_iron', faction: '무쇠 길드', resources: '청철, 룬석, 얼지 않는 샘', danger: '눈보라와 산길을 지키는 바위거인', notes: '봉우리 아래 무쇠 길드의 대장간 도시가 있다. 글라시엘의 검집이 여기서 만들어졌다.' },
+          { id: M.forest, name: '검은숲', kind: 'forest', x: 70, y: 31, climate: '습하고 그늘진 온대', factionId: 'l_fac_watch', faction: '검은숲 감시자', resources: '검은 참나무, 밤이슬, 약초', danger: '길을 바꾸는 숲과 대화재의 흔적', notes: '동쪽 절반이 아직 재로 남아 있다. 숲은 낯선 자의 이름을 먼저 묻는다.' },
+          { id: M.desert, name: '잿빛 사막', kind: 'ruin', x: 76, y: 64, climate: '건조, 밤에는 혹한', factionId: 'l4', faction: '잿불 교단', resources: '유리화한 모래, 재의 소금', danger: '모래 아래의 옛 성벽과 재에서 서는 것들', notes: '천 년 전 왕도가 탄 자리. 지금은 아무것도 자라지 않는다.' },
+          { id: M.lake, name: '달의 호수', kind: 'lake', x: 42, y: 57, climate: '안개 잦은 호숫가', factionId: 'l_fac_sanct', faction: '성소 수호자', resources: '달빛 이끼, 성소의 물', danger: '호수 아래의 인장과 기억을 잃는 물', notes: '일곱 성소 중 두 번째. 니뮤에가 이곳에서 깨어났다.' },
           { id: M.tower, name: '폐허의 탑', kind: 'ruin', x: 57, y: 74, climate: '메마르고 바람이 많음', faction: '아무도 없다', resources: '봉인석, 옛 서기의 기록', danger: '풀린 인장과 이름을 부르는 소리', notes: '첫 번째 인장이 풀린 곳. 탑 아래에는 일곱 개의 홈이 있는 문이 있다.' },
-          { id: M.port, name: '발드렌 항구', kind: 'port', x: 20, y: 47, climate: '안개와 소금바람', faction: '서약 기사단(세관) · 무소속 상단', resources: '소금, 밀수품, 먼 바다의 소문', danger: '세관과 밀수꾼, 그리고 검은 배', notes: '글라시엘이 발견된 창고가 아직 남아 있다. 바다 건너에서 온 소문이 가장 먼저 닿는 곳.' }
+          { id: M.port, name: '발드렌 항구', kind: 'port', x: 20, y: 47, climate: '안개와 소금바람', factionId: 'l3', faction: '서약 기사단', resources: '소금, 밀수품, 먼 바다의 소문', danger: '세관과 밀수꾼, 그리고 검은 배', notes: '글라시엘이 발견된 창고가 아직 남아 있다. 바다 건너에서 온 소문이 가장 먼저 닿는 곳.' }
         ]
       }
     };

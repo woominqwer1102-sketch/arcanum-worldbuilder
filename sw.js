@@ -1,7 +1,7 @@
-/* ARCANUM service worker · offline app shell (arcanum-v3)
+/* ARCANUM service worker · offline app shell (arcanum-v4)
    - 새 버전은 install에서 바로 대기열을 건너뛰고(skipWaiting), activate에서 즉시 제어권을 가져온다(clients.claim).
    - activate 때 열려 있던 화면은 새 버전으로 다시 띄워, 홈 화면 앱에도 새 UI가 바로 보이게 한다. */
-const CACHE = 'arcanum-v3';
+const CACHE = 'arcanum-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -15,6 +15,7 @@ const ASSETS = [
   './js/factiongraph.js',
   './js/worldgen.js',
   './js/mapview.js',
+  './js/rankicon.js',
   './js/app.js',
   './icons/icon-180.png',
   './icons/icon-192.png',
