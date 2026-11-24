@@ -428,6 +428,7 @@
   }
 
   function destroy() {
+    if (state.tap) clearTimeout(state.tap.timer);
     if (state.host) state.host.innerHTML = '';
     state.svg = null;
     state.host = null;

@@ -1393,6 +1393,7 @@
     const natName = isNation ? '' : loreNationName(w, l);
     const subFactions = isNation ? (w.lore || []).filter((x) => x.category === 'faction' && x.nationId === id) : [];
     const regions = (w.map.markers || []).filter((m) => m.factionId === id);
+    const holdings = (w.lore || []).filter((x) => x.category === 'item' && x.holderFactionId === id);
     const body = document.createElement('div');
     body.innerHTML =
       (l.body ? '<p class="prose">' + esc(l.body) + '</p>' : '') +
@@ -1406,6 +1407,8 @@
         subFactions.map((f) => '<button class="mini-chip" data-open-faction="' + esc(f.id) + '">' + esc(f.title) + '</button>').join('') + '</div>' : '') +
       (regions.length ? '<div class="label-row"><span>지배 지역</span><span>' + regions.length + '</span></div><div class="mini-chips">' +
         regions.map((m) => '<button class="mini-chip mini-chip--region" data-open-region="' + esc(m.id) + '">' + esc(m.name) + '</button>').join('') + '</div>' : '') +
+      (holdings.length ? '<div class="label-row"><span>소지 유물</span><span>' + holdings.length + '</span></div><div class="mini-chips">' +
+        holdings.map((it) => '<button class="mini-chip" data-open-lore="' + esc(it.id) + '">' + esc(it.title) + '</button>').join('') + '</div>' : '') +
       '<div class="label-row"><span>관계</span><span>' + rels.length + '</span></div>' +
       (rels.length ? '<div class="list">' + rels.map((r) => {
         const other = r.a === id ? r.b : r.a;
@@ -1435,7 +1438,15 @@
       const ch = e.target.closest('[data-open-char]');
       if (ch) { sheet.close(); setTimeout(() => openCharacterDetail(ch.getAttribute('data-open-char')), 160); return; }
       const rg = e.target.closest('[data-open-region]');
-      if (rg) { sheet.close(); setTimeout(() => openRegionDetail(rg.getAttribute('data-open-region')), 160); }
+      if (rg) { sheet.close(); setTimeout(() => openRegionDetail(rg.getAttribute('data-open-region')), 160); return; }
+      const lo = e.target.closest('[data-open-lore]');
+      if (lo) {
+        sheet.close();
+        App.openLore[lo.getAttribute('data-open-lore')] = true;
+        App.filters.loreCat = '전체';
+        App.filters.loreQuery = '';
+        go('lore');
+      }
     });
   }
 
@@ -2363,6 +2374,11 @@
     return (w.map.markers || []).find((m) => m.id === l.locationId) || null;
   }
 
+  function itemHolderFaction(w, l) {
+    if (!l.holderFactionId) return null;
+    return (w.lore || []).find((x) => x.id === l.holderFactionId && (x.category === 'nation' || x.category === 'faction')) || null;
+  }
+
   /* 세력의 주 종족 이름들 (설정집 raceIds → 종족 제목) */
   function loreRaceNames(w, l) {
     return ((l && l.raceIds) || []).map((id) => {
@@ -2394,11 +2410,12 @@
       const raceNames = l.category === 'nation' ? loreRaceNames(w, l) : [];
       const natName = l.category === 'faction' ? loreNationName(w, l) : '';
       const holders = l.category === 'item' ? itemHolders(w, l) : [];
+      const holderFac = l.category === 'item' ? itemHolderFaction(w, l) : null;
       const loc = l.category === 'item' ? itemLocation(w, l) : null;
       const metaLine = raceNames.length ? raceNames.join(' · ')
         : (natName ? '⚑ ' + (natName || '무소속')
           : (l.category === 'item'
-            ? [(holders.length ? holders.map((c) => c.name).join(', ') : '무소속'), loc ? loc.name : ''].filter(Boolean).join(' · ')
+            ? [(holderFac ? '🏳 ' + holderFac.title : ''), (holders.length ? holders.map((c) => c.name).join(', ') : '무소속'), loc ? '📍 ' + loc.name : ''].filter(Boolean).join(' · ')
             : ''));
       return '<article class="lore-card' + (open ? ' is-open' : '') + '" data-lore="' + esc(l.id) + '">' +
         '<button type="button" class="lore-card__head" data-lore-head="' + esc(l.id) + '">' +
@@ -2417,10 +2434,17 @@
             (l.category === 'faction' ? '<div class="label-row"><span>소속 국가</span></div><div class="mini-chips">' +
               (natName ? '<button class="mini-chip mini-chip--faction" data-open-faction="' + esc(l.nationId) + '">⚑ ' + esc(natName) + '</button>'
                 : '<span class="mini-chip">무소속</span>') + '</div>' : '') +
-            (l.category === 'item' ? '<div class="label-row"><span>소지 · 보관</span></div><div class="mini-chips">' +
-              (holders.length ? holders.map((c) => '<button class="mini-chip" data-open-char="' + esc(c.id) + '">' + esc(c.name) + '</button>').join('')
-                : '<span class="mini-chip">무소속</span>') +
-              (loc ? '<button class="mini-chip" data-open-region="' + esc(loc.id) + '">📍 ' + esc(loc.name) + '</button>' : '') + '</div>' : '') +
+            (l.category === 'item' ?
+              '<div class="label-row"><span>소지 인물</span></div><div class="mini-chips">' +
+                (holders.length ? holders.map((c) => '<button class="mini-chip" data-open-char="' + esc(c.id) + '">' + esc(c.name) + '</button>').join('')
+                  : '<span class="mini-chip">무소속</span>') + '</div>' +
+              '<div class="label-row"><span>소지 국가 / 세력</span></div><div class="mini-chips">' +
+                (holderFac ? '<button class="mini-chip mini-chip--faction" data-open-faction="' + esc(holderFac.id) + '">🏳 ' + esc(holderFac.title) + '</button>'
+                  : '<span class="mini-chip">무소속</span>') + '</div>' +
+              '<div class="label-row"><span>보관 지역</span></div><div class="mini-chips">' +
+                (loc ? '<button class="mini-chip" data-open-region="' + esc(loc.id) + '">📍 ' + esc(loc.name) + '</button>'
+                  : '<span class="mini-chip">무소속</span>') + '</div>'
+              : '') +
             '<div class="btn-row mt-14"><button class="btn btn--sm" data-lore-edit="' + esc(l.id) + '"><svg><use href="#i-edit"/></svg>수정</button></div>' +
             '</div>'
           : '') +
@@ -2433,7 +2457,7 @@
     const w = W();
     const l = id ? w.lore.find((x) => x.id === id) : null;
     let category = l ? l.category : (o.category || 'rule');
-    let racePick = null, nationPick = null, holderPick = null, locPick = null;
+    let racePick = null, nationPick = null, holderPick = null, holderFacPick = null, locPick = null;
     const cats = Object.keys(CATS).map((k) => ({ value: k, label: CATS[k] }));
     const html =
       '<div class="field"><span class="field__label">분류</span><div id="lore-cat-pick"></div></div>' +
@@ -2451,6 +2475,11 @@
         '<span class="field__label">소지 인물 <span class="muted" style="font-size:10px">인물</span></span>' +
         '<div id="lore-holder"></div>' +
         '<span class="field-hint">이 유물을 가진 인물이에요. 인물 폼에서 무기로 연결한 인물도 함께 표시돼요.</span>' +
+      '</div>' +
+      '<div class="field" id="lore-holder-faction-field" style="display:none">' +
+        '<span class="field__label">소지 국가 / 세력 <span class="muted" style="font-size:10px">설정집 · 국가·세력</span></span>' +
+        '<div id="lore-holder-faction"></div>' +
+        '<span class="field-hint">이 유물을 보관하거나 소유한 국가·세력이에요. 기본은 <b>무소속</b>이고, 국가·세력 상세에 함께 보여요.</span>' +
       '</div>' +
       '<div class="field" id="lore-loc-field" style="display:none">' +
         '<span class="field__label">보관 지역 <span class="muted" style="font-size:10px">지도 · 지역 핀</span></span>' +
@@ -2473,6 +2502,7 @@
         const raceField = body.querySelector('#lore-race-field');
         const nationField = body.querySelector('#lore-nation-field');
         const holderField = body.querySelector('#lore-holder-field');
+        const holderFacField = body.querySelector('#lore-holder-faction-field');
         const locField = body.querySelector('#lore-loc-field');
 
         racePick = buildLorePicker(body.querySelector('#lore-races'), w, {
@@ -2486,6 +2516,10 @@
         holderPick = buildChipSelect(body.querySelector('#lore-holder'), (w.characters || []).map((c) => ({ id: c.id, title: c.name })), {
           ids: (l && l.holderCharId) ? [l.holderCharId] : [], noneLabel: '없음'
         });
+        holderFacPick = buildLorePicker(body.querySelector('#lore-holder-faction'), w, {
+          category: 'faction', categories: ['nation', 'faction'], multi: false, noneLabel: '무소속',
+          ids: (l && l.holderFactionId) ? [l.holderFactionId] : []
+        });
         locPick = buildChipSelect(body.querySelector('#lore-loc'), (w.map.markers || []).map((m) => ({ id: m.id, title: m.name })), {
           ids: (l && l.locationId) ? [l.locationId] : [], noneLabel: '없음'
         });
@@ -2494,6 +2528,7 @@
           if (raceField) raceField.style.display = category === 'nation' ? '' : 'none';
           if (nationField) nationField.style.display = category === 'faction' ? '' : 'none';
           if (holderField) holderField.style.display = category === 'item' ? '' : 'none';
+          if (holderFacField) holderFacField.style.display = category === 'item' ? '' : 'none';
           if (locField) locField.style.display = category === 'item' ? '' : 'none';
         }
         body.querySelector('#lore-cat-pick').appendChild(U.chipPicker(cats, category, {
@@ -2560,10 +2595,13 @@
         if (category === 'item') {
           const hid = (holderPick.ids()[0]) || null;
           const lid = (locPick.ids()[0]) || null;
+          const hfid = (holderFacPick.ids()[0]) || null;
           data.holderCharId = (hid && (w.characters || []).some((c) => c.id === hid)) ? hid : null;
           data.locationId = (lid && (w.map.markers || []).some((m) => m.id === lid)) ? lid : null;
+          data.holderFactionId = (hfid && (w.lore || []).some((x) => x.id === hfid && (x.category === 'nation' || x.category === 'faction'))) ? hfid : null;
         } else if (l) {
           delete l.holderCharId;
+          delete l.holderFactionId;
           delete l.locationId;
         }
         let saved = null;

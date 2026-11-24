@@ -328,10 +328,15 @@
       const c = borderCenter(pts);
       const color = b.color || BORDER_COLORS[0];
       const xy = borderSvgPoints(pts, h);
+      const label = borderLabel(w, b);
+      const lw = Math.min(130, label.length * 4.8 + 8);
+      const lx = (c.x / 100) * VW;
+      const ly = (c.y / 100) * h;
       return '<g class="map-border' + (st.selectedBorder === b.id ? ' is-selected' : '') + '" data-border="' + U.esc(b.id) + '">' +
         '<polygon class="map-border__area" points="' + xy + '" fill="' + U.esc(color) + '" data-border="' + U.esc(b.id) + '"/>' +
         '<polygon class="map-border__line" points="' + xy + '" stroke="' + U.esc(color) + '" data-border="' + U.esc(b.id) + '"/>' +
-        '<text class="map-border__label" x="' + ((c.x / 100) * VW).toFixed(1) + '" y="' + ((c.y / 100) * h).toFixed(1) + '">' + U.esc(borderLabel(w, b)) + '</text>' +
+        '<rect class="map-border__plate" x="' + (lx - lw / 2).toFixed(1) + '" y="' + (ly - 6).toFixed(1) + '" width="' + lw.toFixed(1) + '" height="12" rx="6" fill="rgba(255,250,235,.78)" stroke="' + U.esc(color) + '" stroke-opacity=".45" stroke-width=".6"/>' +
+        '<text class="map-border__label" x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '">' + U.esc(label) + '</text>' +
       '</g>';
     }).join('');
 

@@ -305,10 +305,12 @@
     w.lore.forEach((l) => {
       if (l.category !== 'item') {
         if ('holderCharId' in l) delete l.holderCharId;
+        if ('holderFactionId' in l) delete l.holderFactionId;
         if ('locationId' in l) delete l.locationId;
         return;
       }
       if (l.holderCharId && !charIdSet.has(l.holderCharId)) l.holderCharId = null;
+      if (l.holderFactionId && !placeIdSet.has(l.holderFactionId)) l.holderFactionId = null;
       if (l.locationId && !markerIdSet.has(l.locationId)) l.locationId = null;
     });
 
