@@ -525,11 +525,36 @@
         (c.image ? '<button type="button" class="char-profile__zoom" data-zoom-photo><span aria-hidden="true">🔍</span><span>크게 보기</span></button>' : '') +
       '</div>' +
     '</div>';
-    const ranks = rankList(w, c);
-    if (ranks.length) {
-      html += '<div class="rank-badges">' + ranks.map((r) => rankBadge(r)).join('') + '</div>';
-    }
-    if (c.abilities) html += '<div class="label-row"><span>능력 / 무기</span></div><p class="prose">' + esc(c.abilities) + '</p>';
+    // ---- 능력 — 상세에서 바로 [-] / [+] 로 단계 변경 (자동 저장) ----
+    const rankById = new Map((w.rankSystems || []).map((s) => [s.id, s]));
+    const rankRows = (c.ranks || []).map((r) => {
+      const sys = rankById.get(r.systemId);
+      const tier = Number(r.tier);
+      if (!sys || sys.tiers[tier] === undefined || sys.tiers[tier] === '') return '';
+      return '<div class="irank">' +
+        '<span class="irank__icon">' + RankIcon.render(sys.icon) + '</span>' +
+        '<span class="irank__name">' + esc(sys.name) + '</span>' +
+        '<button type="button" class="irank__btn" data-rank-step="' + esc(sys.id) + '" data-delta="-1"' + (tier <= 0 ? ' disabled' : '') + ' aria-label="' + esc(sys.name) + ' 한 단계 내리기">−</button>' +
+        '<span class="irank__tier">' + esc(sys.tiers[tier]) + '</span>' +
+        '<button type="button" class="irank__btn" data-rank-step="' + esc(sys.id) + '" data-delta="1"' + (tier >= sys.tiers.length - 1 ? ' disabled' : '') + ' aria-label="' + esc(sys.name) + ' 한 단계 올리기">+</button>' +
+      '</div>';
+    }).join('');
+    html += '<div class="label-row"><span>능력</span><span class="muted" style="font-size:10px">바로 조절돼요</span></div>' +
+      (rankRows ? '<div class="irank-list">' + rankRows + '</div>' : '') +
+      '<button type="button" class="inline-add" data-rank-add><span aria-hidden="true">＋</span>능력 추가</button>' +
+      legacyAbilityRow(w, c) +
+      (c.abilityText ? '<p class="field-hint">' + esc(c.abilityText) + '</p>' : '');
+
+    // ---- 장비·무기 — 상세에서 바로 장착/해제 (자동 저장) ----
+    const itemById = new Map((w.lore || []).filter((l) => l.category === 'item').map((l) => [l.id, l]));
+    const equipped = (c.weaponIds || []).filter((id) => itemById.has(id));
+    html += '<div class="label-row"><span>장비 · 무기</span><span>' + equipped.length + '</span></div>' +
+      (equipped.length
+        ? '<div class="mini-chips">' + equipped.map((id) =>
+            '<button type="button" class="mini-chip mini-chip--x" data-weapon-toggle="' + esc(id) + '" aria-label="' + esc(itemById.get(id).title) + ' 해제">' +
+              esc(itemById.get(id).title) + '<b aria-hidden="true">×</b></button>').join('') + '</div>'
+        : '<p class="field-hint">아직 장착한 장비가 없어요.</p>') +
+      '<button type="button" class="inline-add" data-weapon-add><span aria-hidden="true">＋</span>장비 추가</button>';
 
     if (c.personality) html += '<div class="label-row"><span>성격</span></div><p class="prose">' + esc(c.personality) + '</p>';
     if (c.notes) html += '<div class="label-row"><span>배경 메모</span></div><p class="prose">' + esc(c.notes) + '</p>';
@@ -599,17 +624,119 @@
     return html;
   }
 
+  // 능력·장비를 상세 시트에서 바로 바꾼 뒤, AI 초상화 프롬프트가 쓰는 abilities 문자열도 함께 맞춘다
+  function syncCharacterAbilityText(w, c) {
+    const sysById = new Map((w.rankSystems || []).map((s) => [s.id, s]));
+    const loreById = new Map((w.lore || []).map((l) => [l.id, l]));
+    const parts = [];
+    (c.ranks || []).forEach((r) => {
+      const sys = sysById.get(r.systemId);
+      const t = Number(r.tier);
+      if (sys && sys.tiers[t] !== undefined && sys.tiers[t] !== '') parts.push(sys.name + ' ' + sys.tiers[t]);
+    });
+    (c.abilityIds || []).forEach((id) => { const it = loreById.get(id); if (it) parts.push(it.title); });
+    (c.weaponIds || []).forEach((id) => { const it = loreById.get(id); if (it) parts.push(it.title); });
+    if (c.abilityText) parts.push(c.abilityText);
+    c.abilities = parts.join(' · ');
+  }
+
+  /* 상세 시트 '+ 능력 추가' — 설정집 능력·등급 체계에서 단계를 골라 바로 넣는다 */
+  function openAbilityQuickAdd(w, c, onChange) {
+    const systems = w.rankSystems || [];
+    if (!systems.length) {
+      U.toast('설정집에 ⚔️ 능력·등급 체계가 없어요 · 먼저 능력을 만들어 주세요', { icon: 'i-x', duration: 2600 });
+      return;
+    }
+    const body = document.createElement('div');
+    body.innerHTML = systems.map((sys) => {
+      const cur = (c.ranks || []).find((r) => r.systemId === sys.id);
+      const tier = cur ? Number(cur.tier) : -1;
+      return '<div class="field"><span class="field__label">' + esc(sys.name) +
+        (cur && sys.tiers[tier] !== undefined ? ' <span class="muted" style="font-size:10px">현재 ' + esc(sys.tiers[tier]) + '</span>' : '') + '</span>' +
+        '<div class="chip-row" data-ability-sys="' + esc(sys.id) + '">' +
+          sys.tiers.map((t, i) => '<button type="button" class="chip chip--small' + (i === tier ? ' chip--active' : '') + '" data-ability-tier="' + i + '">' + esc(t) + '</button>').join('') +
+        '</div></div>';
+    }).join('') + '<p class="field-hint">단계를 누르면 바로 저장되고 상세 화면에 반영돼요.</p>';
+
+    const sheet = U.openSheet({
+      eyebrow: 'ABILITY',
+      title: '능력 · 단계',
+      sub: '설정집의 체계와 단계를 그대로 골라요.',
+      body: body
+    });
+    body.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-ability-tier]');
+      if (!btn) return;
+      const row = btn.closest('[data-ability-sys]');
+      if (!row) return;
+      const sysId = row.getAttribute('data-ability-sys');
+      const tier = Number(btn.getAttribute('data-ability-tier'));
+      const sys = systems.find((s) => s.id === sysId);
+      if (!sys) return;
+      const cur = (c.ranks || []).find((r) => r.systemId === sysId);
+      if (cur) cur.tier = tier;
+      else c.ranks = (c.ranks || []).concat([{ systemId: sysId, tier: tier }]);
+      onChange();
+      sheet.close();
+      U.toast(sys.name + ' · ' + sys.tiers[tier] + ' 을 넣었어요', { icon: 'i-shield' });
+    });
+  }
+
+  /* 상세 시트 '+ 장비 추가' — 설정집 아이템·유물을 바로 장착/해제 */
+  function openWeaponQuickAdd(w, c, onChange) {
+    const items = (w.lore || []).filter((l) => l.category === 'item');
+    if (!items.length) {
+      U.toast('설정집 · 아이템·유물에 먼저 장비를 추가해 주세요', { icon: 'i-x', duration: 2600 });
+      return;
+    }
+    const body = document.createElement('div');
+    function draw() {
+      const owned = new Set(c.weaponIds || []);
+      body.innerHTML = '<div class="chip-row">' + items.map((it) =>
+        '<button type="button" class="chip chip--small' + (owned.has(it.id) ? ' chip--active' : '') + '" data-item="' + esc(it.id) + '">' +
+          (owned.has(it.id) ? '✓ ' : '') + esc(it.title) + '</button>').join('') + '</div>' +
+        '<p class="field-hint">칩을 누를 때마다 바로 장착/해제되고 저장돼요.</p>';
+    }
+    draw();
+    U.openSheet({
+      eyebrow: 'EQUIPMENT',
+      title: '장비 추가',
+      sub: '설정집 · 아이템·유물에서 골라요.',
+      body: body,
+      foot: [{ label: '닫기', className: 'btn--gold', onClick: () => 'close' }]
+    });
+    body.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-item]');
+      if (!b) return;
+      const id = b.getAttribute('data-item');
+      const ids = (c.weaponIds || []).slice();
+      const i = ids.indexOf(id);
+      if (i > -1) ids.splice(i, 1); else ids.push(id);
+      c.weaponIds = ids;
+      onChange();
+      draw();
+      U.haptic(6);
+    });
+  }
+
   function openCharacterDetail(id) {
     const w = W();
     const c = w.characters.find((x) => x.id === id);
     if (!c) return;
     const body = document.createElement('div');
     body.innerHTML = characterDetailBody(w, c);
+    // 상세 시트 안에서 능력·장비를 바꾸면 바로 저장하고 시트 본문만 다시 그린다
+    function repaint() {
+      syncCharacterAbilityText(w, c);
+      touch({ immediate: true });
+      body.innerHTML = characterDetailBody(w, c);
+    }
     const sheet = U.openSheet({
       title: c.name,
       hideHeadText: true,   // 이름·칭호는 본문 맨 위 프로필 블록이 맡는다(같은 내용이 두 번 보이지 않게)
       full: true,
       body: body,
+      onClose: () => refreshView(),
       foot: [
         { label: '수정', className: 'btn', icon: 'i-edit', onClick: () => { sheet.close(); setTimeout(() => openCharacterForm(id), 180); } },
         { label: '삭제', className: 'btn--danger', icon: 'i-trash', onClick: async () => {
@@ -632,6 +759,43 @@
       if (zoom && c.image) {
         U.openLightbox({ src: c.image, title: c.name, sub: c.title || '' });
         U.haptic(6);
+        return;
+      }
+      // ---- 능력 단계 [-] / [+] — 바로 저장 ----
+      const rankStep = e.target.closest('[data-rank-step]');
+      if (rankStep) {
+        e.preventDefault();
+        const sys = (w.rankSystems || []).find((s) => s.id === rankStep.getAttribute('data-rank-step'));
+        const cur = sys ? (c.ranks || []).find((r) => r.systemId === sys.id) : null;
+        if (!sys || !cur) return;
+        const next = U.clamp(Number(cur.tier) + Number(rankStep.getAttribute('data-delta')), 0, sys.tiers.length - 1);
+        if (next === Number(cur.tier)) return;
+        cur.tier = next;
+        repaint();
+        U.haptic(6);
+        U.toast(sys.name + ' ' + sys.tiers[next], { icon: 'i-shield', duration: 1400 });
+        return;
+      }
+      if (e.target.closest('[data-rank-add]')) {
+        e.preventDefault();
+        openAbilityQuickAdd(w, c, repaint);
+        return;
+      }
+      // ---- 장비 해제 / 추가 — 바로 저장 ----
+      const weaponToggle = e.target.closest('[data-weapon-toggle]');
+      if (weaponToggle) {
+        e.preventDefault();
+        const wid = weaponToggle.getAttribute('data-weapon-toggle');
+        const item = (w.lore || []).find((l) => l.id === wid);
+        c.weaponIds = (c.weaponIds || []).filter((x) => x !== wid);
+        repaint();
+        U.haptic(8);
+        U.toast((item ? item.title : '장비') + ' 해제했어요', { icon: 'i-trash', duration: 1400 });
+        return;
+      }
+      if (e.target.closest('[data-weapon-add]')) {
+        e.preventDefault();
+        openWeaponQuickAdd(w, c, repaint);
         return;
       }
       const rel = e.target.closest('[data-rel]');
