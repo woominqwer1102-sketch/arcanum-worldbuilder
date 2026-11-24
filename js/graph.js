@@ -11,7 +11,8 @@
     hostile: { label: '적대', color: '#c0626b' },
     family: { label: '가족', color: '#c9a05a' },
     love: { label: '연인', color: '#d98aa8' },
-    mentor: { label: '스승·제자', color: '#7f9fd0' },
+    mentor: { label: '스승', color: '#7f9fd0' },
+    student: { label: '제자', color: '#8fb4d8' },
     rival: { label: '라이벌', color: '#b487c9' },
     other: { label: '기타', color: '#9a9282' }
   };
@@ -105,11 +106,16 @@
         const g = edgeGeometry(a.pos, b.pos, offset);
         const type = TYPES[r.type] || TYPES.other;
         const label = r.label || type.label;
-        const dash = r.type === 'hostile' ? ' stroke-dasharray="7 5"' : '';
+        const dash = r.type === 'hostile' ? ' stroke-dasharray="7 5"' : (r.type === 'student' ? ' stroke-dasharray="2 3"' : '');
+        // 스승 → 제자 방향을 점선 화살표 느낌으로 구분한다
+        const arrow = (r.type === 'mentor' || r.type === 'student')
+          ? '<circle cx="' + g.mx + '" cy="' + g.my + '" r="2.2" fill="' + type.color + '" opacity=".85"/>'
+          : '';
         html +=
           '<g class="gedge" data-edge="' + U.esc(r.id) + '">' +
             '<path d="' + g.d + '" fill="none" stroke="' + type.color + '" stroke-width="1.6" stroke-linecap="round" opacity=".9"' + dash + '/>' +
             '<path d="' + g.d + '" fill="none" stroke="transparent" stroke-width="12" style="pointer-events:stroke;cursor:pointer"/>' +
+            arrow +
             '<rect x="' + (g.mx - Math.min(46, (label.length * 3.4 + 7) / 2)) + '" y="' + (g.my - 6) + '" width="' + Math.min(92, label.length * 3.4 + 7) + '" height="12" rx="6" fill="#141010" fill-opacity=".82" stroke="' + type.color + '" stroke-opacity=".5" stroke-width=".7"/>' +
             '<text x="' + g.mx + '" y="' + (g.my + 2.4) + '" text-anchor="middle" font-size="6.4" fill="' + type.color + '" font-family="-apple-system, sans-serif">' + U.esc(truncate(label, 13)) + '</text>' +
           '</g>';

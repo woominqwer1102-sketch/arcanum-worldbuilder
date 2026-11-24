@@ -17,6 +17,9 @@
     rule: '기타 규칙'
   };
 
+  // 설정집 안의 '⚔️ 능력·등급' 섹션 (등록된 rankSystems를 보여 준다)
+  const RANKS_CAT = '__ranks';
+
   const STATUS = {
     idea: { label: '아이디어', cls: 'status--idea' },
     writing: { label: '집필중', cls: 'status--writing' },
@@ -26,7 +29,7 @@
   const App = {
     state: null,
     tab: 'dashboard',
-    filters: { charQuery: '', charFaction: '전체', charRace: '전체', charRank: '', loreQuery: '', loreCat: '전체', epStatus: '전체', tlEra: '전체' },
+    filters: { charQuery: '', charFaction: '전체', charRace: '전체', charRank: '', loreQuery: '', loreCat: '전체', epStatus: '전체', tlEra: '전체', relMode: 'char' },
     openLore: {}
   };
 
@@ -83,12 +86,16 @@
     return i === -1 ? 99 : i;
   }
 
+  function eventYear(e) {
+    return Number(e && (e.yearNum != null ? e.yearNum : e.year)) || 0;
+  }
+
   function sortedEvents(w) {
+    // 시대 순서 안에서 연도 숫자(yearNum) 오름차순
     return (w.events || []).slice().sort((a, b) => {
       const ra = eraRank(w, a.era), rb = eraRank(w, b.era);
       if (ra !== rb) return ra - rb;
-      if ((a.year || 0) !== (b.year || 0)) return (a.year || 0) - (b.year || 0);
-      return 0;
+      return eventYear(a) - eventYear(b);
     });
   }
 
@@ -133,7 +140,7 @@
   }
 
   function go(tab) {
-    if (App.tab === 'relations' && tab !== 'relations') Graph.destroy();
+    if (App.tab === 'relations' && tab !== 'relations') { Graph.destroy(); FactionGraph.destroy(); }
     if (App.tab === 'map' && tab !== 'map') MapView.destroy();
     App.tab = tab;
     renderCurrent();
@@ -161,6 +168,11 @@
     renderTop();
     if (App.tab === 'relations' && Graph.state.mounted) {
       Graph.refresh();
+      updateFab();
+      return;
+    }
+    if (App.tab === 'relations' && FactionGraph.state.mounted) {
+      FactionGraph.refresh();
       updateFab();
       return;
     }
@@ -308,7 +320,7 @@
     else if (act === 'add-ep') openEpisodeForm(null);
     else if (act === 'add-pin') { go('map'); setTimeout(() => { MapView.state.pinning = true; MapView.refresh(); }, 40); }
     else if (act === 'add-rel') { go('relations'); setTimeout(() => Graph.setLinkMode(true), 60); }
-    else if (act === 'ranks') openRankSystems();
+    else if (act === 'ranks') { App.filters.loreCat = RANKS_CAT; App.filters.loreQuery = ''; go('lore'); }
     else if (act === 'worlds') openWorldSwitcher();
     else if (act === 'backup') openBackupSheet();
   }
@@ -326,7 +338,7 @@
       '<div class="char-card__body">' +
         '<div class="char-card__name">' + esc(c.name) + '</div>' +
         (c.title ? '<div class="char-card__title">' + esc(c.title) + '</div>' : '') +
-        (c.faction ? '<div class="char-card__faction">' + esc(c.faction) + '</div>' : '') +
+        (c.faction || c.gender ? '<div class="char-card__faction">' + esc([c.faction, c.gender].filter(Boolean).join(' · ')) + '</div>' : '') +
         (ranks.length ? '<div class="char-card__ranks">' + ranks.map((r) => rankBadge(r, { small: true })).join('') + '</div>' : '') +
       '</div>' +
     '</button>';
@@ -371,7 +383,7 @@
         if (!(c.ranks || []).some((r) => r.systemId === sid && Number(r.tier) === tier)) return false;
       }
       if (q) {
-        const hay = [c.name, c.title, c.race, c.faction, c.abilities, c.personality, c.notes, c.age].join(' ').toLowerCase();
+        const hay = [c.name, c.title, c.race, c.gender, c.faction, c.abilities, c.personality, c.notes, c.age].join(' ').toLowerCase();
         if (hay.indexOf(q) === -1) return false;
       }
       return true;
@@ -471,6 +483,7 @@
     if (c.image) html += '<div class="detail-hero"><img src="' + esc(c.image) + '" alt=""></div>';
     html += '<div class="mini-chips" style="margin-bottom:12px">' +
       (c.race ? '<span class="mini-chip">' + esc(c.race) + '</span>' : '') +
+      (c.gender ? '<span class="mini-chip">' + esc(c.gender) + '</span>' : '') +
       (c.faction ? '<span class="mini-chip">' + esc(c.faction) + '</span>' : '') +
       (c.age ? '<span class="mini-chip">' + esc(c.age) + '</span>' : '') +
     '</div>';
@@ -480,6 +493,7 @@
     }
     const defs = [];
     if (c.abilities) defs.push(['능력 / 무기', c.abilities]);
+    if (c.gender) defs.push(['성별', c.gender]);
     if (c.age) defs.push(['나이 / 신체', c.age]);
     if (c.race) defs.push(['종족', c.race]);
     if (c.faction) defs.push(['소속', c.faction]);
@@ -488,25 +502,60 @@
     if (c.personality) html += '<div class="label-row"><span>성격</span></div><p class="prose">' + esc(c.personality) + '</p>';
     if (c.notes) html += '<div class="label-row"><span>배경 메모</span></div><p class="prose">' + esc(c.notes) + '</p>';
 
-    if (rels.length) {
-      html += '<div class="divider"></div><div class="label-row"><span>관계</span><span>' + rels.length + '</span></div><div class="list">' +
-        rels.map((r) => {
-          const other = others.get(r.a === c.id ? r.b : r.a);
-          const type = Graph.TYPES[r.type] || Graph.TYPES.other;
-          return '<button class="rel-line" data-rel="' + esc(r.id) + '">' +
-            '<span class="rel-dot" style="background:' + type.color + '"></span>' +
-            '<span><b>' + esc(other ? other.name : '알 수 없음') + '</b> · ' + esc(r.label || type.label) + '</span>' +
-            '<span class="rel-type">' + esc(type.label) + '</span></button>';
-        }).join('') + '</div>';
+    // ---- 연결된 관계 (상대를 탭하면 그 인물 상세로) ----
+    html += '<div class="divider"></div>' +
+      '<div class="label-row"><span>연결된 관계</span><span>' + rels.length + '</span></div>' +
+      '<div class="rel-cards">' + (rels.length ? rels.map((r) => {
+        const other = others.get(r.a === c.id ? r.b : r.a);
+        const type = Graph.TYPES[r.type] || Graph.TYPES.other;
+        const oid = r.a === c.id ? r.b : r.a;
+        return '<div class="rel-card" style="--rel-color:' + type.color + '">' +
+          '<button type="button" class="rel-card__who" data-open-char="' + esc(oid) + '" aria-label="' + esc(other ? other.name : '') + ' 상세 열기">' +
+            '<span class="rel-card__face">' + (other && other.image ? '<img src="' + esc(other.image) + '" alt="">' : esc(other ? U.initials(other.name) : '?')) + '</span>' +
+            '<span class="rel-card__txt"><b>' + esc(other ? other.name : '알 수 없음') + '</b>' +
+              '<span class="rel-card__label">' + esc(r.label || type.label) + '</span></span>' +
+            '<span class="rel-card__type">' + esc(type.label) + '</span>' +
+          '</button>' +
+          '<button type="button" class="rel-card__edit" data-rel="' + esc(r.id) + '" aria-label="관계 수정"><svg><use href="#i-edit"/></svg></button>' +
+        '</div>';
+      }).join('') : '<p class="field-hint">아직 이어진 관계가 없어요.</p>') +
+      '</div>' +
+      '<button type="button" class="btn btn--sm btn--ghost mt-8" data-add-rel="' + esc(c.id) + '"><svg><use href="#i-plus"/></svg>관계 추가</button>';
+
+    // ---- 소속 세력 관계 ----
+    if (c.factionId) {
+      const fac = (w.lore || []).find((l) => l.id === c.factionId);
+      const facRels = (w.factionRelations || []).filter((r) => r.a === c.factionId || r.b === c.factionId);
+      html += '<div class="divider"></div>' +
+        '<div class="label-row"><span>소속 세력 관계</span><span>' + esc(fac ? fac.title : '') + '</span></div>' +
+        (facRels.length ? '<div class="list">' + facRels.map((r) => {
+          const otherId = r.a === c.factionId ? r.b : r.a;
+          const t = FactionGraph.TYPES[r.type] || FactionGraph.TYPES.ally;
+          return '<button type="button" class="rel-line" data-open-fac="' + esc(otherId) + '">' +
+            '<span class="rel-dot" style="background:' + t.color + '"></span>' +
+            '<span><b>' + esc(factionTitle(otherId)) + '</b> · ' + esc(r.label || t.label) + '</span>' +
+            '<span class="rel-type">' + esc(t.label) + '</span></button>';
+        }).join('') + '</div>'
+          : '<p class="field-hint">이 세력은 아직 다른 세력과 이어진 관계가 없어요.</p>') +
+        '<button type="button" class="btn btn--sm btn--ghost mt-8" data-open-fac-graph><svg><use href="#i-network"/></svg>세력 관계도 열기</button>';
     }
 
-    if (events.length || eps.length) {
-      html += '<div class="divider"></div><div class="label-row"><span>등장</span></div><div class="list">';
-      events.forEach((e) => {
-        html += '<div class="row-card"><span class="row-card__badge" style="font-size:10px">' + esc(e.era || '') + '</span>' +
+    // ---- 인물 히스토리 (연표) ----
+    const history = sortedEvents(w).filter((e) => (e.characters || []).indexOf(c.id) > -1);
+    html += '<div class="divider"></div>' +
+      '<div class="label-row"><span>인물 히스토리</span><span>' + history.length + '</span></div>' +
+      (history.length ? '<div class="list">' + history.map((e) => {
+        const era = e.era || (w.eraPrefix || '');
+        const year = (e.yearNum != null ? e.yearNum : e.year);
+        return '<button type="button" class="row-card" data-open-event="' + esc(e.id) + '">' +
+          '<span class="row-card__badge" style="font-size:10px">' + esc(String(year)) + '</span>' +
           '<span class="row-card__body"><span class="row-card__title">' + esc(e.title) + '</span>' +
-          '<span class="row-card__meta">' + esc(String(e.year || 0)) + '년 · 연표</span></span></div>';
-      });
+          '<span class="row-card__meta">' + esc(era) + ' ' + esc(String(year)) + '년' + (e.summary ? ' · ' + esc(e.summary) : '') + '</span></span></button>';
+      }).join('') + '</div>' : '<p class="field-hint">아직 이 인물이 등장하는 연표 사건이 없어요.</p>') +
+      '<button type="button" class="btn btn--sm btn--ghost mt-8" data-add-history="' + esc(c.id) + '"><svg><use href="#i-plus"/></svg>히스토리 사건 추가</button>';
+
+    if (eps.length) {
+      html += '<div class="divider"></div><div class="label-row"><span>등장 에피소드</span></div><div class="list">';
       eps.forEach((ep) => {
         html += '<div class="row-card"><span class="row-card__badge" style="font-size:10px">' + esc(ep.no) + '화</span>' +
           '<span class="row-card__body"><span class="row-card__title">' + esc(ep.title) + '</span>' +
@@ -551,6 +600,43 @@
       if (rel) {
         sheet.close();
         setTimeout(() => openRelationForm(null, null, rel.dataset.rel), 160);
+        return;
+      }
+      const other = e.target.closest('[data-open-char]');
+      if (other) {
+        sheet.close();
+        setTimeout(() => openCharacterDetail(other.getAttribute('data-open-char')), 160);
+        return;
+      }
+      const addRel = e.target.closest('[data-add-rel]');
+      if (addRel) {
+        sheet.close();
+        setTimeout(() => openRelationForm(addRel.getAttribute('data-add-rel'), null, null), 160);
+        return;
+      }
+      const ev = e.target.closest('[data-open-event]');
+      if (ev) {
+        sheet.close();
+        setTimeout(() => openEventDetail(ev.getAttribute('data-open-event')), 160);
+        return;
+      }
+      const addHist = e.target.closest('[data-add-history]');
+      if (addHist) {
+        sheet.close();
+        setTimeout(() => openEventForm(null, { characterId: addHist.getAttribute('data-add-history') }), 160);
+        return;
+      }
+      const fac = e.target.closest('[data-open-fac]');
+      if (fac) {
+        sheet.close();
+        App.filters.relMode = 'faction';
+        go('relations');
+        return;
+      }
+      if (e.target.closest('[data-open-fac-graph]')) {
+        sheet.close();
+        App.filters.relMode = 'faction';
+        go('relations');
       }
     });
   }
@@ -744,32 +830,39 @@
   function openCharacterForm(id) {
     const w = W();
     const c = id ? w.characters.find((x) => x.id === id) : null;
-    const factions = unique(w.characters.map((x) => x.faction));
-    const races = unique(w.characters.map((x) => x.race));
     const html =
       U.field('이름', '<div class="input-with-action">' +
         '<input class="input" name="name" required placeholder="예: 아엘릭 반 다이렌" value="' + esc(c ? c.name : '') + '">' +
         '<button type="button" class="mini-action" id="gen-name"><svg><use href="#i-sparkles"/></svg>이름 추천</button>' +
       '</div>', '✨ 버튼으로 판타지 이름을 바로 채울 수 있어요.', true) +
       U.field('칭호 / 별명', U.textInput('title', c ? c.title : '', { placeholder: '예: 서리검의 계승자' })) +
-      '<div class="field--slim">' +
-        U.field('종족', U.textInput('race', c ? c.race : '', { placeholder: '인간, 엘프…', list: 'dl-races' })) +
-        U.field('소속 / 세력', U.textInput('faction', c ? c.faction : '', { placeholder: '서약 기사단…', list: 'dl-factions' })) +
-      '</div>' +
+      '<div class="field"><span class="field__label">종족</span><div id="char-race"></div></div>' +
+      '<div class="field"><span class="field__label">소속 / 세력</span><div id="char-faction"></div></div>' +
       U.field('나이 / 신체', U.textInput('age', c ? c.age : '', { placeholder: '27세 · 182cm' })) +
-      U.field('능력 / 무기', U.textArea('abilities', c ? c.abilities : '', '결빙의 검술, 서리검 「글라시엘」…', 3)) +
+      '<div class="field"><span class="field__label">성별</span>' +
+        '<div class="chip-row gender-picks">' +
+          ['남성', '여성', '기타/미상'].map((g) =>
+            '<button type="button" class="chip' + (c && c.gender === g ? ' chip--active' : '') + '" data-gender="' + esc(g) + '">' + esc(g) + '</button>').join('') +
+        '</div>' +
+        '<input class="input mt-8" name="gender" id="gender-input" placeholder="직접 입력 (예: 남성, 여성, 논바이너리)" value="' + esc(c && c.gender ? c.gender : '') + '">' +
+        '<span class="field-hint">빠른 선택을 누르면 채워지고, 다른 표현은 직접 고쳐 쓸 수 있어요. AI 초상화에도 반영돼요.</span>' +
+      '</div>' +
+      '<div class="field"><span class="field__label">능력 <span class="muted" style="font-size:10px">설정집 · 마법·능력체계</span></span>' +
+        '<div id="char-abils"></div></div>' +
+      '<div class="field"><span class="field__label">무기 / 장비 <span class="muted" style="font-size:10px">설정집 · 아이템·유물</span></span>' +
+        '<div id="char-weaps"></div></div>' +
       U.field('성격 · 배경 메모', U.textArea('notes', c ? c.notes : '', '어떤 사람인지, 무엇을 숨기고 있는지…', 5)) +
       '<div class="field"><span class="field__label">강함 / 등급</span>' +
         '<div id="char-ranks"></div>' +
-        '<span class="field-hint">체계를 고르면 단계가 바로 떠요. 여러 체계를 함께 가질 수 있고, 먼저 고른 등급이 대표로 표시돼요.</span>' +
+        '<span class="field-hint">체계와 단계를 한 줄에서 고르고, 능력이 여러 개면 [능력 추가]로 행을 더해요. 아무것도 고르지 않으면 ‘없음’이에요.</span>' +
       '</div>' +
       '<div class="field"><span class="field__label">대표 이미지</span><div id="char-img"></div>' +
       '<span class="field-hint">폰 사진첩에서 고르면 자동으로 줄여서 저장해요.</span></div>' +
       '<div class="ai-art" id="char-ai"></div>' +
-      U.datalist('dl-races', races) + U.datalist('dl-factions', factions) +
       (c ? '<button type="button" class="btn btn--danger btn--block mt-14" id="char-delete"><svg><use href="#i-trash"/></svg>인물 삭제</button>' : '');
 
     let img = null;
+    let racePick = null, factionPick = null, abilityPick = null, weaponPick = null;
     const rankSel = new Map();
     (c && c.ranks ? c.ranks : []).forEach((r) => rankSel.set(r.systemId, Number(r.tier)));
 
@@ -786,9 +879,50 @@
 
         const rkHost = body.querySelector('#char-ranks');
         if (rkHost) {
-          const paintRanks = () => drawRankPicker(rkHost, w, rankSel, () => openRankSystems(paintRanks));
+          const rkRows = (c && Array.isArray(c.ranks) ? c.ranks : [])
+            .filter((r) => r && r.systemId)
+            .map((r) => ({ systemId: r.systemId, tier: Number(r.tier) || 0 }));
+          const paintRanks = () => drawRankPicker(rkHost, w, rkRows, rankSel, () => openRankSystems(paintRanks));
           paintRanks();
         }
+
+        // 성별 빠른 선택 칩 + 직접 입력
+        // 설정집에서만 고르는 종족 · 세력 · 능력 · 무기 (처음엔 전부 '없음')
+        racePick = buildLorePicker(body.querySelector('#char-race'), w, {
+          category: 'race', multi: false,
+          ids: c && c.raceId ? [c.raceId] : [],
+          legacy: c && !c.raceId ? (c.race || '') : ''
+        });
+        factionPick = buildLorePicker(body.querySelector('#char-faction'), w, {
+          category: 'faction', multi: false,
+          ids: c && c.factionId ? [c.factionId] : [],
+          legacy: c && !c.factionId ? (c.faction || '') : ''
+        });
+        abilityPick = buildLorePicker(body.querySelector('#char-abils'), w, {
+          category: 'magic', multi: true,
+          ids: c ? (c.abilityIds || []) : [],
+          legacy: c ? (c.abilityText || '') : ''
+        });
+        weaponPick = buildLorePicker(body.querySelector('#char-weaps'), w, {
+          category: 'item', multi: true,
+          ids: c ? (c.weaponIds || []) : [],
+          legacy: ''
+        });
+
+        const genderInput = body.querySelector('#gender-input');
+        const genderChips = U.$$('[data-gender]', body);
+        const paintGender = () => {
+          const v = genderInput.value.trim();
+          genderChips.forEach((b) => b.classList.toggle('chip--active', b.getAttribute('data-gender') === v));
+        };
+        genderChips.forEach((b) => b.addEventListener('click', () => {
+          const v = b.getAttribute('data-gender');
+          genderInput.value = genderInput.value.trim() === v ? '' : v;
+          paintGender();
+          U.haptic(6);
+        }));
+        genderInput.addEventListener('input', paintGender);
+        paintGender();
 
         body.querySelector('#gen-name').addEventListener('click', () => {
           Generator.open({
@@ -830,13 +964,29 @@
         const data = {
           name: name,
           title: String(fd.get('title') || '').trim(),
-          race: String(fd.get('race') || '').trim(),
-          faction: String(fd.get('faction') || '').trim(),
+          gender: String(fd.get('gender') || '').trim().slice(0, 20),
           age: String(fd.get('age') || '').trim(),
-          abilities: String(fd.get('abilities') || '').trim(),
           notes: String(fd.get('notes') || '').trim(),
           image: img.get()
         };
+        // 종족 · 세력 · 능력 · 무기는 설정집 항목 id로 저장하고, 표시용 이름을 함께 접어 둔다
+        if (!racePick || !factionPick || !abilityPick || !weaponPick) {
+          U.toast('설정집 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.', { icon: 'i-x' });
+          return false;
+        }
+        const loreById = new Map((w.lore || []).map((l) => [l.id, l]));
+        const raceItem = loreById.get((racePick.ids()[0] || ''));
+        const factionItem = loreById.get((factionPick.ids()[0] || ''));
+        data.raceId = raceItem ? raceItem.id : null;
+        data.race = raceItem ? raceItem.title : racePick.legacy();
+        data.factionId = factionItem ? factionItem.id : null;
+        data.faction = factionItem ? factionItem.title : factionPick.legacy();
+        data.abilityIds = abilityPick.ids().filter((x) => loreById.has(x));
+        data.weaponIds = weaponPick.ids().filter((x) => loreById.has(x));
+        data.abilityText = [abilityPick.legacy(), weaponPick.legacy()].filter(Boolean).join(' · ');
+        const abilNames = data.abilityIds.map((x) => loreById.get(x).title)
+          .concat(data.weaponIds.map((x) => loreById.get(x).title));
+        data.abilities = abilNames.concat(data.abilityText ? [data.abilityText] : []).join(' · ');
         const ranks = [];
         (w.rankSystems || []).forEach((s) => {
           const t = rankSel.get(s.id);
@@ -859,12 +1009,28 @@
   /* ---------------------------------------------------------
      relationships
      --------------------------------------------------------- */
+  function factionItems() {
+    const w = W();
+    return ((w && w.lore) || []).filter((l) => l.category === 'faction');
+  }
+
   function renderRelations() {
     const w = W();
     const host = $('#rel-host');
+    const mode = App.filters.relMode === 'faction' ? 'faction' : 'char';
+    const facs = factionItems();
+    const nRel = (w.factionRelations || []).length;
+
     host.innerHTML =
-      '<div class="section-head"><div><span class="eyebrow">Relationship Graph</span><h2>인물 관계도</h2></div>' +
-      '<span class="muted small">' + w.characters.length + '명 · ' + w.relations.length + '관계</span></div>' +
+      '<div class="section-head"><div><span class="eyebrow">Relationship Graph</span><h2>' +
+        (mode === 'faction' ? '세력 관계도' : '인물 관계도') + '</h2></div>' +
+      '<span class="muted small">' + (mode === 'faction'
+        ? facs.length + '세력 · ' + nRel + '관계'
+        : w.characters.length + '명 · ' + w.relations.length + '관계') + '</span></div>' +
+      '<div class="segmented" role="tablist">' +
+        '<button type="button" class="seg' + (mode === 'char' ? ' is-on' : '') + '" data-relmode="char">인물 관계도</button>' +
+        '<button type="button" class="seg' + (mode === 'faction' ? ' is-on' : '') + '" data-relmode="faction">세력 관계도</button>' +
+      '</div>' +
       '<div class="graph-toolbar">' +
         '<button type="button" class="gbtn" data-graph="link"><svg><use href="#i-plus"/></svg>관계 추가</button>' +
         '<button type="button" class="gbtn" data-graph="list"><svg><use href="#i-more"/></svg>관계 목록</button>' +
@@ -873,33 +1039,184 @@
         '<button type="button" class="gbtn gbtn--icon" data-graph="out" aria-label="축소"><svg><use href="#i-zoom-out"/></svg></button>' +
         '<button type="button" class="gbtn gbtn--icon" data-graph="legend" aria-label="범례"><svg><use href="#i-book"/></svg></button>' +
       '</div>' +
-      (w.characters.length ? '<div class="graph-wrap" id="graph-wrap"></div>' : emptyBlock('인물이 없어 관계를 그릴 수 없어요', '인물을 두 명 이상 만들면 여기서 선으로 이을 수 있어요.', 'add-char', '인물 추가'));
+      (mode === 'faction'
+        ? (facs.length >= 1
+          ? '<div class="graph-wrap" id="graph-wrap"></div>'
+          : emptyBlock('세력이 없어 관계를 그릴 수 없어요', '설정집의 세력·국가 항목이 이 관계도의 노드가 됩니다.', 'add-faction', '세력 추가'))
+        : (w.characters.length ? '<div class="graph-wrap" id="graph-wrap"></div>'
+          : emptyBlock('인물이 없어 관계를 그릴 수 없어요', '인물을 두 명 이상 만들면 여기서 선으로 이을 수 있어요.', 'add-char', '인물 추가')));
+
+    host.querySelectorAll('[data-relmode]').forEach((b) => b.addEventListener('click', () => {
+      const next = b.getAttribute('data-relmode');
+      if (next === mode) return;
+      App.filters.relMode = next;
+      U.haptic(6);
+      Graph.destroy();
+      FactionGraph.destroy();
+      renderRelations();
+    }));
 
     host.querySelectorAll('[data-graph]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const act = btn.dataset.graph;
+        const G = mode === 'faction' ? FactionGraph : Graph;
         if (act === 'link') {
-          const next = Graph.state.mode !== 'link';
-          Graph.setLinkMode(next);
+          const next = G.state.mode !== 'link';
+          G.setLinkMode(next);
           btn.classList.toggle('is-on', next);
-        } else if (act === 'fit') Graph.fit();
-        else if (act === 'in') Graph.zoom(1.25);
-        else if (act === 'out') Graph.zoom(0.8);
-        else if (act === 'legend') Graph.toggleLegend();
-        else if (act === 'list') openRelationList();
+        } else if (act === 'fit') G.fit();
+        else if (act === 'in') G.zoom(1.25);
+        else if (act === 'out') G.zoom(0.8);
+        else if (act === 'legend') { if (G.toggleLegend) G.toggleLegend(); }
+        else if (act === 'list') { if (mode === 'faction') openFactionRelList(); else openRelationList(); }
       });
     });
     host.querySelectorAll('[data-act="add-char"]').forEach((b) => b.addEventListener('click', () => openCharacterForm(null)));
+    host.querySelectorAll('[data-act="add-faction"]').forEach((b) => b.addEventListener('click', () => openLoreForm(null, { category: 'faction' })));
 
     const wrap = host.querySelector('#graph-wrap');
     if (wrap) {
-      Graph.mount(wrap, {
-        world: W,
-        onNode: openCharacterDetail,
-        onEdge: (id) => openRelationForm(null, null, id),
-        onLinkPair: (a, b) => openRelationForm(a, b, null),
-        onNodeMoved: () => touch()
-      });
+      if (mode === 'faction') {
+        FactionGraph.mount(wrap, {
+          world: W,
+          onNode: openFactionDetail,
+          onEdge: (id) => openFactionRelForm(null, null, id),
+          onLinkPair: (a, b) => openFactionRelForm(a, b, null),
+          onNodeMoved: () => touch()
+        });
+      } else {
+        Graph.mount(wrap, {
+          world: W,
+          onNode: openCharacterDetail,
+          onEdge: (id) => openRelationForm(null, null, id),
+          onLinkPair: (a, b) => openRelationForm(a, b, null),
+          onNodeMoved: () => touch()
+        });
+      }
+    }
+  }
+
+  /* ---------------- 세력 관계 ---------------- */
+  function factionTitle(id) {
+    const l = factionItems().find((x) => x.id === id);
+    return l ? l.title : '?';
+  }
+
+  function openFactionDetail(id) {
+    const w = W();
+    const l = (w.lore || []).find((x) => x.id === id);
+    if (!l) return;
+    const rels = (w.factionRelations || []).filter((r) => r.a === id || r.b === id);
+    const members = w.characters.filter((c) => c.factionId === id);
+    const body = document.createElement('div');
+    body.innerHTML =
+      (l.body ? '<p class="prose">' + esc(l.body) + '</p>' : '') +
+      ((l.tags || []).length ? '<div class="tag-row">' + l.tags.map((t) => '<span class="mini-chip">#' + esc(t) + '</span>').join('') + '</div>' : '') +
+      '<div class="label-row"><span>관계</span><span>' + rels.length + '</span></div>' +
+      (rels.length ? '<div class="list">' + rels.map((r) => {
+        const other = r.a === id ? r.b : r.a;
+        const t = FactionGraph.TYPES[r.type] || FactionGraph.TYPES.ally;
+        return '<button class="rel-line" data-frel="' + esc(r.id) + '">' +
+          '<span class="rel-dot" style="background:' + t.color + '"></span>' +
+          '<span><b>' + esc(factionTitle(other)) + '</b><br><span class="muted">' + esc(r.label || '') + '</span></span>' +
+          '<span class="rel-type">' + esc(t.label) + '</span></button>';
+      }).join('') + '</div>' : '<p class="field-hint">아직 이 세력과 이어진 관계가 없어요.</p>') +
+      (members.length ? '<div class="label-row"><span>소속 인물</span><span>' + members.length + '</span></div><div class="mini-chips">' +
+        members.map((c) => '<button class="mini-chip" data-open-char="' + esc(c.id) + '">' + esc(c.name) + '</button>').join('') + '</div>' : '');
+
+    const sheet = U.openSheet({
+      eyebrow: 'FACTION',
+      title: l.title,
+      sub: l.tags && l.tags.length ? l.tags.join(' · ') : '',
+      full: true,
+      body: body,
+      foot: [
+        { label: '관계 추가', className: 'btn', icon: 'i-plus', onClick: () => { sheet.close(); setTimeout(() => openFactionRelForm(id, null, null), 160); } },
+        { label: '설정 수정', className: 'btn--gold', icon: 'i-edit', onClick: () => { sheet.close(); setTimeout(() => openLoreForm(id), 160); } }
+      ]
+    });
+    body.addEventListener('click', (e) => {
+      const rel = e.target.closest('[data-frel]');
+      if (rel) { sheet.close(); setTimeout(() => openFactionRelForm(null, null, rel.getAttribute('data-frel')), 160); return; }
+      const ch = e.target.closest('[data-open-char]');
+      if (ch) { sheet.close(); setTimeout(() => openCharacterDetail(ch.getAttribute('data-open-char')), 160); }
+    });
+  }
+
+  function openFactionRelList() {
+    const w = W();
+    const body = document.createElement('div');
+    const rels = w.factionRelations || [];
+    body.innerHTML = rels.length
+      ? '<div class="list">' + rels.map((r) => {
+          const t = FactionGraph.TYPES[r.type] || FactionGraph.TYPES.ally;
+          return '<button class="rel-line" data-frel="' + esc(r.id) + '">' +
+            '<span class="rel-dot" style="background:' + t.color + '"></span>' +
+            '<span><b>' + esc(factionTitle(r.a)) + '</b> ↔ <b>' + esc(factionTitle(r.b)) + '</b><br>' +
+            '<span class="muted">' + esc(r.label || '') + '</span></span>' +
+            '<span class="rel-type">' + esc(t.label) + '</span></button>';
+        }).join('') + '</div>'
+      : '<div class="empty"><div class="empty__sigil">⚑</div><p>아직 이어진 세력 관계가 없어요.</p></div>';
+    const sheet = U.openSheet({ eyebrow: 'FACTIONS', title: '세력 관계 목록', body: body, full: true });
+    body.addEventListener('click', (e) => {
+      const rel = e.target.closest('[data-frel]');
+      if (!rel) return;
+      sheet.close();
+      setTimeout(() => openFactionRelForm(null, null, rel.getAttribute('data-frel')), 160);
+    });
+  }
+
+  function openFactionRelForm(aId, bId, relId) {
+    const w = W();
+    const facs = factionItems();
+    if (facs.length < 2) {
+      U.toast('설정집에 세력을 두 개 이상 등록해 주세요', { icon: 'i-book', duration: 2400 });
+      return;
+    }
+    const rel = relId ? (w.factionRelations || []).find((r) => r.id === relId) : null;
+    if (rel) { aId = rel.a; bId = rel.b; }
+    let aValue = aId && facs.some((f) => f.id === aId) ? aId : facs[0].id;
+    let bValue = bId && facs.some((f) => f.id === bId) ? bId : (facs.find((f) => f.id !== aValue) || facs[1]).id;
+    let typeValue = rel ? rel.type : 'ally';
+
+    const body = document.createElement('div');
+    body.innerHTML =
+      '<div class="field"><span class="field__label">세력 A</span><div id="frel-a"></div></div>' +
+      '<div class="field"><span class="field__label">세력 B</span><div id="frel-b"></div></div>' +
+      '<div class="field"><span class="field__label">관계 종류</span><div id="frel-type"></div></div>' +
+      U.field('한 줄 설명', U.textInput('label', rel ? rel.label : '', { placeholder: '예: 성소의 인장을 함께 지킨다' })) +
+      U.field('메모', U.textArea('note', rel ? rel.note : '', '동맹의 대가, 적대의 이유…', 4));
+
+    const sheet = U.openSheet({
+      eyebrow: rel ? 'EDIT FACTION RELATION' : 'NEW FACTION RELATION',
+      title: rel ? '세력 관계 수정' : '세력 관계 잇기',
+      body: body,
+      foot: [
+        { label: '취소', className: 'btn--ghost', onClick: () => 'close' },
+        { label: rel ? '저장' : '관계 추가', className: 'btn--gold', icon: 'i-check', onClick: () => submit() }
+      ]
+    });
+
+    const items = facs.map((f) => ({ value: f.id, label: f.title }));
+    body.querySelector('#frel-a').appendChild(U.chipPicker(items, aValue, { multi: false, onChange: (v) => { aValue = v; } }));
+    body.querySelector('#frel-b').appendChild(U.chipPicker(items, bValue, { multi: false, onChange: (v) => { bValue = v; } }));
+    body.querySelector('#frel-type').appendChild(U.chipPicker(
+      Object.keys(FactionGraph.TYPES).map((k) => ({ value: k, label: FactionGraph.TYPES[k].label })),
+      typeValue, { multi: false, onChange: (v) => { typeValue = v; } }));
+
+    function submit() {
+      if (aValue === bValue) { U.toast('서로 다른 세력을 골라 주세요', { icon: 'i-x' }); return; }
+      const form = body.closest('.sheet').querySelector('form');
+      const fd = form ? new FormData(form) : null;
+      const label = fd ? String(fd.get('label') || '').trim() : '';
+      const note = fd ? String(fd.get('note') || '').trim() : '';
+      const data = { a: aValue, b: bValue, type: typeValue, label: label, note: note };
+      if (rel) Object.assign(rel, data);
+      else w.factionRelations.push(Object.assign({ id: U.uid('fr') }, data));
+      touch({ immediate: true });
+      sheet.close();
+      if (App.filters.relMode === 'faction') renderRelations();
+      U.toast(rel ? '세력 관계를 수정했어요' : '세력 관계를 이었어요');
     }
   }
 
@@ -1038,7 +1355,7 @@
      --------------------------------------------------------- */
   function eventCard(w, e) {
     return '<button class="tl-item" data-event="' + esc(e.id) + '">' +
-      '<div class="tl-item__year">' + esc(e.era || '') + ' ' + esc(String(e.year || 0)) + '년</div>' +
+      '<div class="tl-item__year">' + esc(e.era || '') + ' ' + esc(String(eventYear(e))) + '년</div>' +
       '<div class="tl-item__title">' + esc(e.title) + '</div>' +
       (e.summary ? '<div class="tl-item__sum">' + esc(e.summary) + '</div>' : '') +
     '</button>';
@@ -1108,7 +1425,7 @@
     const byRegion = regionsById(w);
     const body = document.createElement('div');
     body.innerHTML =
-      '<div class="mini-chips" style="margin-bottom:12px"><span class="mini-chip">' + esc(e.era || '') + ' ' + esc(String(e.year || 0)) + '년</span></div>' +
+      '<div class="mini-chips" style="margin-bottom:12px"><span class="mini-chip">' + esc(e.era || '') + ' ' + esc(String(eventYear(e))) + '년</span></div>' +
       (e.summary ? '<p class="prose" style="color:var(--gold-soft)">' + esc(e.summary) + '</p>' : '') +
       (e.detail ? '<div class="divider"></div><p class="prose">' + esc(e.detail) + '</p>' : '') +
       ((e.characters || []).length ? '<div class="label-row"><span>관련 인물</span></div><div class="mini-chips">' +
@@ -1139,15 +1456,28 @@
     });
   }
 
-  function openEventForm(id) {
+  function openEventForm(id, opts) {
+    const o = opts || {};
     const w = W();
     const e = id ? w.events.find((x) => x.id === id) : null;
     const eras = unique((w.eraOrder || []).concat(w.events.map((x) => x.era)));
+    const eraDefault = w.eraPrefix || (eras[eras.length - 1] || '제1기');
+    const yearVal = e ? (e.yearNum != null ? e.yearNum : (Number(e.year) || 0)) : (Number(w.eraYear) || 0);
     const body = document.createElement('div');
     body.innerHTML =
-      '<div class="field--slim">' +
-        U.field('시대', U.textInput('era', e ? e.era : (eras[eras.length - 1] || '제1기'), { placeholder: '제3기', list: 'dl-eras' })) +
-        U.field('연도', U.textInput('year', e ? String(e.year) : '0', { type: 'number', inputmode: 'numeric' })) +
+      U.field('역법 · 시대명', U.textInput('era', e ? e.era : eraDefault, { placeholder: '예: 제국력 · 제3기', list: 'dl-eras' }),
+        '비워 두면 세계관의 대표 역법(' + eraDefault + ')을 씁니다.') +
+      '<div class="field"><span class="field__label">연도</span>' +
+        '<div class="year-stepper">' +
+          '<button type="button" class="ystep" data-year-step="-100" aria-label="100년 전">−100</button>' +
+          '<button type="button" class="ystep" data-year-step="-10" aria-label="10년 전">−10</button>' +
+          '<button type="button" class="ystep" data-year-step="-1" aria-label="1년 전">−</button>' +
+          '<input class="input year-input" id="ev-year" name="yearNum" type="number" inputmode="numeric" min="-9999" max="99999" step="1" value="' + yearVal + '" aria-label="연도 숫자">' +
+          '<button type="button" class="ystep" data-year-step="1" aria-label="1년 후">+</button>' +
+          '<button type="button" class="ystep" data-year-step="10" aria-label="10년 후">+10</button>' +
+          '<button type="button" class="ystep" data-year-step="100" aria-label="100년 후">+100</button>' +
+        '</div>' +
+        '<span class="field-hint" id="ev-year-preview">' + esc((e ? e.era : eraDefault) + ' ' + yearVal + '년') + '</span>' +
       '</div>' +
       U.field('사건 제목', U.textInput('title', e ? e.title : '', { placeholder: '예: 첫 번째 인장의 해제' }), null, true) +
       U.field('한 줄 요약', U.textInput('summary', e ? e.summary : '', { placeholder: '한 문장으로' })) +
@@ -1156,8 +1486,8 @@
       '<div class="field"><span class="field__label">관련 지역</span><div id="ev-regions"></div></div>' +
       U.datalist('dl-eras', eras);
 
-    let pickedChars = (e ? e.characters : []).slice();
-    let pickedRegions = (e ? e.locations : []).slice();
+    let pickedChars = (e ? (e.characters || []) : (o.characterId ? [o.characterId] : [])).slice();
+    let pickedRegions = (e ? (e.locations || []) : []).slice();
 
     formSheet({
       eyebrow: e ? 'EDIT EVENT' : 'NEW EVENT',
@@ -1166,6 +1496,23 @@
       full: true,
       html: body.innerHTML,
       onReady: ({ body: b }) => {
+        const yearInput = b.querySelector('#ev-year');
+        const eraInput = b.querySelector('[name="era"]');
+        const preview = b.querySelector('#ev-year-preview');
+        const paintPreview = () => {
+          const v = Number(yearInput.value) || 0;
+          preview.textContent = (String(eraInput.value || '').trim() || eraDefault) + ' ' + v + '년';
+        };
+        b.querySelectorAll('[data-year-step]').forEach((btn) => btn.addEventListener('click', () => {
+          const step = Number(btn.getAttribute('data-year-step'));
+          yearInput.value = String(U.clamp((Number(yearInput.value) || 0) + step, -9999, 99999));
+          paintPreview();
+          U.haptic(6);
+        }));
+        yearInput.addEventListener('input', paintPreview);
+        eraInput.addEventListener('input', paintPreview);
+        paintPreview();
+
         if (w.characters.length) {
           b.querySelector('#ev-chars').appendChild(U.chipPicker(
             w.characters.map((c) => ({ value: c.id, label: c.name })), pickedChars,
@@ -1202,10 +1549,10 @@
       onSubmit: (fd) => {
         const title = String(fd.get('title') || '').trim();
         if (!title) { U.toast('사건 제목을 적어 주세요', { icon: 'i-x' }); return false; }
-        const era = String(fd.get('era') || '').trim() || '연대 미상';
-        const year = Number(fd.get('year')) || 0;
+        const era = String(fd.get('era') || '').trim() || eraDefault || '연대 미상';
+        const year = U.clamp(Math.round(Number(fd.get('yearNum')) || 0), -9999, 99999);
         const data = {
-          era: era, year: year, title: title,
+          era: era, year: year, yearNum: year, title: title,
           summary: String(fd.get('summary') || '').trim(),
           detail: String(fd.get('detail') || '').trim(),
           characters: pickedChars, locations: pickedRegions
@@ -1235,6 +1582,8 @@
         const w = W();
         w.map.kind = 'sample';
         w.map.image = null;
+        w.map.imageOriginal = null;
+        w.map.style = 'parchment';
         w.map.ratio = 3 / 4; // 기본 지도 도안은 900×1200
         touch({ immediate: true });
         MapView.refresh();
@@ -1249,24 +1598,34 @@
     const file = await U.pickFile('image/*');
     if (!file) return;
     try {
-      U.toast('지도를 준비하는 중…', { icon: 'i-image', duration: 1400 });
-      const data = await U.resizeImage(file, 1600, 0.84);
+      U.toast('지도를 준비하는 중…', { icon: 'i-image', duration: 1600 });
+      // 투명 PNG 지도도 잉크로 살리도록 흰 바탕 위에 눌러 둔다
+      const original = await U.resizeImage(file, 1600, 0.88, '#ffffff');
       let ratio = null;
       try {
-        const im = await U.loadImage(data);
+        const im = await U.loadImage(original);
         if (im.naturalWidth && im.naturalHeight) {
-          ratio = Math.round(Math.min(4, Math.max(0.3, im.naturalWidth / im.naturalHeight)) * 1000) / 1000;
+          ratio = Math.round((im.naturalWidth / im.naturalHeight) * 1000) / 1000;
         }
       } catch (e) { /* 비율을 몰라도 지도는 저장한다 */ }
+      // 업로드 즉시 옛날 양피지 지도로 자동 변환 (원본도 함께 보관 → 툴바에서 전환)
+      let parchment = null;
+      try {
+        parchment = await MapView.parchment(original);
+      } catch (e) {
+        parchment = null;
+      }
       const w = W();
-      w.map.image = data;
+      w.map.imageOriginal = original;
+      w.map.image = parchment || original;
+      w.map.style = parchment ? 'parchment' : 'original';
       w.map.kind = 'custom';
       if (ratio) w.map.ratio = ratio;
       touch({ immediate: true });
       MapView.refresh();
-      U.toast(ratio
-        ? '지도 이미지를 올렸어요 · 원본 비율 ' + (ratio < 1 ? '세로형' : '가로형') + ' 그대로 보여요'
-        : '지도 이미지를 올렸어요', { icon: 'i-image', duration: 2400 });
+      U.toast(parchment
+        ? '지도를 옛날 양피지로 바꿨어요 · 위 📜 단추로 원본과 전환'
+        : '지도 이미지를 올렸어요', { icon: 'i-image', duration: 2800 });
     } catch (e) {
       U.toast('이미지를 올리지 못했어요', { icon: 'i-x' });
     }
@@ -1396,19 +1755,29 @@
   function renderLore() {
     const w = W();
     const host = $('#lore-host');
+    const isRanks = App.filters.loreCat === RANKS_CAT;
     host.innerHTML =
-      '<div class="section-head"><div><span class="eyebrow">Codex</span><h2>설정집 <span class="muted" style="font-size:12px">' + w.lore.length + '</span></h2></div>' +
-      '<button class="section-head__link" data-new-lore><svg width="14" height="14" style="display:inline;vertical-align:-2px"><use href="#i-plus"/></svg> 추가</button></div>' +
+      '<div class="section-head"><div><span class="eyebrow">Codex</span><h2>' +
+        (isRanks ? '능력 · 등급 <span class="muted" style="font-size:12px" id="lore-count">' + (w.rankSystems || []).length + '</span>'
+                 : '설정집 <span class="muted" style="font-size:12px" id="lore-count">' + w.lore.length + '</span>') +
+      '</h2></div>' +
+      '<button class="section-head__link" data-new-lore><svg width="14" height="14" style="display:inline;vertical-align:-2px"><use href="#i-plus"/></svg> ' +
+        (isRanks ? '능력·등급' : '추가') + '</button></div>' +
       '<div class="toolbar"><label class="search"><svg><use href="#i-search"/></svg>' +
-        '<input type="search" id="lore-search" placeholder="제목 · 태그 · 본문 검색" value="' + esc(App.filters.loreQuery) + '"></label></div>' +
+        '<input type="search" id="lore-search" placeholder="' + (isRanks ? '체계 이름 · 설명 · 단계 검색' : '제목 · 태그 · 본문 검색') + '" value="' + esc(App.filters.loreQuery) + '"></label></div>' +
       '<div class="chip-row" id="lore-cats">' +
-        ['전체'].concat(Object.keys(CATS)).map((k) => '<button class="chip chip--small' + (App.filters.loreCat === k ? ' chip--active' : '') + '" data-cat="' + esc(k) + '">' + esc(k === '전체' ? '전체' : CATS[k]) + '</button>').join('') +
+        ['전체', RANKS_CAT].concat(Object.keys(CATS)).map((k) =>
+          '<button class="chip chip--small' + (App.filters.loreCat === k ? ' chip--active' : '') + '" data-cat="' + esc(k) + '">' +
+          esc(k === '전체' ? '전체' : (k === RANKS_CAT ? '⚔️ 능력·등급' : CATS[k])) + '</button>').join('') +
       '</div>' +
       '<div class="list" id="lore-list"></div>';
 
     drawLoreList();
 
-    host.querySelector('[data-new-lore]').addEventListener('click', () => openLoreForm(null));
+    host.querySelector('[data-new-lore]').addEventListener('click', () => {
+      if (App.filters.loreCat === RANKS_CAT) openRankForm(null, () => refreshView());
+      else openLoreForm(null);
+    });
     host.querySelector('#lore-search').addEventListener('input', (e) => {
       App.filters.loreQuery = e.target.value;
       drawLoreList();
@@ -1417,8 +1786,8 @@
       const cat = e.target.closest('[data-cat]');
       if (cat) {
         App.filters.loreCat = cat.dataset.cat;
-        $$('#lore-cats .chip', host).forEach((c) => c.classList.toggle('chip--active', c.dataset.cat === App.filters.loreCat));
-        drawLoreList();
+        App.filters.loreQuery = '';
+        renderLore();
         return;
       }
       const head = e.target.closest('[data-lore-head]');
@@ -1433,10 +1802,119 @@
     }));
   }
 
+  /* 설정집 안의 '⚔️ 능력·등급' 섹션 — 목록·추가·편집을 여기서 바로 한다 */
+  function drawRankSection(w, host) {
+    const q = App.filters.loreQuery.trim().toLowerCase();
+    const all = w.rankSystems || [];
+    const list = all.filter((s) => {
+      if (!q) return true;
+      return [s.name, s.description, (s.tiers || []).join(' ')].join(' ').toLowerCase().indexOf(q) > -1;
+    });
+    const countEl = document.getElementById('lore-count');
+    if (countEl) countEl.textContent = all.length;
+
+    host.innerHTML =
+      (all.length ? '' : '<div class="empty"><div class="empty__sigil">⚔️</div><h3>아직 능력·등급 체계가 없어요</h3>' +
+        '<p>마법 서클, 기사단 계위, 모험가 랭크처럼<br>이 세계의 강함을 단계로 나눠 보세요.</p></div>') +
+      (list.length
+        ? '<div class="rank-sys-list">' + list.map((s) =>
+            '<button type="button" class="rank-sys" data-rank-edit="' + esc(s.id) + '">' +
+              '<span class="rank-sys__icon" style="--rank-color:' + esc(s.color) + '">' + esc(s.icon) + '</span>' +
+              '<span class="rank-sys__body">' +
+                '<span class="rank-sys__name">' + esc(s.name) + '</span>' +
+                (s.description ? '<span class="rank-sys__desc">' + esc(s.description) + '</span>' : '') +
+                '<span class="rank-sys__meta">' + s.tiers.length + '단계 · ' + esc(s.tiers[0]) + ' ~ ' + esc(s.tiers[s.tiers.length - 1]) + ' · 인물 ' + rankUsedCount(w, s.id) + '명</span>' +
+                '<span class="rank-sys__tiers">' + s.tiers.map((t) => '<span class="mini-chip">' + esc(t) + '</span>').join('') + '</span>' +
+              '</span>' +
+              '<span class="rank-sys__chev"><svg><use href="#i-edit"/></svg></span>' +
+            '</button>').join('') + '</div>'
+        : (all.length ? '<div class="empty"><div class="empty__sigil">✦</div><p>조건에 맞는 체계가 없어요.</p></div>' : '')) +
+      '<button type="button" class="btn btn--gold btn--block mt-14" data-rank-new><svg><use href="#i-plus"/></svg><span>새 능력·등급 체계</span></button>' +
+      '<p class="field-hint mt-8">설명·단계 수(1~15)·단계 이름을 정하면 인물 폼에서 [체계][단계]로 바로 골라 쓸 수 있어요.</p>';
+
+    host.querySelectorAll('[data-rank-edit]').forEach((b) => b.addEventListener('click', () => {
+      U.haptic(6);
+      openRankForm(b.getAttribute('data-rank-edit'), () => refreshView());
+    }));
+    const add = host.querySelector('[data-rank-new]');
+    if (add) add.addEventListener('click', () => {
+      U.haptic(6);
+      openRankForm(null, () => refreshView());
+    });
+  }
+
+  /* 설정집 항목 고르기 (종족·세력·능력·무기) — 설정집에 있는 것만 고를 수 있다 */
+  function buildLorePicker(host, w, opts) {
+    const o = opts || {};
+    const category = o.category;
+    let ids = Array.isArray(o.ids) ? o.ids.slice() : [];
+    const legacy = o.legacy || '';
+    let legacyOn = !!legacy && !ids.length;
+
+    function items() { return (w.lore || []).filter((l) => l.category === category); }
+
+    function draw() {
+      const list = items();
+      const short = legacy.length > 14 ? legacy.slice(0, 14) + '…' : legacy;
+      host.innerHTML =
+        '<div class="chip-row lore-pick">' +
+          '<button type="button" class="chip chip--small lore-pick__none' + (!ids.length && !legacyOn ? ' chip--active' : '') + '" data-lore-pick="__none">없음</button>' +
+          list.map((l) => '<button type="button" class="chip chip--small' + (ids.indexOf(l.id) > -1 ? ' chip--active' : '') +
+            '" data-lore-pick="' + esc(l.id) + '">' + esc(l.title) + '</button>').join('') +
+          (legacy ? '<button type="button" class="chip chip--small' + (legacyOn ? ' chip--active' : '') +
+            '" data-lore-pick="__legacy" title="' + esc(legacy) + '">' + esc(short) + '</button>' : '') +
+        '</div>' +
+        '<button type="button" class="lore-add" data-lore-new="' + esc(category) + '">' +
+          '<svg><use href="#i-plus"/></svg>설정집에 새 항목 추가</button>' +
+        (!list.length ? '<span class="field-hint">설정집에 아직 ' + esc(CATS[category] || '') + ' 항목이 없어요. 위 단추로 먼저 추가해 주세요.</span>' : '');
+
+      host.querySelectorAll('[data-lore-pick]').forEach((b) => b.addEventListener('click', () => {
+        const v = b.getAttribute('data-lore-pick');
+        if (v === '__none') { ids = []; legacyOn = false; }
+        else if (v === '__legacy') {
+          legacyOn = !legacyOn;
+          if (legacyOn && !o.multi) ids = [];
+        } else if (o.multi) {
+          const i = ids.indexOf(v);
+          if (i > -1) ids.splice(i, 1); else ids.push(v);
+          legacyOn = false;
+        } else {
+          ids = ids[0] === v ? [] : [v];
+          legacyOn = false;
+        }
+        U.haptic(6);
+        draw();
+        if (o.onChange) o.onChange(ids.slice(), legacyOn);
+      }));
+      const add = host.querySelector('[data-lore-new]');
+      if (add) add.addEventListener('click', () => {
+        openLoreForm(null, {
+          category: category,
+          onSaved: (item) => {
+            if (!item) return;
+            if (o.multi) ids.push(item.id);
+            else ids = [item.id];
+            legacyOn = false;
+            draw();
+            if (o.onChange) o.onChange(ids.slice(), legacyOn);
+          }
+        });
+      });
+    }
+
+    draw();
+    return {
+      ids: () => ids.slice(),
+      legacy: () => (legacyOn ? legacy : ''),
+      redraw: draw
+    };
+  }
+
   function drawLoreList() {
     const w = W();
     const host = $('#lore-list');
     if (!host) return;
+    if (App.filters.loreCat === RANKS_CAT) { drawRankSection(w, host); return; }
     const q = App.filters.loreQuery.trim().toLowerCase();
     const list = w.lore.filter((l) => {
       if (App.filters.loreCat !== '전체' && l.category !== App.filters.loreCat) return false;
@@ -1470,14 +1948,15 @@
     }).join('');
   }
 
-  function openLoreForm(id) {
+  function openLoreForm(id, opts) {
+    const o = opts || {};
     const w = W();
     const l = id ? w.lore.find((x) => x.id === id) : null;
-    let category = l ? l.category : 'magic';
+    let category = l ? l.category : (o.category || 'magic');
     const cats = Object.keys(CATS).map((k) => ({ value: k, label: CATS[k] }));
     const html =
       '<div class="field"><span class="field__label">분류</span><div id="lore-cat-pick"></div></div>' +
-      U.field('제목', U.textInput('title', l ? l.title : '', { placeholder: '예: 봉인술' }), null, true) +
+      U.field('제목', U.textInput('title', l ? l.title : '', { placeholder: category === 'race' ? '예: 엘프' : (category === 'faction' ? '예: 서약 기사단' : (category === 'item' ? '예: 서리검 「글라시엘」' : '예: 봉인술')) }), null, true) +
       U.field('내용', U.textArea('body', l ? l.body : '', '규칙, 원리, 대가, 예외…', 7)) +
       U.field('태그', U.textInput('tags', l ? (l.tags || []).join(', ') : '', { placeholder: '봉인, 이름, 성소 (쉼표로 구분)' }));
 
@@ -1494,9 +1973,16 @@
           del.className = 'btn btn--danger btn--block mt-14';
           del.innerHTML = '<svg><use href="#i-trash"/></svg>설정 삭제';
           del.addEventListener('click', async () => {
-            const ok = await U.confirmSheet({ title: '설정을 삭제할까요?', message: l.title, confirmText: '삭제', danger: true });
+            const users = (w.characters || []).filter((c) => c.raceId === l.id || c.factionId === l.id ||
+              (c.abilityIds || []).indexOf(l.id) > -1 || (c.weaponIds || []).indexOf(l.id) > -1).length;
+            const ok = await U.confirmSheet({
+              title: '설정을 삭제할까요?',
+              message: l.title + (users ? '\n이 항목을 쓰는 인물 ' + users + '명의 연결도 함께 풀립니다.' : ''),
+              confirmText: '삭제', danger: true
+            });
             if (!ok) return;
             w.lore = w.lore.filter((x) => x.id !== id);
+            Store.syncLoreLinks(w);   // 이름·연결을 다른 화면과 맞춘다
             touch({ immediate: true });
             const sheet = form.closest('.sheet');
             if (sheet) sheet.querySelector('.sheet__close').click();
@@ -1511,11 +1997,14 @@
         if (!title) { U.toast('제목을 적어 주세요', { icon: 'i-x' }); return false; }
         const tags = String(fd.get('tags') || '').split(',').map((t) => t.trim()).filter(Boolean);
         const data = { category: category, title: title, body: String(fd.get('body') || '').trim(), tags: tags };
-        if (l) Object.assign(l, data);
-        else w.lore.push(Object.assign({ id: U.uid('l') }, data));
+        let saved = null;
+        if (l) { Object.assign(l, data); saved = l; }
+        else { saved = Object.assign({ id: U.uid('l') }, data); w.lore.push(saved); }
+        Store.syncLoreLinks(w);   // 제목이 바뀌면 이 항목을 가리키는 인물 표시도 같이 바뀐다
         touch({ immediate: true });
         refreshView();
         U.toast(l ? '설정을 수정했어요' : '설정을 추가했어요');
+        if (o.onSaved) o.onSaved(saved);
       }
     });
   }
@@ -1766,12 +2255,16 @@
       body.innerHTML =
         '<div class="list">' + App.state.worlds.map((x) => {
           const active = x.id === App.state.activeId;
-          return '<button class="row-card" data-world="' + esc(x.id) + '" style="' + (active ? 'border-color:var(--line-strong)' : '') + '">' +
-            '<span class="row-card__badge">' + (active ? '✦' : '') + '</span>' +
-            '<span class="row-card__body"><span class="row-card__title">' + esc(x.name) + '</span>' +
-            '<span class="row-card__meta">' + esc(x.era || '') + ' · 인물 ' + x.characters.length + ' · 사건 ' + x.events.length + '</span></span>' +
-            (active ? '<span class="status status--done">사용 중</span>' : '<span class="row-card__chev"><svg><use href="#i-chev-right"/></svg></span>') +
-          '</button>';
+          return '<div class="world-row">' +
+            '<button class="row-card" data-world="' + esc(x.id) + '" style="' + (active ? 'border-color:var(--line-strong)' : '') + '">' +
+              '<span class="row-card__badge">' + (active ? '✦' : '') + '</span>' +
+              '<span class="row-card__body"><span class="row-card__title">' + esc(x.name) + '</span>' +
+              '<span class="row-card__meta">' + esc(x.era || '') + ' · 인물 ' + x.characters.length + ' · 사건 ' + x.events.length + '</span></span>' +
+              (active ? '<span class="status status--done">사용 중</span>' : '<span class="row-card__chev"><svg><use href="#i-chev-right"/></svg></span>') +
+            '</button>' +
+            '<button type="button" class="world-del" data-world-del="' + esc(x.id) + '" aria-label="' + esc(x.name) + ' 삭제">' +
+              '<svg><use href="#i-trash"/></svg></button>' +
+          '</div>';
         }).join('') + '</div>' +
         '<div class="btn-row mt-14">' +
           '<button class="btn" data-worlds-act="new"><svg><use href="#i-plus"/></svg>새 세계관</button>' +
@@ -1781,13 +2274,19 @@
       body.querySelectorAll('[data-world]').forEach((b) => b.addEventListener('click', () => {
         if (b.dataset.world === App.state.activeId) { sheet.close(); return; }
         App.state.activeId = b.dataset.world;
-        App.filters = { charQuery: '', charFaction: '전체', charRace: '전체', charRank: '', loreQuery: '', loreCat: '전체', epStatus: '전체', tlEra: '전체' };
+        App.filters = { charQuery: '', charFaction: '전체', charRace: '전체', charRank: '', loreQuery: '', loreCat: '전체', epStatus: '전체', tlEra: '전체', relMode: 'char' };
         touch({ immediate: true });
         sheet.close();
         Graph.destroy();
         MapView.destroy();
         renderCurrent();
         U.toast(W().name + ' 세계관으로 전환');
+      }));
+      body.querySelectorAll('[data-world-del]').forEach((b) => b.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = b.getAttribute('data-world-del');
+        const gone = await deleteWorld(id);
+        if (gone) draw();
       }));
       body.querySelectorAll('[data-worlds-act]').forEach((b) => b.addEventListener('click', () => {
         const act = b.dataset.worldsAct;
@@ -1811,12 +2310,59 @@
     draw();
   }
 
+  /* 세계관 삭제 — 확인창에 규모를 보여 주고, 마지막 하나까지 지우면 빈 새 세계관으로 넘긴다 */
+  async function deleteWorld(id) {
+    const w = App.state.worlds.find((x) => x.id === id);
+    if (!w) return false;
+    const ok = await U.confirmSheet({
+      title: '세계관을 삭제할까요?',
+      message: '「' + w.name + '」\n인물 ' + (w.characters || []).length + '명 · 사건 ' + (w.events || []).length + '건 · 에피소드 ' +
+        (w.episodes || []).length + '편 · 지역 ' + (((w.map || {}).markers) || []).length + '곳\n삭제하면 되돌릴 수 없어요.',
+      confirmText: '삭제',
+      danger: true
+    });
+    if (!ok) return false;
+
+    const wasActive = App.state.activeId === id;
+    App.state.worlds = App.state.worlds.filter((x) => x.id !== id);
+    let recreated = false;
+    if (!App.state.worlds.length) {
+      // 마지막 세계관까지 지웠다면 앱이 비지 않도록 빈 새 세계관을 만든다
+      const fresh = Store.normalizeWorld({
+        id: U.uid('w'),
+        name: '새 세계관',
+        tagline: '',
+        era: '',
+        description: '',
+        characters: [], relations: [], events: [], lore: [], episodes: [],
+        rankSystems: [],
+        map: { kind: 'sample', image: null, imageOriginal: null, style: 'parchment', markers: [], terrainStamps: [], ratio: 3 / 4 }
+      });
+      App.state.worlds.push(fresh);
+      App.state.activeId = fresh.id;
+      recreated = true;
+    } else if (wasActive) {
+      App.state.activeId = App.state.worlds[0].id;
+    }
+    App.filters = { charQuery: '', charFaction: '전체', charRace: '전체', charRank: '', loreQuery: '', loreCat: '전체', epStatus: '전체', tlEra: '전체', relMode: 'char' };
+    touch({ immediate: true });
+    Graph.destroy();
+    MapView.destroy();
+    renderCurrent();
+    U.toast(recreated ? '마지막 세계관을 지워 새 세계관으로 시작해요' : '세계관을 삭제했어요', { icon: 'i-trash' });
+    return true;
+  }
+
   function openWorldForm(id) {
     const w = id ? App.state.worlds.find((x) => x.id === id) : null;
     const html =
       U.field('세계관 이름', U.textInput('name', w ? w.name : '', { placeholder: '예: 아르카디아 연대기' }), null, true) +
       U.field('한 줄 소개', U.textInput('tagline', w ? w.tagline : '', { placeholder: '잿빛 왕관이 부서진 뒤…' })) +
       U.field('현재 시대 표기', U.textInput('era', w ? w.era : '', { placeholder: '제3기 104년' })) +
+      '<div class="field--slim">' +
+        U.field('대표 역법', U.textInput('eraPrefix', w ? (w.eraPrefix || '') : '', { placeholder: '제국력 · 성력 · 제3기' }), '연표 사건에 자동으로 붙는 시대명이에요.') +
+        U.field('현재 연도', U.textInput('eraYear', w ? String(w.eraYear || 0) : '0', { type: 'number', inputmode: 'numeric' })) +
+      '</div>' +
       U.field('설명', U.textArea('description', w ? w.description : '', '세계의 분위기, 갈등, 지금 벌어지는 일…', 6)) +
       (w ? '' : '<label class="field" style="display:flex;gap:9px;align-items:center;text-transform:none">' +
         '<input type="checkbox" name="samplemap" checked style="width:20px;height:20px;accent-color:#d4af37">' +
@@ -1828,27 +2374,15 @@
       sub: '이름만 정하고 시작해도 좋아요.',
       full: true,
       html: html,
-      onReady: ({ form }) => {
+      onReady: ({ form, sheet }) => {
         if (w) {
           const del = document.createElement('button');
           del.type = 'button';
           del.className = 'btn btn--danger btn--block mt-14';
           del.innerHTML = '<svg><use href="#i-trash"/></svg>세계관 삭제';
           del.addEventListener('click', async () => {
-            const ok = await U.confirmSheet({
-              title: '세계관을 삭제할까요?',
-              message: w.name + '의 인물·관계·연표·지도·설정·에피소드가 모두 사라집니다. 되돌릴 수 없어요.',
-              confirmText: '삭제', danger: true
-            });
-            if (!ok) return;
-            App.state.worlds = App.state.worlds.filter((x) => x.id !== w.id);
-            App.state.activeId = App.state.worlds[0] ? App.state.worlds[0].id : null;
-            touch({ immediate: true });
-            form.closest('.sheet').querySelector('.sheet__close').click();
-            Graph.destroy();
-            MapView.destroy();
-            renderCurrent();
-            U.toast('세계관을 삭제했어요');
+            const gone = await deleteWorld(w.id);
+            if (gone) sheet.close();
           });
           form.appendChild(del);
         }
@@ -1860,6 +2394,8 @@
           name: name,
           tagline: String(fd.get('tagline') || '').trim(),
           era: String(fd.get('era') || '').trim(),
+          eraPrefix: String(fd.get('eraPrefix') || '').trim(),
+          eraYear: Math.round(Number(fd.get('eraYear')) || 0),
           description: String(fd.get('description') || '').trim()
         };
         if (w) {
@@ -1891,41 +2427,101 @@
     return w.characters.filter((c) => (c.ranks || []).some((r) => r.systemId === sysId)).length;
   }
 
-  // 인물 폼 안의 등급 선택기 (체계별로 한 단계씩)
-  function drawRankPicker(host, w, sel, onManage) {
+  // 인물 폼 안의 등급 선택기 — [체계] [단계] 를 한 줄에 나란히, 능력은 행으로 추가
+  function drawRankPicker(host, w, rows, sel, onManage) {
     const systems = w.rankSystems || [];
     if (!systems.length) {
       host.innerHTML = '<div class="rank-empty">' +
         '<p class="field-hint">아직 등록된 등급 체계가 없어요. 마법 서클·기사단 계위 같은 체계를 먼저 만들어 주세요.</p>' +
         '<button type="button" class="btn btn--sm" data-rank-manage><svg><use href="#i-plus"/></svg><span>등급 체계 만들기</span></button>' +
       '</div>';
-    } else {
-      host.innerHTML = systems.map((s) => {
-        const cur = sel.get(s.id);
-        const has = typeof cur === 'number' && cur >= 0 && cur < s.tiers.length;
-        return '<div class="rank-pick" style="--rank-color:' + esc(s.color) + '">' +
-          '<div class="rank-pick__head">' +
-            '<span class="rank-pick__name"><span class="rank-pick__icon">' + esc(s.icon) + '</span>' + esc(s.name) + '</span>' +
-            (has ? '<button type="button" class="rank-pick__clear" data-rank-clear="' + esc(s.id) + '">해제</button>' : '') +
-          '</div>' +
-          '<div class="chip-row rank-pick__chips">' + s.tiers.map((t, i) =>
-            '<button type="button" class="chip chip--small rank-chip' + (cur === i ? ' chip--active' : '') + '"' +
-            ' data-rank-system="' + esc(s.id) + '" data-rank-tier="' + i + '">' + esc(t) + '</button>').join('') +
-          '</div>' +
-        '</div>';
-      }).join('') +
-        '<button type="button" class="btn btn--sm btn--ghost mt-8" data-rank-manage><svg><use href="#i-shield"/></svg><span>등급 체계 관리</span></button>';
+      host.querySelectorAll('[data-rank-manage]').forEach((b) => b.addEventListener('click', () => { if (onManage) onManage(); }));
+      return;
     }
-    host.querySelectorAll('[data-rank-system]').forEach((b) => b.addEventListener('click', () => {
-      sel.set(b.getAttribute('data-rank-system'), Number(b.getAttribute('data-rank-tier')));
-      U.haptic(8);
-      drawRankPicker(host, w, sel, onManage);
-    }));
-    host.querySelectorAll('[data-rank-clear]').forEach((b) => b.addEventListener('click', () => {
-      sel.delete(b.getAttribute('data-rank-clear'));
+    if (!Array.isArray(rows)) rows = [];
+
+    const sync = () => {
+      sel.clear();
+      rows.forEach((r) => { if (r && r.systemId) sel.set(r.systemId, r.tier); });
+    };
+
+    if (!rows.length) {
+      // 새 인물은 기본이 '없음' — [능력 추가]로만 고른다
+      host.innerHTML = '<p class="field-hint rank-empty-hint">아직 고른 등급이 없어요. 아래 [능력 추가]로 체계와 단계를 고르세요.</p>' +
+        '<div class="rank-actions">' +
+          '<button type="button" class="btn btn--sm" data-rank-add><svg><use href="#i-plus"/></svg><span>능력 추가</span></button>' +
+          '<button type="button" class="btn btn--sm btn--ghost" data-rank-manage><svg><use href="#i-shield"/></svg><span>체계 관리</span></button>' +
+        '</div>';
+      sync();
+      host.querySelector('[data-rank-add]').addEventListener('click', () => {
+        rows.push({ systemId: systems[0].id, tier: 0 });
+        U.haptic(8);
+        drawRankPicker(host, w, rows, sel, onManage);
+      });
+      host.querySelectorAll('[data-rank-manage]').forEach((b) => b.addEventListener('click', () => { if (onManage) onManage(); }));
+      return;
+    }
+
+    host.innerHTML = rows.map((row, i) => {
+      const sys = systems.find((s) => s.id === row.systemId) || systems[0];
+      const tier = (typeof row.tier === 'number' && row.tier >= 0 && row.tier < sys.tiers.length) ? row.tier : 0;
+      row.systemId = sys.id;
+      row.tier = tier;
+      return '<div class="rank-row" data-rank-row="' + i + '">' +
+        '<div class="rank-row__picks">' +
+          '<label class="rank-row__cell rank-row__cell--sys">' +
+            '<span class="rank-row__label">체계</span>' +
+            '<select class="select" data-row-sys="' + i + '" aria-label="능력·등급 체계">' +
+              systems.map((s) => '<option value="' + esc(s.id) + '"' + (s.id === sys.id ? ' selected' : '') + '>' +
+                esc(s.icon + ' ' + s.name) + '</option>').join('') +
+            '</select>' +
+          '</label>' +
+          '<label class="rank-row__cell rank-row__cell--tier">' +
+            '<span class="rank-row__label">단계</span>' +
+            '<select class="select" data-row-tier="' + i + '" aria-label="' + esc(sys.name) + ' 단계">' +
+              sys.tiers.map((t, ti) => '<option value="' + ti + '"' + (ti === tier ? ' selected' : '') + '>' + esc(t) + '</option>').join('') +
+            '</select>' +
+          '</label>' +
+          '<button type="button" class="rank-row__del" data-row-del="' + i + '" aria-label="이 능력 빼기"><svg><use href="#i-x"/></svg></button>' +
+        '</div>' +
+        (sys.description ? '<p class="rank-row__desc">' + esc(sys.description) + '</p>' : '') +
+      '</div>';
+    }).join('') +
+      '<div class="rank-actions">' +
+        '<button type="button" class="btn btn--sm btn--ghost" data-rank-add><svg><use href="#i-plus"/></svg><span>능력 추가</span></button>' +
+        '<button type="button" class="btn btn--sm btn--ghost" data-rank-manage><svg><use href="#i-shield"/></svg><span>체계 관리</span></button>' +
+      '</div>';
+
+    sync();
+
+    function repaint() { drawRankPicker(host, w, rows, sel, onManage); }
+
+    host.querySelectorAll('[data-row-sys]').forEach((el) => el.addEventListener('change', () => {
+      const i = Number(el.getAttribute('data-row-sys'));
+      rows[i].systemId = el.value;
+      rows[i].tier = 0;
       U.haptic(6);
-      drawRankPicker(host, w, sel, onManage);
+      repaint();
     }));
+    host.querySelectorAll('[data-row-tier]').forEach((el) => el.addEventListener('change', () => {
+      const i = Number(el.getAttribute('data-row-tier'));
+      rows[i].tier = Number(el.value) || 0;
+      sync();
+      U.haptic(6);
+    }));
+    host.querySelectorAll('[data-row-del]').forEach((b) => b.addEventListener('click', () => {
+      rows.splice(Number(b.getAttribute('data-row-del')), 1);
+      U.haptic(6);
+      repaint();
+    }));
+    const add = host.querySelector('[data-rank-add]');
+    if (add) add.addEventListener('click', () => {
+      const used = new Set(rows.map((r) => r.systemId));
+      const free = systems.find((s) => !used.has(s.id)) || systems[0];
+      rows.push({ systemId: free.id, tier: 0 });
+      U.haptic(8);
+      repaint();
+    });
     host.querySelectorAll('[data-rank-manage]').forEach((b) => b.addEventListener('click', () => {
       if (onManage) onManage();
     }));
@@ -1952,6 +2548,7 @@
                 '<span class="rank-sys__icon" style="--rank-color:' + esc(s.color) + '">' + esc(s.icon) + '</span>' +
                 '<span class="rank-sys__body">' +
                   '<span class="rank-sys__name">' + esc(s.name) + '</span>' +
+                  (s.description ? '<span class="rank-sys__desc">' + esc(s.description) + '</span>' : '') +
                   '<span class="rank-sys__meta">' + s.tiers.length + '단계 · ' + esc(s.tiers[0]) + ' ~ ' + esc(s.tiers[s.tiers.length - 1]) + ' · 인물 ' + rankUsedCount(w, s.id) + '명</span>' +
                   '<span class="rank-sys__tiers">' + s.tiers.map((t) => '<span class="mini-chip">' + esc(t) + '</span>').join('') + '</span>' +
                 '</span>' +
@@ -1986,20 +2583,23 @@
 
     const html =
       U.field('체계 이름', U.textInput('name', sys ? sys.name : '', { placeholder: '예: 마법 서클 · 검사 계위 · 모험가 랭크' }), '세계관마다 여러 체계를 만들 수 있어요.', true) +
+      U.field('설명', U.textInput('description', sys ? (sys.description || '') : '', { placeholder: '예: 마나를 다루는 마법사의 경지' }), '인물 폼에서 체계를 고를 때 이 한 줄이 함께 보여요.') +
       '<div class="field--slim">' +
         U.field('아이콘', U.textInput('icon', sys ? sys.icon : '⚔', { placeholder: '⚔' })) +
         '<div class="field"><span class="field__label">색상</span><div class="rank-colors" id="rank-colors"></div>' +
           '<input type="hidden" name="color" value="' + esc(color) + '"></div>' +
       '</div>' +
       '<div class="field"><span class="field__label">단계 <b>*</b></span>' +
-        '<div class="rank-gen">' +
-          '<input class="input" id="tier-prefix" placeholder="단위 (예: 서클)" value="' + esc(guessTierSuffix(sys)) + '" aria-label="단계 단위">' +
-          '<input class="input" id="tier-count" type="number" min="1" max="20" step="1" value="' + (sys ? sys.tiers.length : 9) + '" inputmode="numeric" aria-label="단계 수">' +
-          '<button type="button" class="btn btn--sm btn--gold" id="tier-gen">자동 생성</button>' +
+        '<div class="rank-stepper">' +
+          '<button type="button" class="rstep" data-tier-step="-1" aria-label="단계 줄이기">−</button>' +
+          '<div class="rank-stepper__value"><b data-tier-count>9</b><span>단계</span></div>' +
+          '<button type="button" class="rstep" data-tier-step="1" aria-label="단계 늘리기">+</button>' +
+          '<label class="rank-unit"><span>단위</span>' +
+            '<input class="input" id="tier-prefix" placeholder="예: 서클" value="' + esc(guessTierSuffix(sys)) + '" aria-label="단계 단위"></label>' +
         '</div>' +
-        '<span class="field-hint">개수를 넣고 [자동 생성]을 누르면 1서클~9서클처럼 한 번에 만들어져요. 만든 뒤 단계 이름은 각각 고칠 수 있어요.</span>' +
+        '<input type="range" class="rank-range" id="tier-range" min="1" max="15" step="1" value="9" aria-label="단계 수">' +
+        '<span class="field-hint">1~15단계 사이에서 고르면 아래 칸이 바로 그만큼 펼쳐져요. 이름을 비우면 <b>1단계 · 1서클</b>처럼 숫자로 자동 저장됩니다.</span>' +
         '<div class="rank-tiers" id="rank-tiers"></div>' +
-        '<button type="button" class="btn btn--sm btn--ghost mt-8" id="tier-add"><svg><use href="#i-plus"/></svg><span>단계 추가</span></button>' +
       '</div>' +
       (sys ? '<button type="button" class="btn btn--danger btn--block mt-8" id="rank-delete"><svg><use href="#i-trash"/></svg><span>체계 삭제</span></button>' : '');
 
@@ -2010,8 +2610,16 @@
       full: true,
       html: html,
       onReady: ({ body, sheet }) => {
+        const prefixInput = body.querySelector('#tier-prefix');
+        const countOut = body.querySelector('[data-tier-count]');
+        const range = body.querySelector('#tier-range');
+        let count = U.clamp(sys ? sys.tiers.length : 9, 1, 15);
+
+        function suffix() { return String(prefixInput.value || '').trim(); }
+        function defaultName(no) { return no + (suffix() || '단계'); }
+
         function readTiers() {
-          return U.$$('#rank-tiers [name="tier"]', body).map((el) => el.value.trim());
+          return U.$$('#rank-tiers [name="tier"]', body).map((el) => el.value);
         }
 
         function drawTiers(list) {
@@ -2019,19 +2627,42 @@
           host.innerHTML = list.map((t, i) =>
             '<div class="rank-tier-row">' +
               '<span class="rank-tier-no">' + (i + 1) + '</span>' +
-              '<input class="input" name="tier" value="' + esc(t) + '" aria-label="' + (i + 1) + '단계 이름">' +
-              '<button type="button" class="mini-btn" data-tier-del="' + i + '" aria-label="' + (i + 1) + '단계 삭제"><svg><use href="#i-x"/></svg></button>' +
-            '</div>').join('') ||
-            '<p class="field-hint">아래 [자동 생성]으로 단계를 만들거나 [단계 추가]를 눌러 주세요.</p>';
-          host.querySelectorAll('[data-tier-del]').forEach((b) => b.addEventListener('click', () => {
-            const next = readTiers();
-            next.splice(Number(b.getAttribute('data-tier-del')), 1);
-            drawTiers(next);
-            U.haptic(6);
-          }));
+              '<input class="input" name="tier" value="' + esc(t) + '" placeholder="' + esc(defaultName(i + 1) + ' (비우면 숫자 유지)') + '" aria-label="' + (i + 1) + '단계 이름">' +
+            '</div>').join('');
         }
 
-        drawTiers(sys ? sys.tiers.slice() : []);
+        function syncCount() {
+          count = U.clamp(Math.round(count) || 1, 1, 15);
+          countOut.textContent = count;
+          range.value = count;
+        }
+
+        // 단계 수를 바꾸면 칸이 바로 그 개수만큼 펼쳐지고, 이미 쓴 이름은 자리를 지킨다.
+        function resize(next) {
+          const keep = readTiers();
+          count = U.clamp(Math.round(next) || 1, 1, 15);
+          const out = [];
+          for (let i = 0; i < count; i++) out.push(i < keep.length ? keep[i] : '');
+          syncCount();
+          drawTiers(out);
+        }
+
+        function refreshPlaceholders() {
+          U.$$('#rank-tiers .rank-tier-row', body).forEach((row, i) => {
+            const input = row.querySelector('input');
+            if (input) input.placeholder = defaultName(i + 1) + ' (비우면 숫자 유지)';
+          });
+        }
+
+        drawTiers((sys ? sys.tiers : []).slice(0, count));
+        syncCount();
+
+        body.querySelectorAll('[data-tier-step]').forEach((b) => b.addEventListener('click', () => {
+          resize(count + Number(b.getAttribute('data-tier-step')));
+          U.haptic(8);
+        }));
+        range.addEventListener('input', () => resize(Number(range.value)));
+        prefixInput.addEventListener('input', refreshPlaceholders);
 
         const colorHost = body.querySelector('#rank-colors');
         colorHost.innerHTML = RANK_COLORS.map((c) =>
@@ -2044,25 +2675,6 @@
           body.querySelector('[name="color"]').value = color;
           U.$$('[data-color]', colorHost).forEach((x) => x.classList.toggle('is-on', x === b));
           U.haptic(6);
-        });
-
-        body.querySelector('#tier-gen').addEventListener('click', () => {
-          const prefix = String(body.querySelector('#tier-prefix').value || '').trim();
-          const n = U.clamp(Math.round(Number(body.querySelector('#tier-count').value) || 0), 1, 20);
-          const list = [];
-          for (let i = 1; i <= n; i++) list.push(prefix ? i + prefix : i + '단계');
-          drawTiers(list);
-          U.haptic(10);
-          U.toast(n + '단계를 만들었어요', { icon: 'i-check' });
-        });
-
-        body.querySelector('#tier-add').addEventListener('click', () => {
-          const next = readTiers();
-          next.push((next.length + 1) + '단계');
-          drawTiers(next);
-          const inputs = U.$$('#rank-tiers [name="tier"]', body);
-          const lastInput = inputs[inputs.length - 1];
-          if (lastInput) { lastInput.focus(); lastInput.select(); }
         });
 
         const del = body.querySelector('#rank-delete');
@@ -2089,10 +2701,16 @@
       onSubmit: (fd, body) => {
         const name = String(fd.get('name') || '').trim();
         if (!name) { U.toast('체계 이름을 적어 주세요', { icon: 'i-x' }); return false; }
-        const tiers = U.$$('#rank-tiers [name="tier"]', body).map((el) => el.value.trim()).filter(Boolean);
+        const unit = String((body.querySelector('#tier-prefix') || {}).value || '').trim();
+        // 비워 둔 칸은 숫자(1단계 / 1서클)로 자동 채운다
+        const tiers = U.$$('#rank-tiers [name="tier"]', body).map((el, i) => {
+          const v = String(el.value || '').trim();
+          return v || ((i + 1) + (unit || '단계'));
+        });
         if (!tiers.length) { U.toast('단계를 하나 이상 만들어 주세요', { icon: 'i-x' }); return false; }
         const icon = String(fd.get('icon') || '').trim().slice(0, 2) || '⚔';
-        const data = { name: name, icon: icon, color: color, tiers: tiers };
+        const description = String(fd.get('description') || '').trim().slice(0, 80);
+        const data = { name: name, icon: icon, color: color, tiers: tiers, description: description };
         if (sys) Object.assign(sys, data);
         else w.rankSystems.push(Object.assign({ id: U.uid('rk') }, data));
         // 단계가 줄면 범위를 벗어난 인물 등급을 정리한다
@@ -2134,7 +2752,7 @@
       '<div class="divider"></div>' +
       '<div class="label-row"><span>앱 정보</span></div>' +
       '<div class="def-list">' +
-        '<div class="def"><dt>버전</dt><dd>아르카눔 v1.1 · PWA</dd></div>' +
+        '<div class="def"><dt>버전</dt><dd>아르카눔 v1.3 · PWA</dd></div>' +
         '<div class="def"><dt>저장</dt><dd>' + (Store.isDbBroken() ? 'localStorage (자동 저장)' : 'IndexedDB + localStorage 이중 저장') + '</dd></div>' +
         '<div class="def"><dt>오프라인</dt><dd>홈 화면에 추가하면 인터넷 없이도 열립니다.</dd></div>' +
       '</div>';
@@ -2147,7 +2765,7 @@
       else if (act === 'episodes') go('episodes');
       else if (act === 'story') { go('map'); setTimeout(() => MapView.setStory(true), 80); }
       else if (act === 'gen') setTimeout(() => Generator.open({}), 120);
-      else if (act === 'ranks') setTimeout(openRankSystems, 120);
+      else if (act === 'ranks') { App.filters.loreCat = RANKS_CAT; App.filters.loreQuery = ''; go('lore'); }
       else if (act === 'backup') setTimeout(openBackupSheet, 120);
       else if (act === 'worlds') setTimeout(openWorldSwitcher, 120);
     }));
@@ -2170,12 +2788,14 @@
     return f || Store.DEFAULT_BACKUP_FOLDER || '세계 만들기';
   }
 
-  function backupFileName() {
+  // 기본은 날짜 없는 고정 파일명 → 같은 폴더에 저장할 때 iOS가 '대치'를 물어본다
+  function backupFileName(includeDate) {
+    const safe = backupFolderName().replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, '_');
+    const base = (safe || '세계_만들기') + '_아르카눔_백업';
+    if (!includeDate) return base + '.json';
     const d = new Date();
     const p = (n) => String(n).padStart(2, '0');
-    const stamp = String(d.getFullYear()) + p(d.getMonth() + 1) + p(d.getDate());
-    const safe = backupFolderName().replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, '_');
-    return (safe || '세계_만들기') + '_아르카눔_백업_' + stamp + '.json';
+    return base + '_' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '.json';
   }
 
   function backupText() {
@@ -2191,8 +2811,8 @@
   }
 
   // Web Share(파일 앱의 폴더 선택) 우선 → 안 되면 일반 다운로드
-  async function exportBackup(forceDownload) {
-    const name = backupFileName();
+  async function exportBackup(forceDownload, includeDate) {
+    const name = backupFileName(includeDate);
     const text = backupText();
     const folder = backupFolderName();
     if (!forceDownload && typeof File !== 'undefined' && navigator.share) {
@@ -2205,7 +2825,7 @@
       if (file && canShareFiles(file)) {
         try {
           await navigator.share({ files: [file], title: name });
-          U.toast('공유 시트에서 [파일에 저장] → ' + folder + ' 폴더를 고르세요', { icon: 'i-download', duration: 3600 });
+          U.toast('[파일에 저장] → ' + folder + ' 폴더 · 같은 이름이 있으면 [대치]를 누르세요', { icon: 'i-download', duration: 3800 });
           return 'shared';
         } catch (err) {
           if (err && err.name === 'AbortError') {
@@ -2217,7 +2837,7 @@
       }
     }
     U.downloadText(name, text, 'application/json');
-    U.toast('백업 파일을 내보냈어요 · 받은 파일을 ' + folder + ' 폴더로 옮길 수 있어요', { icon: 'i-download', duration: 3200 });
+    U.toast('백업 파일을 내보냈어요 · 같은 이름이면 [대치]로 덮어쓰세요', { icon: 'i-download', duration: 3200 });
     return 'downloaded';
   }
 
@@ -2228,13 +2848,17 @@
     body.innerHTML =
       '<p class="prose small">세계관 ' + App.state.worlds.length + '개 전체를 JSON 한 파일로 내보냅니다. 인물 사진, 지도 이미지, 지형 스탬프까지 함께 담겨요.</p>' +
       '<button class="btn btn--gold btn--block mt-8" data-backup="export"><svg><use href="#i-download"/></svg><span>아이폰 \'' + esc(folder) + '\' 폴더에 저장</span></button>' +
-      '<p class="field-hint">공유 시트가 열리면 아래 안내대로 [파일에 저장]을 고르면 폴더를 직접 정할 수 있어요. 공유가 막힌 환경에서는 다운로드로 자동 저장합니다.</p>' +
+      '<p class="field-hint">파일 이름은 <b>' + esc(backupFileName()) + '</b> 로 고정이라, 같은 폴더에 다시 저장할 때 <b>[대치]</b>를 누르면 기존 파일에 덮어씌워집니다. 공유 시트에서는 [파일에 저장]을 고르세요.</p>' +
+      '<label class="field" style="display:flex;gap:9px;align-items:center;text-transform:none">' +
+        '<input type="checkbox" id="backup-date" style="width:20px;height:20px;accent-color:#d4af37">' +
+        '<span class="small">날짜를 붙여 <b>별도 파일</b>로 저장</span>' +
+      '</label>' +
       '<div class="backup-guide">' +
         '<div class="backup-guide__title"><svg><use href="#i-download"/></svg>아이폰 파일 앱 \'' + esc(folder) + '\' 폴더에 저장하는 법</div>' +
         '<ol>' +
           '<li>위 <b>폴더에 저장</b> 버튼을 눌러 공유 시트를 엽니다.</li>' +
           '<li>공유 목록에서 <b>파일에 저장</b>을 선택합니다.</li>' +
-          '<li>저장 위치에서 <b>' + esc(folder) + '</b> 폴더를 고르고 <b>저장</b>을 누릅니다.</li>' +
+              '<li>저장 위치에서 <b>' + esc(folder) + '</b> 폴더를 고르고 <b>저장</b>을 누릅니다. 같은 이름이 있으면 <b>대치</b>를 누르면 덮어써요.</li>' +
           '<li>폴더가 없으면 파일 앱에서 새 폴더를 만들어 이름을 <b>' + esc(folder) + '</b>로 정하면 돼요.</li>' +
         '</ol>' +
         '<div class="backup-folder">' +
@@ -2271,8 +2895,9 @@
       const act = b.dataset.backup;
       if (act === 'export' || act === 'export-download') {
         b.disabled = true;
+        const dateBox = body.querySelector('#backup-date');
         try {
-          await exportBackup(act === 'export-download');
+          await exportBackup(act === 'export-download', !!(dateBox && dateBox.checked));
         } finally {
           b.disabled = false;
         }
@@ -2352,7 +2977,44 @@
   function registerSW() {
     if (!('serviceWorker' in navigator)) return;
     if (!/^https?:$/.test(location.protocol)) return;
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    // 처음 설치(첫 클레임)에서는 새로고침하지 않는다. 이전 버전이 떠 있을 때만 다시 띄운다.
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloading = false;
+
+    function recentReload() {
+      try {
+        const t = Number(sessionStorage.getItem('arcanum.reloadAt') || 0);
+        return Date.now() - t < 4000;
+      } catch (e) { return false; }
+    }
+    function rememberReload() {
+      try { sessionStorage.setItem('arcanum.reloadAt', String(Date.now())); } catch (e) {}
+    }
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloading) return;
+      if (recentReload()) return;       // sw.js가 이미 새로 띄운 경우 두 번 새로고침하지 않는다
+      reloading = true;
+      try { U.toast('새 버전이 적용되어 새로고침합니다', { icon: 'i-sparkles', duration: 1400 }); } catch (e) {}
+      rememberReload();
+      setTimeout(() => { location.reload(); }, 650);
+    });
+
+    navigator.serviceWorker.register('sw.js').then((reg) => {
+      if (!reg) return;
+      const wake = () => {
+        if (!reg.waiting) return;
+        try { reg.waiting.postMessage({ type: 'SKIP_WAITING' }); } catch (e) {}
+      };
+      wake();
+      reg.addEventListener('updatefound', () => {
+        const sw = reg.installing;
+        if (!sw) return;
+        sw.addEventListener('statechange', () => { if (sw.state === 'installed') wake(); });
+      });
+      // 앱을 열 때마다 새 버전이 있는지 확인한다
+      try { reg.update(); } catch (e) {}
+    }).catch(() => {});
   }
 
   async function boot() {

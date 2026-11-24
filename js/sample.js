@@ -129,10 +129,12 @@
       systems: [
         {
           id: 'rk_circle', name: '마법 서클', icon: '✦', color: '#7fa9d8',
+          description: '마나를 다루는 마법사의 경지 — 서클이 올라갈수록 더 큰 주문을 감당한다.',
           tiers: ['1서클', '2서클', '3서클', '4서클', '5서클', '6서클', '7서클', '8서클', '9서클']
         },
         {
           id: 'rk_order', name: '기사단 계위', icon: '⚔', color: '#c9a24a',
+          description: '서약 기사단의 계급 — 수습에서 그랜드마스터까지 여섯 단계.',
           tiers: ['수습', '견습 기사', '정식 기사', '기사장', '기사단장', '그랜드마스터']
         }
       ],
@@ -147,6 +149,52 @@
         c_thorn: []
       }
     };
+  }
+
+  /* 인물 폼에서 골라 쓰는 기본 설정집 항목 — 종족 · 세력 · 능력 · 아이템 */
+  function LoreDefaults() {
+    const L = (id, category, title, body, tags) => ({ id: id, category: category, title: title, body: body, tags: tags || [] });
+    return [
+      // 종족
+      L('l_race_human', 'race', '인간', '가장 흔하고 가장 빨리 잊는 종족. 한 세기 안에 왕국을 세우고 무너뜨린다.', ['인간']),
+      L('l_race_elf', 'race', '엘프', '숲과 함께 늙는 종족. 나무의 이름을 외우고, 불을 오래 기억한다.', ['엘프', '숲']),
+      L('l_race_dwarf', 'race', '드워프', '돌 아래에서 단련된 종족. 맹세와 빚을 쇠처럼 다룬다.', ['드워프', '장인']),
+      L('l_race_spirit', 'race', '정령혈족', '정령의 피를 받아 태어난 자. 물과 달에 가까워 기억을 잃기 쉽다.', ['정령', '호수']),
+      L('l_race_half', 'race', '반요(까마귀 혈족)', '짐승의 피가 섞인 자. 그림자와 소문을 먹고 산다.', ['반요', '그림자']),
+      // 세력
+      L('l_fac_seal', 'faction', '봉인술사회', '이름을 감추고 인장을 읽는 학회. 성소의 문을 지킨다.', ['봉인', '학회']),
+      L('l_fac_watch', 'faction', '검은숲 감시자', '검은숲의 경계를 지키는 사냥꾼들. 숲 밖의 일에는 나서지 않는다.', ['숲', '감시자']),
+      L('l_fac_iron', 'faction', '무쇠 길드', '서리봉우리 아래의 단조 연합. 값은 쇠로, 약속은 망치로 매긴다.', ['단조', '길드']),
+      L('l_fac_royal', 'faction', '아르카디아 왕실', '몰락한 옛 왕가. 이제는 이름과 빚만 남았다.', ['왕실', '발드렌']),
+      L('l_fac_free', 'faction', '무소속 · 정보상', '어느 편에도 서지 않고 소문을 사고파는 자들.', ['정보', '무소속']),
+      L('l_fac_sanct', 'faction', '성소 수호자', '일곱 성소를 지키는 맹세의 무리. 인장이 풀리면 가장 먼저 깨어난다.', ['성소', '인장']),
+      // 능력 · 체계
+      L('l_mag_ice', 'magic', '빙결의 검술', '베는 순간 공기를 얼려 상처를 늦추는 검술. 서리검과 함께 쓰면 대가가 커진다.', ['검술', '서리']),
+      L('l_mag_seal2', 'magic', '봉인 마법', '이름을 묶어 힘을 가두는 주문. 한 번 읽으면 읽은 자의 기억 일부를 가져간다.', ['봉인', '주문']),
+      L('l_mag_star', 'magic', '별의 지도', '밤하늘을 지도 삼아 거리를 읽는 점술. 흐린 밤에는 쓰지 못한다.', ['별', '지도']),
+      L('l_mag_name', 'magic', '이름의 해독', '참된 이름을 풀어 읽는 재주. 읽을수록 자신의 이름이 흐려진다.', ['이름', '해독']),
+      L('l_mag_fire', 'magic', '화염술', '재에서 다시 서는 불. 끄는 것이 아니라 이름을 부르는 방식으로 다룬다.', ['불', '재']),
+      L('l_mag_rot', 'magic', '부패한 이름의 마법', '부른 이름을 썩히는 주문. 상대의 기록에서 그 이름을 지운다.', ['이름', '부패']),
+      L('l_mag_rebirth', 'magic', '재에서 다시 서는 몸', '불에 타 죽은 자가 재에서 다시 서는 혈통의 힘. 설 때마다 이름을 조금씩 잊는다.', ['불사', '재']),
+      L('l_mag_forest', 'magic', '숲의 길 읽기', '나무 사이의 길을 읽는 감각. 숲이 허락한 자만 빠져나온다.', ['숲', '길']),
+      L('l_mag_hawkeye', 'magic', '매의 눈', '먼 것을 가까이 당겨 보는 눈. 오래 쓰면 색을 잃는다.', ['눈', '사냥']),
+      L('l_mag_runesmith', 'magic', '룬 단조', '쇠에 룬을 새겨 의지를 담는 기술. 새긴 것은 주인을 바꾸지 않는다.', ['룬', '단조']),
+      L('l_mag_sword', 'magic', '정통 검술', '왕실에서 가르치던 검술. 형태보다 거리와 예절을 먼저 배운다.', ['검술', '왕실']),
+      L('l_mag_shadow', 'magic', '그림자 마법', '그림자를 매개로 소리와 기억을 가로채는 술식.', ['그림자', '술식']),
+      L('l_mag_water', 'magic', '물의 정령술', '물의 정령과 이름을 주고받는 술법. 호수 근처에서만 온전히 쓰인다.', ['정령', '물']),
+      L('l_mag_resonance', 'magic', '인장 공명', '성소의 인장과 몸이 공명하는 힘. 인장이 풀리면 대가를 치른다.', ['인장', '공명']),
+      L('l_mag_walkwater', 'magic', '물 위를 걷기', '표면장력이 아닌 이름으로 물을 누르는 재주.', ['물', '걷기']),
+      L('l_mag_duel', 'magic', '외교', '말과 예절로 땅과 사람을 얻는 재주. 무보다 오래 남는다.', ['외교', '왕실']),
+      L('l_mag_crownshard', 'magic', '왕관의 조각을 다루는 재주', '잿빛 왕관의 조각을 만지면 그 조각의 이름이 들린다.', ['왕관', '이름']),
+      L('l_mag_poison', 'magic', '독', '값을 매기지 않고도 사람을 멈추게 하는 수단.', ['독', '정보']),
+      L('l_mag_erase', 'magic', '기억에서 이름 지우기', '기록과 기억 양쪽에서 이름을 빼내는 술식. 대가는 지우는 자의 이름이다.', ['이름', '기억']),
+      // 아이템 · 유물
+      L('l_item_glassiel', 'item', '서리검 「글라시엘」', '항구 창고에서 발견된 서리 검. 뽑지 않아도 울고, 뽑으면 겨울이 따라온다.', ['검', '서리']),
+      L('l_item_nightdew', 'item', '밤의 이슬(장궁)', '밤이슬을 먹인 활. 쏜 화살은 소리 없이 목표에 닿는다.', ['활', '숲']),
+      L('l_item_axe', 'item', '전투 도끼 「산의 이빨」', '서리봉우리의 청철로 벼린 도끼. 바위도 쪼갠다.', ['도끼', '쇠']),
+      L('l_item_seal', 'item', '황금 인장', '일곱 성소의 인장을 옮겨 새긴 금판. 읽는 자의 기억을 대가로 받는다.', ['인장', '유물']),
+      L('l_item_obsidian', 'item', '흑요석 지팡이', '재에서 구운 흑요석 지팡이. 불의 이름을 부르는 데 쓴다.', ['지팡이', '흑요석'])
+    ];
   }
 
   function SampleWorld() {
@@ -164,6 +212,8 @@
       name: '아르카디아 연대기',
       tagline: '잿빛 왕관이 부서진 뒤, 일곱 성소가 다시 빛나기 시작했다.',
       era: '제3기 104년',
+      eraPrefix: '제3기',
+      eraYear: 104,
       description: '천 년 전 용의 화염에 무너진 옛 왕국 아르카디아. 잿빛 왕관 전쟁이 끝난 지 사백 년이 지난 지금, 봉인되었던 일곱 성소의 인장이 하나씩 풀리고 있다. 황금 평원의 왕도 발드렌에서는 서약 기사단이, 검은숲 너머에서는 봉인술사회가, 그리고 폐허의 탑 아래에서는 누군가가 오래된 이름을 다시 부르고 있다.',
       createdAt: now,
       updatedAt: now,
@@ -171,61 +221,81 @@
       rankSystems: RankDefaults().systems,
       characters: [
         {
-          id: C.aelric, name: '아엘릭 반 다이렌', title: '서리검의 계승자', race: '인간', faction: '서약 기사단',
-          age: '27세 · 182cm', abilities: '서리검 「글라시엘」 · 결빙의 검술',
+          id: C.aelric, name: '아엘릭 반 다이렌', title: '서리검의 계승자', race: '인간', faction: '서약 기사단', gender: '남성', raceId: 'l_race_human', factionId: 'l3', abilityIds: ['l_mag_ice'], weaponIds: ['l_item_glassiel'],
+          age: '27세 · 182cm', abilities: '서리검 「글라시엘」 · 빙결의 검술',
           personality: '무뚝뚝하고 말수가 적다. 서약을 어기는 자를 가장 싫어하지만, 정작 자신이 지켜야 할 서약이 무엇인지는 아직 모른다. 추위에 강하고 술에 약하다.',
           notes: '왕도 발드렌의 하급 기사 서자로 태어났다. 열두 살에 처음 글라시엘을 만졌을 때 손이 얼어붙어 세 달을 앓았다.',
           ranks: [{ systemId: 'rk_order', tier: 2 }], image: null, pos: { x: 112, y: 122 }
         },
         {
-          id: C.seraphine, name: '세라핀 아쉬포드', title: '황금 가지의 대마법사', race: '인간', faction: '봉인술사회',
+          id: C.seraphine, name: '세라핀 아쉬포드', title: '황금 가지의 대마법사', race: '인간', faction: '봉인술사회', gender: '여성', raceId: 'l_race_human', factionId: 'l_fac_seal', abilityIds: ['l_mag_seal2', 'l_mag_star', 'l_mag_name'], weaponIds: [],
           age: '34세', abilities: '봉인 마법 · 별의 지도 · 이름의 해독',
           personality: '호기심이 많고 웃음이 잦다. 대가 없이 얻는 것은 없다고 믿으며, 자기 목숨도 값으로 계산해 두었다.',
           notes: '봉인술사회 최연소 대마법사. 일곱 성소의 인장을 읽을 수 있는 마지막 세 사람 중 하나.',
           ranks: [{ systemId: 'rk_circle', tier: 7 }], image: null, pos: { x: 252, y: 92 }
         },
         {
-          id: C.malachar, name: '말라카르', title: '잿불의 군주', race: '용혈족', faction: '잿불 교단',
-          age: '400세 이상', abilities: '화염 · 부패한 이름의 마법 · 재에서 다시 서는 몸',
+          id: C.malachar, name: '말라카르', title: '잿불의 군주', race: '용혈족', faction: '잿불 교단', gender: '남성', raceId: 'l5', factionId: 'l4', abilityIds: ['l_mag_fire', 'l_mag_rot', 'l_mag_rebirth'], weaponIds: [],
+          age: '400세 이상', abilities: '화염술 · 부패한 이름의 마법 · 재에서 다시 서는 몸',
           personality: '느리고 우아하다. 분노하지 않고, 대신 오래 기억한다. 자신을 죽인 자의 이름을 천 년 동안 외운다.',
           notes: '아르카디아를 태운 용의 후예. 잿빛 왕관의 마지막 소유자이며, 지금은 자기 이름을 되찾으려 한다.',
           ranks: [{ systemId: 'rk_circle', tier: 8 }], image: null, pos: { x: 300, y: 254 }
         },
         {
-          id: C.elindra, name: '엘린드라', title: '검은숲의 수호자', race: '엘프', faction: '검은숲 감시자',
+          id: C.elindra, name: '엘린드라', title: '검은숲의 수호자', race: '엘프', faction: '검은숲 감시자', gender: '여성', raceId: 'l_race_elf', factionId: 'l_fac_watch', abilityIds: ['l_mag_forest', 'l_mag_hawkeye'], weaponIds: ['l_item_nightdew'],
           age: '240세', abilities: '밤의 이슬(장궁) · 숲의 길 읽기 · 매의 눈',
           personality: '냉정하고 과묵하다. 숲 밖의 일에는 관심이 없지만, 숲을 태운 불은 아직도 기억한다.',
           notes: '제2기 300년 대화재 이후 숲의 절반을 잃고 감시자의 자리를 이어받았다. 나무의 이름을 전부 외우고 있다.',
           ranks: [{ systemId: 'rk_order', tier: 3 }], image: null, pos: { x: 192, y: 208 }
         },
         {
-          id: C.thorn, name: '토른 그림스톤', title: '무쇠 망치', race: '드워프', faction: '무쇠 길드',
-          age: '156세', abilities: '전투 도끼 「산의 이빨」 · 룬 단조 · 독한 술',
+          id: C.thorn, name: '토른 그림스톤', title: '무쇠 망치', race: '드워프', faction: '무쇠 길드', gender: '남성', raceId: 'l_race_dwarf', factionId: 'l_fac_iron', abilityIds: ['l_mag_runesmith'], weaponIds: ['l_item_axe'],
+          age: '156세', abilities: '전투 도끼 「산의 이빨」 · 룬 단조',
           personality: '입이 거칠고 의리가 두껍다. 빚은 반드시 갚고, 약속은 반드시 지킨다.',
           notes: '서리봉우리 아래 무쇠 길드의 단조장. 글라시엘의 검집을 만든 장인의 손자.',
           ranks: [], image: null, pos: { x: 58, y: 262 }
         },
         {
-          id: C.isolde, name: '이졸데 발드렌', title: '서약 없는 공주', race: '인간', faction: '아르카디아 왕실',
+          id: C.isolde, name: '이졸데 발드렌', title: '서약 없는 공주', race: '인간', faction: '아르카디아 왕실', gender: '여성', raceId: 'l_race_human', factionId: 'l_fac_royal', abilityIds: ['l_mag_sword', 'l_mag_duel', 'l_mag_crownshard'], weaponIds: [],
           age: '22세', abilities: '정통 검술 · 외교 · 왕관의 조각을 다루는 재주',
           personality: '당당하고 영리하다. 왕실이 무너진 뒤에도 고개를 숙이지 않았고, 그 때문에 미움을 샀다.',
           notes: '몰락한 왕실의 마지막 혈육. 핏줄에 용의 피가 섞여 있다는 소문이 있다.',
           ranks: [{ systemId: 'rk_circle', tier: 1 }, { systemId: 'rk_order', tier: 3 }], image: null, pos: { x: 142, y: 384 }
         },
         {
-          id: C.corvus, name: '코르부스', title: '침묵의 증인', race: '반요(까마귀 혈족)', faction: '무소속 · 정보상',
+          id: C.corvus, name: '코르부스', title: '침묵의 증인', race: '반요(까마귀 혈족)', faction: '무소속 · 정보상', gender: '남성', raceId: 'l_race_half', factionId: 'l_fac_free', abilityIds: ['l_mag_shadow', 'l_mag_poison', 'l_mag_erase'], weaponIds: [],
           age: '41세', abilities: '그림자 마법 · 독 · 기억에서 이름 지우기',
           personality: '농담을 하지 않는다. 목소리가 아니라 값으로 말한다. 다만 한 번은 값을 받지 않고 일했다.',
           notes: '무너진 왕실의 마지막 서기가 남긴 아이. 이졸데의 존재를 십 년 동안 숨겨 왔다.',
           ranks: [{ systemId: 'rk_circle', tier: 5 }], image: null, pos: { x: 262, y: 402 }
         },
         {
-          id: C.nimue, name: '니뮤에', title: '달의 호수의 아이', race: '정령혈족', faction: '성소 수호자',
-          age: '겉보기 16세', abilities: '물의 정령술 · 인장 공명 · 물 위를 걷기',
+          id: C.nimue, name: '니뮤에', title: '달의 호수의 아이', race: '정령혈족', faction: '성소 수호자', gender: '여성', raceId: 'l_race_spirit', factionId: 'l_fac_sanct', abilityIds: ['l_mag_water', 'l_mag_resonance', 'l_mag_walkwater'], weaponIds: [],
+          age: '겉보기 16세', abilities: '물의 정령술 · 인장 공감 · 물 위를 걷기',
           personality: '말이 느리고 표정이 적다. 기억을 잃었지만 이름은 잊지 않았다.',
           notes: '달의 호수 성소에서 깨어났다. 일곱 성소의 인장과 공명하며, 말라카르가 오래 찾던 이름을 알고 있다.',
           ranks: [{ systemId: 'rk_circle', tier: 3 }], image: null, pos: { x: 70, y: 448 }
         }
+      ],
+      factionNodes: {
+        l3: { x: 180, y: 150 },
+        l_fac_royal: { x: 82, y: 84 },
+        l_fac_seal: { x: 286, y: 208 },
+        l_fac_sanct: { x: 262, y: 366 },
+        l4: { x: 96, y: 330 },
+        l_fac_iron: { x: 178, y: 456 },
+        l_fac_watch: { x: 56, y: 208 },
+        l_fac_free: { x: 300, y: 470 }
+      },
+      factionRelations: [
+        { id: 'fr1', a: 'l3', b: 'l_fac_royal', type: 'ally', label: '왕실을 지키는 마지막 서약', note: '왕실이 무너진 뒤에도 기사단은 성문을 지키며 명목상의 충성을 유지한다.' },
+        { id: 'fr2', a: 'l3', b: 'l4', type: 'hostile', label: '성문에서 재를 막는다', note: '잿불 교단의 순례길은 매번 성문 앞에서 끊긴다.' },
+        { id: 'fr3', a: 'l_fac_seal', b: 'l_fac_sanct', type: 'ally', label: '일곱 인장을 함께 읽는다', note: '봉인술사회가 읽고, 성소 수호자가 문을 지킨다.' },
+        { id: 'fr4', a: 'l4', b: 'l_fac_sanct', type: 'hostile', label: '인장을 풀려는 자와 지키는 자', note: '교단은 왕관을, 수호자는 봉인을 원한다.' },
+        { id: 'fr5', a: 'l_fac_iron', b: 'l3', type: 'trade', label: '무기와 갑옷을 대는 거래', note: '청철과 룬 단조의 대가로 기사단의 보호를 받는다.' },
+        { id: 'fr6', a: 'l_fac_watch', b: 'l_fac_seal', type: 'trade', label: '숲의 기록을 나눈다', note: '검은숲의 관측 기록과 봉인술사회의 해독이 서로를 완성한다.' },
+        { id: 'fr7', a: 'l_fac_free', b: 'l4', type: 'rival', label: '정보를 먼저 사는 쪽이 이긴다', note: '정보상은 교단의 첩자보다 한 발 먼저 움직인다.' },
+        { id: 'fr8', a: 'l_fac_royal', b: 'l_fac_iron', type: 'subject', label: '빚진 왕실', note: '무너진 왕실은 무쇠 길드에 갑옷 값을 아직 갚지 못했다.' }
       ],
       relations: [
         { id: 'r1', a: C.aelric, b: C.isolde, type: 'love', label: '어린 시절의 서약', note: '발드렌 성의 서고에서 함께 자랐다. 아엘릭이 기사가 되던 날, 둘은 서로의 이름을 각인했다.' },
@@ -272,8 +342,7 @@
         }
       ],
       lore: [
-        {
-          id: 'l1', category: 'magic', title: '봉인술', body: '이름을 감추고 힘을 묶는 마법. 봉인된 존재는 이름을 잃고, 이름을 잃은 자는 존재의 절반을 잃는다. 대가로 성소의 인장은 매 세기 한 사람의 기억을 먹는다.', tags: ['봉인', '이름', '성소', '인장']
+        {          id: 'l1', category: 'magic', title: '봉인술', body: '이름을 감추고 힘을 묶는 마법. 봉인된 존재는 이름을 잃고, 이름을 잃은 자는 존재의 절반을 잃는다. 대가로 성소의 인장은 매 세기 한 사람의 기억을 먹는다.', tags: ['봉인', '이름', '성소', '인장']
         },
         {
           id: 'l2', category: 'magic', title: '룬 맹세', body: '룬 문자로 새긴 계약은 죽음으로도 풀리지 않는다. 맹세를 어긴 자는 살아 있는 동안 이름을 잃고, 그 이름은 맹세를 받은 자가 대신 가지게 된다.', tags: ['룬', '계약', '서약', '이름']
@@ -293,7 +362,7 @@
         {
           id: 'l7', category: 'rule', title: '이름의 법칙', body: '세계의 모든 것은 참된 이름을 가지며, 이름을 부르면 그 존재가 응답한다. 이름을 조용히 하는 것이 봉인의 기본 원리다.', tags: ['이름', '규칙', '봉인']
         }
-      ],
+      ].concat(LoreDefaults()),
       episodes: [
         {
           id: 'p1', no: 1, title: '재의 아침', status: 'done',
@@ -341,5 +410,13 @@
     };
   }
 
-  global.Sample = { mapURI: MAP_URI, mapSVG: SampleMapSVG, world: SampleWorld, rankDefaults: RankDefaults };
+  /* 예전에 저장된 샘플 세계관에도 한 번만 성별을 채워 준다 */
+  function GenderDefaults() {
+    return {
+      c_aelric: '남성', c_seraphine: '여성', c_malachar: '남성', c_elindra: '여성',
+      c_thorn: '남성', c_isolde: '여성', c_corvus: '남성', c_nimue: '여성'
+    };
+  }
+
+  global.Sample = { mapURI: MAP_URI, mapSVG: SampleMapSVG, world: SampleWorld, rankDefaults: RankDefaults, genderDefaults: GenderDefaults, loreDefaults: LoreDefaults };
 })(window);

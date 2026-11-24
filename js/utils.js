@@ -221,7 +221,7 @@
   }
 
   // Resize + compress a photo from the camera roll down to a data URL.
-  async function resizeImage(file, maxDim, quality) {
+  async function resizeImage(file, maxDim, quality, bg) {
     const limit = maxDim || 1200;
     const q = quality || 0.82;
     const raw = await readFileAsDataURL(file);
@@ -237,7 +237,7 @@
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#171310';
+    ctx.fillStyle = bg || '#171310';
     ctx.fillRect(0, 0, w, h);
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(img, 0, 0, w, h);

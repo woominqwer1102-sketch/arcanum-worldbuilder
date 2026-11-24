@@ -80,6 +80,8 @@ html, body {
   line-height: 1.5;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* 가로로 삐져나가는 내용이 화면을 줄여(줌아웃) 고정 단추가 밖으로 밀리는 것을 막는다 */
+  overflow-x: hidden;
 }
 
 body {
@@ -576,6 +578,7 @@ main {
 
 .search {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1148,6 +1151,121 @@ main {
 }
 
 #graph-svg { width: 100%; height: 100%; position: absolute; inset: 0; }
+#faction-svg { width: 100%; height: 100%; position: absolute; inset: 0; cursor: grab; }
+#faction-svg:active { cursor: grabbing; }
+.fedge line { transition: stroke-opacity .15s; }
+.fnode { cursor: grab; }
+.fnode text { pointer-events: none; user-select: none; -webkit-user-select: none; }
+.fnode.is-selected circle { stroke: var(--gold); }
+
+/* 인물/세력 관계도 세그먼트 */
+.segmented {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  margin: 2px 0 10px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.seg {
+  flex: 1;
+  height: 34px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+}
+
+.seg.is-on {
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--gold-soft), var(--gold));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .22);
+}
+
+/* 인물 상세 — 연결된 관계 카드 */
+.rel-cards { display: grid; gap: 7px; }
+
+.rel-card {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.rel-card__who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--rel-color, var(--gold));
+}
+
+.rel-card__face {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  color: var(--gold-soft);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+}
+
+.rel-card__face img { width: 100%; height: 100%; object-fit: cover; }
+.rel-card__txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.rel-card__txt b { font-size: 12.5px; color: var(--text); }
+.rel-card__label { font-size: 10.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rel-card__type { flex: none; font-size: 10px; color: var(--rel-color, var(--gold-soft)); }
+
+.rel-card__edit {
+  flex: none;
+  width: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.rel-card__edit svg { width: 14px; height: 14px; }
+
+/* 연표 연도 스텝퍼 */
+.year-stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.ystep {
+  flex: none;
+  height: 38px;
+  min-width: 34px;
+  padding: 0 7px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+
+.ystep:active { transform: scale(.94); }
+.year-input { flex: 1; min-width: 0; height: 38px; text-align: center; font-size: 15px; font-weight: 600; }
 
 .graph-toolbar {
   display: flex;
@@ -1245,7 +1363,23 @@ main {
   border: 1px solid var(--line-strong);
   background: var(--map-bg);
   box-shadow: var(--shadow-sm);
-  touch-action: manipulation;
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* 확대해 둔 동안에는 한 손가락 팬을 직접 다루므로 페이지 스크롤을 잠근다 */
+.map-frame.is-zoomed { touch-action: none; }
+
+/* 지도 + 핀 + 지형 + 여정을 함께 담는 확대/이동 레이어 */
+.map-stage {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+  --mk: 1;
+  --tk: 1;
 }
 
 .map-frame img.map-img {
@@ -1256,10 +1390,53 @@ main {
   object-fit: contain;
   object-position: center;
   display: block;
+  pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-user-drag: none;
 }
+
+/* 지도 위 확대/축소 · 맞춤 단추 */
+.map-zoom {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.mz {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 10px;
+  color: var(--parchment);
+  background: rgba(14, 10, 8, .72);
+  border: 1px solid rgba(212, 175, 55, .32);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  transition: transform .12s var(--ease);
+}
+
+.mz svg { width: 17px; height: 17px; }
+
+.mz--label {
+  width: 46px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.mz:active { transform: scale(.94); }
+
+.map-frame.is-zoomed .mz--label { color: var(--gold-soft); }
 
 /* 지형 스탬프 레이어 — 지도 이미지 좌표계 위에 얹힌다 */
 .map-frame .terrain-layer {
@@ -1271,7 +1448,8 @@ main {
 
 .tstamp {
   position: absolute;
-  transform: translate(-50%, -50%);
+  transform-origin: 50% 50%;
+  transform: translate(-50%, -50%) scale(var(--tk, 1));
   display: grid;
   place-items: center;
   padding: 0;
@@ -1285,7 +1463,7 @@ main {
 }
 
 .map-frame.is-terrain .tstamp { pointer-events: auto; }
-.map-frame.is-terrain .tstamp:active { transform: translate(-50%, -50%) scale(.88); }
+.map-frame.is-terrain .tstamp:active { transform: translate(-50%, -50%) scale(calc(var(--tk, 1) * .88)); }
 .map-frame.is-terrain .tstamp::after {
   content: "";
   position: absolute;
@@ -1369,7 +1547,8 @@ main {
 
 .pin {
   position: absolute;
-  transform: translate(-50%, -100%);
+  transform-origin: 50% 100%;
+  transform: translate(-50%, -100%) scale(var(--mk, 1));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1378,7 +1557,7 @@ main {
   transition: transform .15s var(--ease);
 }
 
-.pin:active { transform: translate(-50%, -100%) scale(.94); }
+.pin:active { transform: translate(-50%, -100%) scale(calc(var(--mk, 1) * .94)); }
 
 .pin__mark {
   width: 21px;
@@ -1421,7 +1600,8 @@ main {
 
 .map-empty-hint {
   position: absolute;
-  inset: auto 10px 10px;
+  inset: auto auto 10px 10px;
+  max-width: calc(100% - 68px);
   padding: 9px 12px;
   border-radius: 10px;
   font-size: 11.5px;
@@ -1800,7 +1980,8 @@ main {
 
 .story-badge {
   position: absolute;
-  transform: translate(-50%, -52px);
+  transform-origin: 50% 100%;
+  transform: translate(-50%, calc(-52px * var(--mk, 1))) scale(var(--mk, 1));
   min-width: 18px;
   height: 18px;
   padding: 0 4px;
@@ -2180,10 +2361,69 @@ main {
 
 .rank-color.is-on { border-color: var(--text); box-shadow: 0 0 0 2px var(--rank-color); }
 
-.rank-gen { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
-.rank-gen .input { flex: 1; min-width: 0; }
-.rank-gen #tier-count { flex: none; width: 64px; text-align: center; }
-.rank-gen .btn { flex: none; }
+/* 단계 수 스테퍼 + 슬라이더 */
+.rank-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.rstep {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  font-size: 19px;
+  line-height: 1;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+}
+
+.rstep:active { transform: scale(.94); }
+
+.rank-stepper__value {
+  flex: none;
+  min-width: 64px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 8px;
+  border-radius: 11px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.rank-stepper__value b {
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1;
+  color: var(--gold-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.rank-stepper__value span { font-size: 10.5px; color: var(--muted); }
+
+.rank-unit {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rank-unit > span { flex: none; font-size: 10.5px; color: var(--muted); }
+.rank-unit .input { flex: 1; min-width: 0; }
+
+.rank-range {
+  width: 100%;
+  margin: 10px 0 2px;
+  accent-color: var(--gold);
+}
 
 .rank-tiers { display: grid; gap: 6px; margin-top: 9px; }
 
@@ -2200,6 +2440,123 @@ main {
 
 .rank-tier-row .input { flex: 1; min-width: 0; }
 .rank-tier-row .mini-btn { flex: none; }
+
+.rank-sys__desc {
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--text-dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------- 인물 폼 등급 선택기 (체계 + 단계 나란히) ---------- */
+.rank-row {
+  padding: 9px 10px 8px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.rank-row + .rank-row { margin-top: 8px; }
+
+.rank-row__picks {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+}
+
+.rank-row__cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.rank-row__cell--sys { flex: 1.15; }
+.rank-row__cell--tier { flex: 1; }
+
+.rank-row__label { font-size: 9.5px; letter-spacing: .04em; color: var(--muted); }
+
+.rank-row__cell .select {
+  width: 100%;
+  height: 36px;
+  padding: 0 22px 0 9px;
+  font-size: 12.5px;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 13px) 15px, calc(100% - 8px) 15px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.rank-row__del {
+  flex: none;
+  width: 30px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+}
+
+.rank-row__del svg { width: 14px; height: 14px; }
+.rank-row__del:active { color: var(--danger); border-color: rgba(200, 90, 100, .4); }
+
+.rank-row__desc {
+  margin: 6px 2px 0;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.rank-actions { display: flex; gap: 7px; margin-top: 9px; flex-wrap: wrap; }
+.rank-actions .btn { flex: none; }
+
+.gender-picks { padding-bottom: 2px; }
+
+/* ---------- 설정집 연결 고르기 (종족·세력·능력·무기) ---------- */
+.lore-pick {
+  padding-bottom: 2px;
+  margin: 0;
+}
+
+.lore-pick .chip { height: 30px; font-size: 11.5px; padding: 0 11px; }
+.lore-pick .lore-pick__none { border-style: dashed; color: var(--muted); }
+
+.lore-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  padding: 3px 9px 3px 6px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  color: var(--gold-soft);
+  background: transparent;
+  border: 1px dashed var(--line-strong);
+}
+
+.lore-add svg { width: 12px; height: 12px; }
+.lore-add:active { background: rgba(212, 175, 55, .12); }
+
+.rank-empty-hint { margin: 2px 0 0; }
+
+/* ---------- 세계관 목록 (삭제 단추 포함) ---------- */
+.world-row { display: flex; gap: 7px; align-items: stretch; }
+.world-row .row-card { flex: 1; min-width: 0; }
+
+.world-del {
+  flex: none;
+  width: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  color: var(--danger);
+  background: rgba(200, 90, 100, .08);
+  border: 1px solid rgba(200, 90, 100, .32);
+}
+
+.world-del svg { width: 16px; height: 16px; }
+.world-del:active { background: rgba(200, 90, 100, .2); }
 
 /* ---------- 인물 폼 등급 선택기 ---------- */
 .rank-pick {
@@ -2256,6 +2613,7 @@ main {
 .rank-filter {
   flex: none;
   width: auto;
+  min-width: 0;
   max-width: 46%;
   height: 44px;
   padding: 0 28px 0 12px;

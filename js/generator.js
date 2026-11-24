@@ -422,6 +422,16 @@
     return 'ancient long-lived being';
   }
 
+  // 성별: 여성 → female, 남성 → male. '기타/미상'이나 빈 값은 프롬프트에 넣지 않는다.
+  function genderEn(raw) {
+    const s = String(raw || '').trim().toLowerCase();
+    if (!s) return '';
+    if (/여|녀|female|woman|girl|f$|^f\b/.test(s)) return 'female';
+    if (/남|male|man\b|boy|^m\b/.test(s)) return 'male';
+    if (/nonbinary|non-binary|논바이너리/.test(s)) return 'androgynous';
+    return '';
+  }
+
   function nameForPrompt(name) {
     const s = String(name || '').trim();
     if (!s) return '';
@@ -442,8 +452,10 @@
     const race = raceEn(f.race);
     const role = scanEn(title + ' ' + f.faction, ROLE_EN, 1)[0] ||
       scanEn((title + ' ' + String(f.faction || '')).toLowerCase(), ROLE_WORDS, 1)[0] || 'wanderer';
+    // 성별을 종족·역할 앞에 넣어 "a female elf knight"처럼 자연스럽게 붙인다
+    const gender = genderEn(f.gender);
     const article = /^[aeiou]/i.test(race) ? 'an ' : 'a ';
-    parts.push(article + race + ' ' + role);
+    parts.push(article + (gender ? gender + ' ' : '') + race + ' ' + role);
 
     const age = agePhrase(f.age);
     if (age) parts.push(age);
@@ -595,7 +607,7 @@
 
   function fallbackPortrait(fields) {
     const f = fields || {};
-    const seed = hashStr([f.name, f.title, f.race, f.faction, f.age].join('|'));
+    const seed = hashStr([f.name, f.title, f.race, f.faction, f.age, f.gender].join('|'));
     const rnd = mulberry32(seed);
     const W = 768, H = 1024;
     const cv = document.createElement('canvas');
@@ -661,7 +673,9 @@
     }
     ctx.globalAlpha = 1;
 
-    // 실루엣(어깨 + 머리)
+    // 실루엣(어깨 + 머리) — 성별에 따라 어깨 폭을 조금 다르게 잡는다
+    const bodyGender = genderEn(f.gender);
+    const shoulder = bodyGender === 'female' ? 0.30 : (bodyGender === 'male' ? 0.355 : 0.33);
     const headY = H * 0.40, headRx = W * 0.115, headRy = W * 0.145;
     ctx.save();
     const bodyGrad = ctx.createLinearGradient(0, headY, 0, H);
@@ -669,12 +683,12 @@
     bodyGrad.addColorStop(1, '#1b1410');
     ctx.fillStyle = bodyGrad;
     ctx.beginPath();
-    ctx.moveTo(W * 0.5 - W * 0.34, H);
-    ctx.bezierCurveTo(W * 0.5 - W * 0.35, H * 0.70, W * 0.5 - W * 0.16, H * 0.58, W * 0.5 - W * 0.075, H * 0.545);
+    ctx.moveTo(W * 0.5 - W * shoulder, H);
+    ctx.bezierCurveTo(W * 0.5 - W * (shoulder + 0.01), H * 0.70, W * 0.5 - W * 0.16, H * 0.58, W * 0.5 - W * 0.075, H * 0.545);
     ctx.lineTo(W * 0.5 - W * 0.045, headY + headRy * 0.86);
     ctx.lineTo(W * 0.5 + W * 0.045, headY + headRy * 0.86);
     ctx.lineTo(W * 0.5 + W * 0.075, H * 0.545);
-    ctx.bezierCurveTo(W * 0.5 + W * 0.16, H * 0.58, W * 0.5 + W * 0.35, H * 0.70, W * 0.5 + W * 0.34, H);
+    ctx.bezierCurveTo(W * 0.5 + W * 0.16, H * 0.58, W * 0.5 + W * (shoulder + 0.01), H * 0.70, W * 0.5 + W * shoulder, H);
     ctx.closePath();
     ctx.fill();
 

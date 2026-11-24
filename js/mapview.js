@@ -106,7 +106,12 @@
     playing: false,
     timer: 0,
     stops: [],
-    ratio: 3 / 4
+    ratio: 3 / 4,
+    // 확대/이동 뷰 (배율 1 = 지도 전체가 한눈에 들어오는 맞춤 상태)
+    zoom: 1,
+    tx: 0,
+    ty: 0,
+    gestureAt: 0
   };
 
   function world() { return st.opts.world ? st.opts.world() : null; }
@@ -115,10 +120,11 @@
 
   function terrainMeta(type) { return TERRAIN[type] || TERRAIN.mountains; }
 
-  /* 지도 캔버스 비율(width / height) — 업로드한 이미지의 실제 비율을 따른다 */
+  /* 지도 캔버스 비율(width / height) — 업로드한 이미지의 실제 비율을 그대로 따른다.
+     아주 극단적인 값(1:20 밖)만 잘라 내고, 그 외에는 한 픽셀도 자르지 않는다. */
   function ratioOf(w) {
     const r = w && w.map && w.map.ratio;
-    if (typeof r === 'number' && isFinite(r) && r > 0) return Math.min(4, Math.max(0.3, r));
+    if (typeof r === 'number' && isFinite(r) && r > 0) return Math.min(20, Math.max(0.05, r));
     return 3 / 4;
   }
 
@@ -126,11 +132,20 @@
   const VW = 320;
   function viewH() { return Math.round(VW / (st.ratio || 0.75)); }
 
+  /* 지도 스타일: 양피지 변환본(parchment) / 올린 원본(original) */
+  function styleName(w) {
+    if (!w || !w.map) return 'parchment';
+    if (w.map.style === 'original') return 'original';
+    if (w.map.style === 'parchment') return 'parchment';
+    return w.map.imageOriginal ? 'parchment' : 'original';
+  }
+
   function mapSource(w) {
     if (!w || !w.map) return null;
     if (w.map.kind === 'sample') return global.Sample.mapURI;
-    if (w.map.image) return w.map.image;
-    return null;
+    if (!w.map.image) return null;
+    if (styleName(w) === 'original' && w.map.imageOriginal) return w.map.imageOriginal;
+    return w.map.image;
   }
 
   function sortedEpisodes(w) {
@@ -146,7 +161,7 @@
     return (w.events || []).slice().sort((a, b) => {
       const ra = rank(a.era), rb = rank(b.era);
       if (ra !== rb) return ra - rb;
-      return (a.year || 0) - (b.year || 0);
+      return (Number(a.yearNum != null ? a.yearNum : a.year) || 0) - (Number(b.yearNum != null ? b.yearNum : b.year) || 0);
     });
   }
 
@@ -355,7 +370,7 @@
     const title = ep ? ep.title : ev.title;
     const summary = ep ? ep.synopsis : ev.summary;
     const chars = characterNames(w, ep ? ep.characters : ev.characters);
-    const badge = ep ? ep.no + '화' : (ev.era || '') + ' ' + (ev.year || 0) + '년';
+    const badge = ep ? ep.no + '화' : (ev.era || '') + ' ' + (ev.yearNum != null ? ev.yearNum : (ev.year || 0)) + '년';
     const kind = kindMeta(stop.marker.kind);
     return '<div class="story-card">' +
       '<div class="story-card__top">' +
@@ -410,11 +425,19 @@
 
     let html = '';
 
+    const style = styleName(w);
+    const canSwitchStyle = hasMap && w.map.kind === 'custom' && !!w.map.imageOriginal;
+
     html += '<div class="map-toolbar">' +
       '<button type="button" class="gbtn" data-map="upload"><svg><use href="#i-image"/></svg>지도 이미지</button>' +
+      '<button type="button" class="gbtn" data-map="gen"><span class="gbtn__emoji">🎲</span>대륙 생성</button>' +
       '<button type="button" class="gbtn' + (st.pinning ? ' is-on' : '') + '" data-map="pin"><svg><use href="#i-pin"/></svg>핀 꽂기</button>' +
       '<button type="button" class="gbtn' + (st.terrain ? ' is-on' : '') + '" data-map="terrain"><span class="gbtn__emoji">⛰️</span>지형 꾸미기</button>' +
       '<button type="button" class="gbtn' + (st.story ? ' is-on' : '') + '" data-map="story"><svg><use href="#i-route"/></svg>스토리 여정</button>' +
+      (canSwitchStyle
+        ? '<button type="button" class="gbtn' + (style === 'parchment' ? ' is-on' : '') + '" data-map="style" aria-label="지도 스타일 바꾸기">' +
+            '<span class="gbtn__emoji">' + (style === 'parchment' ? '📜' : '🖼️') + '</span>' + (style === 'parchment' ? '양피지' : '원본') + '</button>'
+        : '') +
     '</div>';
 
     if (!hasMap) {
@@ -428,14 +451,20 @@
         '</div>' +
       '</div>';
     } else {
-      // 지도 캔버스는 이미지의 실제 비율을 그대로 쓴다 → 어떤 비율을 올려도 잘리지 않는다.
-      const ar = Math.round(st.ratio * 1000) + ' / 1000';
+      // 지도는 업로드한 이미지의 원본 비율을 그대로 쓴다 → 어떤 비율을 올려도 잘리지 않는다.
       html += '<div class="map-frame' + (st.pinning ? ' is-pinning' : '') + (st.story ? ' is-story' : '') + (st.terrain ? ' is-terrain' : '') +
-        '" id="map-frame" style="aspect-ratio:' + ar + '">' +
-        '<img class="map-img" src="' + U.esc(src) + '" alt="세계 지도" draggable="false">' +
-        '<div class="terrain-layer">' + terrainLayerInner(w) + '</div>' +
-        (st.story ? renderStoryOverlay() : '') +
-        '<div class="pin-layer">' + markers.map((m) => pinHtml(m, w)).join('') + '</div>' +
+        '" id="map-frame" style="aspect-ratio:' + st.ratio + '">' +
+        '<div class="map-stage" id="map-stage">' +
+          '<img class="map-img" src="' + U.esc(src) + '" alt="세계 지도" draggable="false">' +
+          '<div class="terrain-layer">' + terrainLayerInner(w) + '</div>' +
+          (st.story ? renderStoryOverlay() : '') +
+          '<div class="pin-layer">' + markers.map((m) => pinHtml(m, w)).join('') + '</div>' +
+        '</div>' +
+        '<div class="map-zoom" role="group" aria-label="지도 확대·축소">' +
+          '<button type="button" class="mz" data-zoom="in" aria-label="확대"><svg><use href="#i-zoom-in"/></svg></button>' +
+          '<button type="button" class="mz mz--label" data-zoom="reset" aria-label="100% 맞춤" data-zoomlabel>100%</button>' +
+          '<button type="button" class="mz" data-zoom="out" aria-label="축소"><svg><use href="#i-zoom-out"/></svg></button>' +
+        '</div>' +
         ((!markers.length && !st.pinning && !st.terrain) || st.pinning || st.terrain
           ? '<div class="map-empty-hint">' +
               (st.terrain ? '지형 팔레트에서 지형을 고르고 지도를 터치하세요'
@@ -468,6 +497,7 @@
 
     st.host.innerHTML = html;
     bindMap(w);
+    applyView();
     syncRatioFromImage(w);
   }
 
@@ -483,8 +513,11 @@
       const nh = img.naturalHeight || 0;
       if (!nw || !nh) return;
       done = true;
-      const real = Math.min(4, Math.max(0.3, nw / nh));
-      if (Math.abs(real - ratioOf(w)) > 0.01) {
+      const real = nw / nh;
+      done = true;
+      if (!isFinite(real) || real <= 0) return;
+      const cur = ratioOf(w);
+      if (Math.abs(real - cur) / cur > 0.004) {
         w.map.ratio = Math.round(real * 1000) / 1000;
         if (global.Store) global.Store.save();
         render();
@@ -614,6 +647,10 @@
           setStory(!st.story);
         } else if (act === 'upload') {
           if (st.opts.onUpload) st.opts.onUpload();
+        } else if (act === 'gen') {
+          generateContinent(w);
+        } else if (act === 'style') {
+          toggleMapStyle(w);
         } else if (act === 'sample') {
           if (st.opts.onUseSample) st.opts.onUseSample();
         }
@@ -645,7 +682,22 @@
 
     const frame = host.querySelector('#map-frame');
     if (frame) {
+      bindGestures(frame);
+      // + / − / 100%(맞춤) 단추
+      frame.querySelectorAll('[data-zoom]').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const act = btn.getAttribute('data-zoom');
+          if (act === 'in') zoomBy(1.5);
+          else if (act === 'out') zoomBy(1 / 1.5);
+          else resetView();
+        });
+      });
       frame.addEventListener('click', (e) => {
+        if (e.target.closest('.map-zoom')) return;
+        // 방금 핀치·팬 제스처가 끝났으면 탭으로 오인하지 않는다
+        if (Date.now() - st.gestureAt < 500) return;
         // 지형 스탬프를 탭하면 지운다 (지형 모드에서만)
         const stamp = e.target.closest('[data-stamp]');
         if (stamp && st.terrain) {
@@ -664,9 +716,11 @@
           if (st.opts.onPin) st.opts.onPin(id);
           return;
         }
-        const rect = frame.getBoundingClientRect();
-        const x = U.clamp(((e.clientX - rect.left) / rect.width) * 100, 2, 98);
-        const y = U.clamp(((e.clientY - rect.top) / rect.height) * 100, 2, 98);
+        // 화면 좌표를 지도(스테이지) 좌표로 역산 — 확대·이동해 있어도 정확하다
+        const stage = frame.querySelector('#map-stage');
+        const rect = (stage || frame).getBoundingClientRect();
+        const x = U.clamp(((e.clientX - rect.left) / rect.width) * 100, 1, 99);
+        const y = U.clamp(((e.clientY - rect.top) / rect.height) * 100, 1, 99);
         if (st.terrain) {
           addStamp(x, y);
           return;
@@ -687,6 +741,385 @@
     if (st.story) bindStoryCard(w);
   }
 
+  /* =========================================================
+     확대 · 축소 · 이동 — 자유 비율 지도 뷰어
+     ========================================================= */
+  const MIN_ZOOM = 1;
+  const MAX_ZOOM = 6;
+
+  function frameEl() { return st.host && st.host.querySelector('#map-frame'); }
+  function stageEl() { const f = frameEl(); return f && f.querySelector('#map-stage'); }
+
+  function markGesture() { st.gestureAt = Date.now(); }
+
+  function applyView() {
+    const frame = frameEl();
+    const stage = stageEl();
+    if (!frame || !stage) return;
+    const W = frame.clientWidth || frame.offsetWidth || 1;
+    const H = frame.clientHeight || frame.offsetHeight || 1;
+    let z = Number(st.zoom);
+    if (!isFinite(z) || z <= 0) z = 1;
+    z = U.clamp(z, MIN_ZOOM, MAX_ZOOM);
+    st.zoom = z;
+    if (z <= 1.0005) { st.zoom = z = 1; st.tx = 0; st.ty = 0; }
+    st.tx = Math.min(0, Math.max(W - W * z, Number(st.tx) || 0));
+    st.ty = Math.min(0, Math.max(H - H * z, Number(st.ty) || 0));
+    stage.style.transform = 'translate3d(' + st.tx.toFixed(2) + 'px,' + st.ty.toFixed(2) + 'px,0) scale(' + z.toFixed(4) + ')';
+    // 핀·여정 번호는 확대해도 화면에서 같은 크기로, 지형 도장은 조금만 커지게
+    stage.style.setProperty('--mk', U.clamp(1 / z, 0.34, 1).toFixed(3));
+    stage.style.setProperty('--tk', U.clamp(1 / Math.sqrt(z), 0.55, 1).toFixed(3));
+    frame.classList.toggle('is-zoomed', z > 1.001);
+    const label = frame.querySelector('[data-zoomlabel]');
+    if (label) label.textContent = Math.round(z * 100) + '%';
+  }
+
+  function zoomAt(next, ax, ay) {
+    const frame = frameEl();
+    if (!frame) return;
+    const z0 = st.zoom || 1;
+    const z1 = U.clamp(next, MIN_ZOOM, MAX_ZOOM);
+    // 화면의 (ax, ay) 아래에 있던 지도 지점이 그 자리에 그대로 남도록 역산
+    const px = (ax - st.tx) / z0;
+    const py = (ay - st.ty) / z0;
+    st.zoom = z1;
+    st.tx = ax - px * z1;
+    st.ty = ay - py * z1;
+    applyView();
+  }
+
+  function zoomBy(factor, ax, ay) {
+    const frame = frameEl();
+    if (!frame) return;
+    const x = typeof ax === 'number' ? ax : (frame.clientWidth || 0) / 2;
+    const y = typeof ay === 'number' ? ay : (frame.clientHeight || 0) / 2;
+    zoomAt((st.zoom || 1) * factor, x, y);
+    U.haptic(6);
+  }
+
+  function resetView() {
+    st.zoom = 1;
+    st.tx = 0;
+    st.ty = 0;
+    applyView();
+    U.haptic(6);
+  }
+
+  /* 핀치 줌(두 손가락) + 한 손가락 드래그 팬. 확대 상태에서만 페이지 스크롤을 막는다. */
+  function bindGestures(frame) {
+    let mode = 0;  // 0 없음 · 1 한 손가락 · 2 두 손가락
+    let pan = null;
+    let pinch = null;
+
+    function framePoint(clientX, clientY) {
+      const r = frame.getBoundingClientRect();
+      return { x: clientX - r.left, y: clientY - r.top };
+    }
+
+    function startPinch(touches) {
+      const a = touches[0], b = touches[1];
+      const p = framePoint((a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2);
+      pinch = {
+        dist: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) || 1,
+        zoom: st.zoom || 1,
+        tx: st.tx, ty: st.ty,
+        mx: p.x, my: p.y
+      };
+      mode = 2;
+      pan = null;
+    }
+
+    frame.addEventListener('touchstart', (e) => {
+      if (e.touches.length >= 2) {
+        startPinch(e.touches);
+        if (e.cancelable) e.preventDefault();
+      } else if (e.touches.length === 1) {
+        pan = { x: e.touches[0].clientX, y: e.touches[0].clientY, tx: st.tx, ty: st.ty, moved: 0 };
+        mode = 1;
+      }
+    }, { passive: false });
+
+    frame.addEventListener('touchmove', (e) => {
+      if (mode === 2 && e.touches.length >= 2) {
+        const a = e.touches[0], b = e.touches[1];
+        const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) || 1;
+        const p = framePoint((a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2);
+        const z = U.clamp(pinch.zoom * (dist / pinch.dist), MIN_ZOOM, MAX_ZOOM);
+        const px = (pinch.mx - pinch.tx) / pinch.zoom;
+        const py = (pinch.my - pinch.ty) / pinch.zoom;
+        st.zoom = z;
+        st.tx = p.x - px * z;
+        st.ty = p.y - py * z;
+        applyView();
+        markGesture();
+        if (e.cancelable) e.preventDefault();
+        return;
+      }
+      if (mode === 1 && e.touches.length === 1 && pan) {
+        const dx = e.touches[0].clientX - pan.x;
+        const dy = e.touches[0].clientY - pan.y;
+        pan.moved = Math.max(pan.moved, Math.hypot(dx, dy));
+        if ((st.zoom || 1) <= 1.001) return;  // 100%에서는 페이지 스크롤을 그대로 둔다
+        if (pan.moved < 3) return;
+        st.tx = pan.tx + dx;
+        st.ty = pan.ty + dy;
+        applyView();
+        markGesture();
+        if (e.cancelable) e.preventDefault();
+      }
+    }, { passive: false });
+
+    function endTouch(e) {
+      if (e.touches && e.touches.length === 1) {
+        pinch = null;
+        pan = { x: e.touches[0].clientX, y: e.touches[0].clientY, tx: st.tx, ty: st.ty, moved: 0 };
+        mode = 1;
+        return;
+      }
+      if (!e.touches || e.touches.length === 0) { mode = 0; pinch = null; pan = null; }
+    }
+    frame.addEventListener('touchend', endTouch);
+    frame.addEventListener('touchcancel', () => { mode = 0; pinch = null; pan = null; });
+
+    // iOS Safari가 지도 위에서 페이지 자체를 확대하는 제스처를 막는다
+    ['gesturestart', 'gesturechange', 'gestureend'].forEach((name) => {
+      frame.addEventListener(name, (e) => { e.preventDefault(); markGesture(); });
+    });
+
+    // 데스크톱: 트랙패드 핀치(ctrl+휠)와, 확대해 둔 상태의 휠
+    frame.addEventListener('wheel', (e) => {
+      if (!e.ctrlKey && (st.zoom || 1) <= 1.001) return;
+      e.preventDefault();
+      const p = framePoint(e.clientX, e.clientY);
+      zoomAt((st.zoom || 1) * (e.deltaY < 0 ? 1.12 : 0.9), p.x, p.y);
+    }, { passive: false });
+  }
+
+  /* 🎲 대륙 랜덤 생성 — WorldGen이 그린 양피지 지도를 그대로 세계 지도로 쓴다 */
+  function generateContinent(w) {
+    if (!w || !w.map) return;
+    if (!global.WorldGen || typeof global.WorldGen.continent !== 'function') {
+      U.toast('대륙 생성기를 불러오지 못했어요', { icon: 'i-x' });
+      return;
+    }
+    U.toast('🎲 새 대륙을 그리고 있어요…', { icon: 'i-sparkles', duration: 1600 });
+    setTimeout(() => {
+      let made = null;
+      try {
+        made = global.WorldGen.continent();
+      } catch (e) {
+        made = null;
+      }
+      if (!made || !made.dataURL) {
+        U.toast('대륙을 그리지 못했어요 · 다시 시도해 주세요', { icon: 'i-x' });
+        return;
+      }
+      w.map.kind = 'generated';
+      w.map.image = made.dataURL;
+      w.map.imageOriginal = null;
+      w.map.style = 'original';
+      w.map.ratio = Math.round((made.width / made.height) * 1000) / 1000;
+      if (global.Store) global.Store.save();
+      render();
+      U.haptic(12);
+      U.toast('새 대륙을 만들었어요 · 🎲를 다시 누르면 또 다른 대륙', { icon: 'i-sparkles', duration: 2600 });
+    }, 60);
+  }
+
+  function toggleMapStyle(w) {
+    if (!w || !w.map || !w.map.imageOriginal) return;
+    const next = styleName(w) === 'parchment' ? 'original' : 'parchment';
+    w.map.style = next;
+    if (global.Store) global.Store.save();
+    render();
+    U.haptic(8);
+    U.toast(next === 'parchment' ? '📜 옛날 양피지 지도로 바꿨어요' : '🖼️ 올린 원본 지도로 바꿨어요', { icon: 'i-image', duration: 1800 });
+  }
+
+  /* =========================================================
+     업로드한 지도를 옛날 양피지 지도로 자동 변환 (Canvas)
+     ========================================================= */
+  const PARCHMENT_MAX = 1600;
+  let grainTile = null;
+  let inkAlphaLut = null;
+
+  function noiseTile() {
+    if (grainTile) return grainTile;
+    const s = 128;
+    const c = document.createElement('canvas');
+    c.width = s;
+    c.height = s;
+    const x = c.getContext('2d');
+    if (!x) return null;
+    const img = x.createImageData(s, s);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const v = Math.random();
+      const dark = v < 0.55;
+      // 미세한 종이 알갱이 — 어두운 점과 밝은 점을 섞어 결을 만든다
+      const a = Math.round(30 * Math.pow(Math.random(), 1.7));
+      d[i] = dark ? 104 : 255;
+      d[i + 1] = dark ? 72 : 247;
+      d[i + 2] = dark ? 38 : 224;
+      d[i + 3] = a;
+    }
+    x.putImageData(img, 0, 0);
+    grainTile = c;
+    return c;
+  }
+
+  /* 양피지 바탕 — 바탕색 · 입자 · 얼룩 · 주름 · 비네팅을 한 번에 깐다.
+     자동 변환과 🎲 대륙 생성이 같은 질감을 쓴다. */
+  function paintParchmentBase(ctx, W, H) {
+    // 1) 바탕 — 따뜻한 양피지 그라데이션
+    const base = ctx.createLinearGradient(0, 0, W, H);
+    base.addColorStop(0, '#f4e4c3');
+    base.addColorStop(0.45, '#edd9b3');
+    base.addColorStop(1, '#ddc399');
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, W, H);
+
+    // 2) 종이 입자
+    const tile = noiseTile();
+    if (tile) {
+      const pat = ctx.createPattern(tile, 'repeat');
+      if (pat) {
+        ctx.globalAlpha = 0.55;
+        ctx.fillStyle = pat;
+        ctx.fillRect(0, 0, W, H);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // 3) 오래된 얼룩 · 변색
+    const blotches = Math.max(6, Math.round((W * H) / 90000));
+    for (let i = 0; i < blotches; i++) {
+      const cx = Math.random() * W;
+      const cy = Math.random() * H;
+      const r = (0.05 + Math.random() * 0.17) * Math.max(W, H);
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, 'rgba(122,82,38,' + (0.028 + Math.random() * 0.055).toFixed(3) + ')');
+      g.addColorStop(1, 'rgba(122,82,38,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+    }
+
+    // 4) 은은한 낡은 주름 (세로 2~3개, 가로 1개)
+    const lineW = Math.max(1, Math.round(Math.min(W, H) / 520));
+    const folds = 2 + Math.floor(Math.random() * 2);
+    for (let i = 1; i <= folds; i++) {
+      const x = (W * i) / (folds + 1) + (Math.random() - 0.5) * W * 0.04;
+      const g = ctx.createLinearGradient(x - lineW * 3, 0, x + lineW * 3, 0);
+      g.addColorStop(0, 'rgba(120,82,40,0)');
+      g.addColorStop(0.5, 'rgba(120,82,40,.10)');
+      g.addColorStop(1, 'rgba(120,82,40,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(x - lineW * 3, 0, lineW * 6, H);
+    }
+    const gy = H * (0.34 + Math.random() * 0.28);
+    const gh = ctx.createLinearGradient(0, gy - lineW * 3, 0, gy + lineW * 3);
+    gh.addColorStop(0, 'rgba(120,82,40,0)');
+    gh.addColorStop(0.5, 'rgba(120,82,40,.09)');
+    gh.addColorStop(1, 'rgba(120,82,40,0)');
+    ctx.fillStyle = gh;
+    ctx.fillRect(0, gy - lineW * 3, W, lineW * 6);
+
+    // 5) 가장자리 비네팅 — 세피아 · 번트 엄버
+    const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.26, W / 2, H / 2, Math.max(W, H) * 0.74);
+    vg.addColorStop(0, 'rgba(255,244,222,0)');
+    vg.addColorStop(0.62, 'rgba(150,104,52,.10)');
+    vg.addColorStop(1, 'rgba(82,50,20,.46)');
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function inkAlphas() {
+    if (inkAlphaLut) return inkAlphaLut;
+    const lut = new Uint8Array(256);
+    for (let v = 0; v < 256; v++) {
+      let a = (1 - v / 255 - 0.04) * 1.18;
+      if (a <= 0) { lut[v] = 0; continue; }
+      if (a > 1) a = 1;
+      lut[v] = Math.round(Math.pow(a, 0.82) * 255);
+    }
+    inkAlphaLut = lut;
+    return lut;
+  }
+
+  function parchmentCanvas(img) {
+    const nw = img.naturalWidth || img.width;
+    const nh = img.naturalHeight || img.height;
+    if (!nw || !nh) throw new Error('지도 이미지 크기를 알 수 없어요.');
+    const scale = Math.min(1, PARCHMENT_MAX / Math.max(nw, nh));
+    const W = Math.max(2, Math.round(nw * scale));
+    const H = Math.max(2, Math.round(nh * scale));
+
+    const out = document.createElement('canvas');
+    out.width = W;
+    out.height = H;
+    const ctx = out.getContext('2d');
+    if (!ctx) throw new Error('캔버스를 만들지 못했어요.');
+
+    // 1~5) 바탕 · 종이 입자 · 얼룩 · 주름 · 비네팅
+    paintParchmentBase(ctx, W, H);
+
+    // 6) 잉크층 — 흰 배경은 투명, 선·음영은 세피아 잉크
+    const ink = document.createElement('canvas');
+    ink.width = W;
+    ink.height = H;
+    const ix = ink.getContext('2d');
+    if (ix) {
+      ix.fillStyle = '#ffffff';
+      ix.fillRect(0, 0, W, H);
+      ix.drawImage(img, 0, 0, W, H);
+      let data = null;
+      try { data = ix.getImageData(0, 0, W, H); } catch (e) { data = null; }
+      if (data) {
+        const d = data.data;
+        const lut = inkAlphas();
+        for (let i = 0; i < d.length; i += 4) {
+          const r = d[i], g = d[i + 1], b = d[i + 2];
+          const lum = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+          const a = lut[lum > 255 ? 255 : lum];
+          if (!a) { d[i + 3] = 0; continue; }
+          // 원본의 색기를 조금 남긴 세피아 잉크
+          d[i] = Math.round(52 + r * 0.30);
+          d[i + 1] = Math.round(38 + g * 0.26);
+          d[i + 2] = Math.round(22 + b * 0.20);
+          d[i + 3] = a;
+        }
+        ix.putImageData(data, 0, 0);
+      }
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.drawImage(ink, 0, 0);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    // 7) 테두리 번짐
+    const bw = Math.max(2, Math.round(Math.min(W, H) * 0.006));
+    ctx.strokeStyle = 'rgba(84,54,24,.32)';
+    ctx.lineWidth = bw;
+    ctx.strokeRect(bw / 2, bw / 2, W - bw, H - bw);
+
+    try {
+      return out.toDataURL('image/jpeg', 0.9);
+    } catch (e) {
+      return out.toDataURL('image/png');
+    }
+  }
+
+  function parchment(src) {
+    return new Promise((resolve, reject) => {
+      if (!src) { reject(new Error('지도 이미지가 없어요.')); return; }
+      const img = new Image();
+      img.onload = () => {
+        try { resolve(parchmentCanvas(img)); } catch (e) { reject(e); }
+      };
+      img.onerror = () => reject(new Error('지도 이미지를 열지 못했어요.'));
+      img.src = src;
+    });
+  }
+
   function mount(host, opts) {
     st.host = host;
     st.opts = opts || {};
@@ -697,8 +1130,17 @@
     st.terrainSize = st.terrainSize || 'm';
     st.index = 0;
     st.playing = false;
+    st.zoom = 1;
+    st.tx = 0;
+    st.ty = 0;
     clearInterval(st.timer);
     render();
+    if (!st.__boundResize) {
+      st.__boundResize = true;
+      // 화면을 돌리거나 크기가 바뀌면 확대 상태를 다시 맞춘다
+      window.addEventListener('resize', () => { if (st.host) applyView(); });
+      window.addEventListener('orientationchange', () => { setTimeout(() => { if (st.host) applyView(); }, 260); });
+    }
     return api;
   }
 
@@ -722,6 +1164,6 @@
     st.terrain = false;
   }
 
-  const api = { mount, refresh, destroy, setStory, setTerrain, goStep, KINDS, TERRAIN, TERRAIN_ORDER, state: st, buildStops };
+  const api = { mount, refresh, destroy, setStory, setTerrain, goStep, KINDS, TERRAIN, TERRAIN_ORDER, state: st, buildStops, parchment, parchmentBase: paintParchmentBase, zoomBy, resetView, applyView, generateContinent };
   global.MapView = api;
 })(window);

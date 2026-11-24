@@ -42,9 +42,15 @@
     if (!w.map || typeof w.map !== 'object') w.map = { kind: null, image: null, markers: [] };
     if (!Array.isArray(w.map.markers)) w.map.markers = [];
     if (!Array.isArray(w.map.terrainStamps)) w.map.terrainStamps = [];
+    // 업로드한 원본과 양피지 변환본을 함께 보관하고, 어느 쪽을 보여 줄지 기억한다
+    if (typeof w.map.image !== 'string' || !w.map.image) w.map.image = null;
+    if (typeof w.map.imageOriginal !== 'string' || !w.map.imageOriginal) w.map.imageOriginal = null;
+    if (w.map.style !== 'original' && w.map.style !== 'parchment') {
+      w.map.style = w.map.imageOriginal ? 'parchment' : 'original';
+    }
     if (typeof w.map.ratio !== 'number' || !isFinite(w.map.ratio) || w.map.ratio <= 0) w.map.ratio = 3 / 4;
-    // keep the canvas ratio in a wide, realistic band (1:3 ~ 4:1) so any map export still fits a phone
-    w.map.ratio = Math.min(4, Math.max(0.3, w.map.ratio));
+    // 지도는 이미지 원본 비율을 그대로 따른다. 1:20 밖의 극단값만 안전하게 잘라 낸다.
+    w.map.ratio = Math.min(20, Math.max(0.05, w.map.ratio));
     w.map.terrainStamps.forEach((t) => {
       if (!t.id) t.id = 't_' + Math.random().toString(36).slice(2, 9);
       if (!t.type) t.type = 'mountains';
@@ -59,6 +65,20 @@
       w.eraOrder = eras.length ? eras : ['제1기'];
     }
 
+    // 대표 역법(시대명) + 현재 연도
+    if (typeof w.eraPrefix !== 'string') w.eraPrefix = '';
+    if (typeof w.eraYear !== 'number' || !isFinite(w.eraYear)) w.eraYear = Number(w.eraYear) || 0;
+
+    // 세력 관계도
+    if (!w.factionNodes || typeof w.factionNodes !== 'object') w.factionNodes = {};
+    if (!Array.isArray(w.factionRelations)) w.factionRelations = [];
+    w.factionRelations = w.factionRelations.filter((r) => r && typeof r === 'object');
+    w.factionRelations.forEach((r) => {
+      if (!r.id) r.id = 'fr_' + Math.random().toString(36).slice(2, 9);
+      if (!r.type) r.type = 'ally';
+      if (!Array.isArray(r.tags)) delete r.tags;
+    });
+
     // 강함 / 등급 체계 (rank systems)
     if (!Array.isArray(w.rankSystems)) w.rankSystems = [];
     w.rankSystems = w.rankSystems.filter((s) => s && typeof s === 'object');
@@ -68,6 +88,7 @@
       if (!Array.isArray(s.tiers)) s.tiers = [];
       s.tiers = s.tiers.map((t) => String(t === null || t === undefined ? '' : t));
       if (!s.tiers.length) s.tiers = ['1단계'];
+      if (typeof s.description !== 'string') s.description = '';
       if (typeof s.icon !== 'string' || !s.icon) s.icon = '⚔';
       if (typeof s.color !== 'string' || !/^#[0-9a-fA-F]{3,8}$/.test(s.color)) s.color = '#d4af37';
     });
@@ -86,8 +107,19 @@
     }
 
     const rankSysById = new Map(w.rankSystems.map((s) => [s.id, s]));
+    // 예전에 저장된 샘플 세계관에는 성별이 없으니 한 번만 채워 준다.
+    const genderSeed = (w.id === 'w_arcadia' && !w.genderSeeded && global.Sample &&
+      typeof global.Sample.genderDefaults === 'function') ? global.Sample.genderDefaults() : null;
     w.characters.forEach((c) => {
       if (!c.id) c.id = 'c_' + Math.random().toString(36).slice(2, 9);
+      if (typeof c.gender !== 'string') c.gender = '';
+      if (!c.gender && genderSeed && genderSeed[c.id]) c.gender = genderSeed[c.id];
+      // 설정집 연결 (종족 · 세력 · 능력 · 아이템)
+      if (typeof c.raceId !== 'string') c.raceId = null;
+      if (typeof c.factionId !== 'string') c.factionId = null;
+      if (!Array.isArray(c.abilityIds)) c.abilityIds = [];
+      if (!Array.isArray(c.weaponIds)) c.weaponIds = [];
+      if (typeof c.abilityText !== 'string') c.abilityText = '';
       if (!c.pos || typeof c.pos.x !== 'number') {
         c.pos = randomPos(w.characters.length);
       }
@@ -106,6 +138,7 @@
         return true;
       });
     });
+    if (genderSeed) w.genderSeeded = true;
     w.relations.forEach((r) => {
       if (!r.id) r.id = 'r_' + Math.random().toString(36).slice(2, 9);
       ['a', 'b'].forEach((k) => {
@@ -120,6 +153,7 @@
       if (!Array.isArray(e.characters)) e.characters = [];
       if (!Array.isArray(e.locations)) e.locations = [];
       if (typeof e.year !== 'number') e.year = Number(e.year) || 0;
+      if (typeof e.yearNum !== 'number' || !isFinite(e.yearNum)) e.yearNum = e.year;
     });
     w.episodes.forEach((ep, i) => {
       if (!ep.id) ep.id = 'p_' + Math.random().toString(36).slice(2, 9);
@@ -129,6 +163,14 @@
       if (!Array.isArray(ep.locations)) ep.locations = [];
       if (!Array.isArray(ep.scenes)) ep.scenes = [];
     });
+    // 예전 샘플 세계관에는 새 기본 설정 항목이 없다 — 한 번만 채워 넣는다
+    if (w.id === 'w_arcadia' && !w.loreSeeded && global.Sample && typeof global.Sample.loreDefaults === 'function') {
+      try {
+        const have = new Set(w.lore.map((l) => l.id));
+        global.Sample.loreDefaults().forEach((l) => { if (!have.has(l.id)) w.lore.push(l); });
+        w.loreSeeded = true;
+      } catch (e) { /* 실패해도 기존 설정은 그대로 둔다 */ }
+    }
     w.lore.forEach((l) => {
       if (!l.id) l.id = 'l_' + Math.random().toString(36).slice(2, 9);
       if (!l.category) l.category = 'etc';
@@ -140,7 +182,71 @@
       if (typeof m.y !== 'number') m.y = 50;
       if (!m.kind) m.kind = 'city';
     });
+    linkLoreRefs(w);
     return w;
+  }
+
+  /* 설정집 항목과 인물을 연결한다. 제목이 바뀌거나 항목이 지워져도 이 함수 하나로 맞춘다. */
+  function syncLoreFields(w, c, byId) {
+    const map = byId || new Map(w.lore.map((l) => [l.id, l]));
+    if (c.raceId) {
+      const l = map.get(c.raceId);
+      if (l && l.category === 'race') c.race = l.title;
+      else c.raceId = null;
+    }
+    if (c.factionId) {
+      const l = map.get(c.factionId);
+      if (l && l.category === 'faction') c.faction = l.title;
+      else c.factionId = null;
+    }
+    c.abilityIds = (c.abilityIds || []).filter((id) => {
+      const l = map.get(id);
+      return !!l && l.category === 'magic';
+    });
+    c.weaponIds = (c.weaponIds || []).filter((id) => {
+      const l = map.get(id);
+      return !!l && l.category === 'item';
+    });
+    const names = c.abilityIds.map((id) => map.get(id).title)
+      .concat(c.weaponIds.map((id) => map.get(id).title));
+    if (c.abilityText) names.push(c.abilityText);
+    c.abilities = names.join(' · ');
+    return c;
+  }
+
+  /* 예전 자유 입력값을 설정집 항목과 맞추고, 연결된 이름을 최신 제목으로 다시 쓴다. */
+  function linkLoreRefs(w) {
+    const byId = new Map(w.lore.map((l) => [l.id, l]));
+    const byTitle = new Map();
+    w.lore.forEach((l) => { byTitle.set(l.category + '|' + l.title, l); });
+
+    w.characters.forEach((c) => {
+      if (!c.raceId && c.race) {
+        const hit = byTitle.get('race|' + c.race);
+        if (hit) c.raceId = hit.id;
+      }
+      if (!c.factionId && c.faction) {
+        const hit = byTitle.get('faction|' + c.faction);
+        if (hit) c.factionId = hit.id;
+      }
+      if (!(c.abilityIds || []).length && !(c.weaponIds || []).length && !c.abilityText && c.abilities && w.lore.length) {
+        const rest = [];
+        String(c.abilities).split('·').map((t) => t.trim()).filter(Boolean).forEach((token) => {
+          const hit = byTitle.get('magic|' + token) || byTitle.get('item|' + token);
+          if (!hit) { rest.push(token); return; }
+          if (hit.category === 'magic') c.abilityIds.push(hit.id);
+          else c.weaponIds.push(hit.id);
+        });
+        if (rest.length) c.abilityText = rest.join(' · ');
+      }
+      syncLoreFields(w, c, byId);
+    });
+  }
+
+  /* 설정집 편집·삭제 뒤에 앱이 부르는 동기화 */
+  function syncLoreLinks(w) {
+    if (!w) return;
+    linkLoreRefs(w);
   }
 
   function randomPos(index) {
@@ -220,7 +326,7 @@
     const copy = JSON.parse(JSON.stringify(s));
     copy.__compact = true;
     copy.worlds.forEach((w) => {
-      if (w.map) w.map.image = null;
+      if (w.map) { w.map.image = null; w.map.imageOriginal = null; }
       (w.characters || []).forEach((c) => { c.image = null; });
     });
     return copy;
@@ -347,7 +453,7 @@
   function api() {
     return {
       init, get, save, setTheme, exportPayload, parseImport, applyImport,
-      normalizeWorld, randomPos, DEFAULT_BACKUP_FOLDER,
+      normalizeWorld, randomPos, DEFAULT_BACKUP_FOLDER, syncLoreLinks, syncLoreFields,
       state: () => state,
       isDbBroken: () => dbBroken,
       LS_KEY, LS_THEME
