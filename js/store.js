@@ -43,8 +43,8 @@
     if (!Array.isArray(w.map.markers)) w.map.markers = [];
     if (!Array.isArray(w.map.terrainStamps)) w.map.terrainStamps = [];
     if (typeof w.map.ratio !== 'number' || !isFinite(w.map.ratio) || w.map.ratio <= 0) w.map.ratio = 3 / 4;
-    // keep the canvas ratio inside a usable band so a very tall/wide export still fits a phone
-    w.map.ratio = Math.min(2.8, Math.max(0.45, w.map.ratio));
+    // keep the canvas ratio in a wide, realistic band (1:3 ~ 4:1) so any map export still fits a phone
+    w.map.ratio = Math.min(4, Math.max(0.3, w.map.ratio));
     w.map.terrainStamps.forEach((t) => {
       if (!t.id) t.id = 't_' + Math.random().toString(36).slice(2, 9);
       if (!t.type) t.type = 'mountains';

@@ -1255,7 +1255,7 @@
       try {
         const im = await U.loadImage(data);
         if (im.naturalWidth && im.naturalHeight) {
-          ratio = Math.round(Math.min(2.8, Math.max(0.45, im.naturalWidth / im.naturalHeight)) * 1000) / 1000;
+          ratio = Math.round(Math.min(4, Math.max(0.3, im.naturalWidth / im.naturalHeight)) * 1000) / 1000;
         }
       } catch (e) { /* 비율을 몰라도 지도는 저장한다 */ }
       const w = W();

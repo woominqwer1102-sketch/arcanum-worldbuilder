@@ -118,7 +118,7 @@
   /* 지도 캔버스 비율(width / height) — 업로드한 이미지의 실제 비율을 따른다 */
   function ratioOf(w) {
     const r = w && w.map && w.map.ratio;
-    if (typeof r === 'number' && isFinite(r) && r > 0) return Math.min(2.8, Math.max(0.45, r));
+    if (typeof r === 'number' && isFinite(r) && r > 0) return Math.min(4, Math.max(0.3, r));
     return 3 / 4;
   }
 
@@ -483,7 +483,7 @@
       const nh = img.naturalHeight || 0;
       if (!nw || !nh) return;
       done = true;
-      const real = Math.min(2.8, Math.max(0.45, nw / nh));
+      const real = Math.min(4, Math.max(0.3, nw / nh));
       if (Math.abs(real - ratioOf(w)) > 0.01) {
         w.map.ratio = Math.round(real * 1000) / 1000;
         if (global.Store) global.Store.save();
