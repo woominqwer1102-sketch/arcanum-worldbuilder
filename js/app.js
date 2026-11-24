@@ -310,7 +310,7 @@
           '<span class="row-card__chev"><svg><use href="#i-chev-right"/></svg></span></button>' +
       '</div>';
 
-    html += '<p class="center muted small" style="margin-top:22px">아르카눔 · 판타지 세계관 노트 v1.4.1</p>';
+    html += '<p class="center muted small" style="margin-top:22px">아르카눔 · 판타지 세계관 노트 v1.4.2</p>';
 
     host.innerHTML = html;
 
@@ -862,13 +862,24 @@
     const wrap = document.createElement('div');
     wrap.className = 'img-drop' + (initial ? ' has-img' : '');
     let value = initial || null;
+    // 라이트박스 캡션 — 폼에 지금 적힌 이름·칭호를 그때그때 읽는다
+    function caption(key, fallback) {
+      const v = typeof o[key] === 'function' ? o[key]() : o[key];
+      return String(v || '').trim() || (fallback || '');
+    }
+    function openZoom() {
+      if (!value) return;
+      U.openLightbox({ src: value, title: caption('title', '대표 이미지'), sub: caption('sub', '') });
+      U.haptic(6);
+    }
     function draw() {
       wrap.classList.toggle('has-img', !!value);
       wrap.innerHTML =
-        (value ? '<img src="' + esc(value) + '" alt="">' : '') +
+        (value ? '<img src="' + esc(value) + '" alt="" data-img="zoom">' : '') +
         '<span class="img-drop__inner"><svg><use href="#' + (o.icon || 'i-image') + '"/></svg>' +
         '<span>' + esc(o.label || '사진 선택') + '</span></span>' +
         '<span class="img-drop__actions">' +
+          (value ? '<button type="button" class="btn" data-img="zoom"><span aria-hidden="true">🔍</span>크게 보기</button>' : '') +
           '<button type="button" class="btn" data-img="pick"><svg><use href="#i-image"/></svg>' + (value ? '바꾸기' : '올리기') + '</button>' +
           (value ? '<button type="button" class="btn" data-img="clear">삭제</button>' : '') +
         '</span>';
@@ -877,6 +888,10 @@
     wrap.addEventListener('click', async (e) => {
       const b = e.target.closest('[data-img]');
       if (!b) return;
+      if (b.dataset.img === 'zoom') {
+        openZoom();
+        return;
+      }
       if (b.dataset.img === 'clear') {
         value = null;
         draw();
@@ -1123,7 +1138,18 @@
       full: true,
       html: html,
       onReady: ({ body, form, sheet }) => {
-        img = buildImageField(c ? c.image : null, { maxDim: 900, label: '초상 사진 올리기' });
+        img = buildImageField(c ? c.image : null, {
+          maxDim: 900,
+          label: '초상 사진 올리기',
+          title: () => {
+            const el = form.querySelector('[name="name"]');
+            return el ? el.value : '';
+          },
+          sub: () => {
+            const el = form.querySelector('[name="title"]');
+            return el ? el.value : '';
+          }
+        });
         body.querySelector('#char-img').appendChild(img.el);
         bindIllustrationPanel(body, form, img, () => {
           const byId = new Map((w.lore || []).map((l) => [l.id, l]));
@@ -1275,7 +1301,7 @@
         if (c) {
           Object.assign(c, data);
         } else {
-          const pos = Store.randomPos(w.characters.length);
+          const pos = Store.randomPos(w.characters.length, Store.characterCells(w.characters), w.characters.length + 1);
           w.characters.push(Object.assign({ id: U.uid('c'), pos: pos }, data));
         }
         touch({ immediate: true });
@@ -1931,7 +1957,7 @@
         MapView.refresh();
         U.toast('기본 판타지 지도를 불러왔어요');
       },
-      onCreatePin: (x, y) => openPinForm(x, y, null),
+      onCreatePin: (x, y, preset) => openPinForm(x, y, null, preset),
       onPin: (id) => openRegionDetail(id),
       onOpenCharacter: (charId) => openCharacterDetail(charId),
       onMapChange: () => touch()
@@ -2053,7 +2079,7 @@
     });
   }
 
-  function openPinForm(x, y, id) {
+  function openPinForm(x, y, id, preset) {
     const w = W();
     if (w.mapLocked) {
       U.toast('🔒 지도가 고정되어 있어요 · 잠금을 해제한 뒤 수정할 수 있어요', { icon: 'i-x', duration: 2400 });
@@ -2110,7 +2136,7 @@
         });
         nationPick = buildLorePicker(body.querySelector('#pin-nation'), w, {
           category: 'nation', multi: false, noneLabel: '무소속',
-          ids: (m && m.nationId) ? [m.nationId] : [],
+          ids: (m && m.nationId) ? [m.nationId] : ((preset && preset.nationId) ? [preset.nationId] : []),
           legacy: ''
         });
         body.querySelector('#gen-place').addEventListener('click', () => {
@@ -3511,7 +3537,7 @@
       '<div class="divider"></div>' +
       '<div class="label-row"><span>앱 정보</span></div>' +
       '<div class="def-list">' +
-        '<div class="def"><dt>버전</dt><dd>아르카눔 v1.4.1 · PWA</dd></div>' +
+        '<div class="def"><dt>버전</dt><dd>아르카눔 v1.4.2 · PWA</dd></div>' +
         '<div class="def"><dt>저장</dt><dd>' + (Store.isDbBroken() ? 'localStorage (자동 저장)' : 'IndexedDB + localStorage 이중 저장') + '</dd></div>' +
         '<div class="def"><dt>오프라인</dt><dd>홈 화면에 추가하면 인터넷 없이도 열립니다.</dd></div>' +
       '</div>' +

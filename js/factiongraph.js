@@ -15,11 +15,29 @@
     trade: { label: '교역·협정', color: '#7fa9d8' }
   };
 
-  // 바둑판 격자 — 노드는 격자 교차점에만 놓인다
-  const CELL = 64;
-  const GRID_MIN_X = CELL, GRID_MAX_X = 320, GRID_MIN_Y = CELL, GRID_MAX_Y = 448;
-  function snapX(x) { return U.clamp(Math.round(x / CELL) * CELL, GRID_MIN_X, GRID_MAX_X); }
-  function snapY(y) { return U.clamp(Math.round(y / CELL) * CELL, GRID_MIN_Y, GRID_MAX_Y); }
+  // 바둑판 격자 — 노드는 격자 칸 하나에 하나만. 칸 간격은 U.GRAPH_CELL(96px)
+  const CELL = U.GRAPH_CELL;
+  const NODE_R = 22;
+
+  // 다른 노드가 차지한 칸 (exceptId는 빼고)
+  function occupiedCells(w, exceptId) {
+    const occ = new Set();
+    const map = (w && w.factionNodes) || {};
+    Object.keys(map).forEach((id) => {
+      if (id === exceptId) return;
+      const p = map[id];
+      if (!p || typeof p.x !== 'number' || typeof p.y !== 'number') return;
+      occ.add(U.graphKey(U.graphCellOf(p.x, p.y)));
+    });
+    return occ;
+  }
+
+  // 겹치면 가장 가까운 빈 칸으로
+  function snapPos(w, x, y, exceptId, total) {
+    const list = factions();
+    const n = Math.max(1, total || list.length);
+    return U.graphSnap(x, y, occupiedCells(w, exceptId), U.graphGrid(n));
+  }
 
   const state = {
     host: null,
@@ -47,18 +65,37 @@
     if (!w.factionNodes) w.factionNodes = {};
     let p = w.factionNodes[l.id];
     if (!p) {
-      // 원형으로 흩어 놓는다
-      const angle = (i / Math.max(1, total)) * Math.PI * 2 - Math.PI / 2;
-      const n = Math.max(1, total);
-      // 노드가 많을수록 고리를 넓혀 이름이 겹치지 않게
-      const rx = 100 + Math.min(80, n * 6.5);
-      const ry = 150 + Math.min(120, n * 9.5);
-      // 안팎으로 번갈아 놓아 이름이 겹치지 않게
-      const k = i % 2 ? 0.7 : 1;
-      p = { x: snapX(180 + Math.cos(angle) * rx * k), y: snapY(260 + Math.sin(angle) * ry * k) };
+      const seed = U.graphSeed(i + 1);
+      const snapped = U.graphSnap(seed.x, seed.y, occupiedCells(w, l.id), U.graphGrid(Math.max(1, total)));
+      p = { x: snapped.x, y: snapped.y };
       w.factionNodes[l.id] = p;
     }
     return p;
+  }
+
+  /* 노드 좌표를 96px 격자에 다시 앉힌다 — 같은 칸에 몰린 노드는 빈 칸으로 흘리고,
+     📌 고정한 노드는 제자리를 먼저 지킨다. */
+  function layout(w, list) {
+    if (!w) return [];
+    if (!w.factionNodes || typeof w.factionNodes !== 'object') w.factionNodes = {};
+    const grid = U.graphGrid(Math.max(1, list.length));
+    const occ = new Set();
+    const rows = list.map((l, i) => ({ lore: l, idx: i, cur: w.factionNodes[l.id] || null }));
+    rows.sort((a, b) => ((b.cur && b.cur.pinned) ? 1 : 0) - ((a.cur && a.cur.pinned) ? 1 : 0));
+    rows.forEach((n) => {
+      const cur = n.cur;
+      const base = (cur && typeof cur.x === 'number' && typeof cur.y === 'number')
+        ? { x: cur.x, y: cur.y }
+        : U.graphSeed(n.idx + 1);
+      const s = U.graphSnap(base.x, base.y, occ, grid);
+      const rec = cur || {};
+      rec.x = s.x;
+      rec.y = s.y;
+      w.factionNodes[n.lore.id] = rec;
+      occ.add(s.col + '|' + s.row);
+      n.pos = rec;
+    });
+    return rows.map((n) => Object.assign({ lore: n.lore, pos: n.pos }, n.lore));
   }
 
   function nationNameOf(w, l) {
@@ -77,7 +114,8 @@
   function nodeList() {
     const w = world();
     const list = factions();
-    return list.map((l, i) => Object.assign({ lore: l, pos: posOf(w, l, i, list.length) }, l));
+    if (!w) return [];
+    return layout(w, list);
   }
 
   function applyView() {
@@ -106,7 +144,7 @@
     const ny = dx / len;
     const cx = (a.x + b.x) / 2 + nx * (offset || 0);
     const cy = (a.y + b.y) / 2 + ny * (offset || 0);
-    const r = 22;
+    const r = NODE_R + 1;
     const sdx = cx - a.x, sdy = cy - a.y, sl = Math.hypot(sdx, sdy) || 1;
     const edx = b.x - cx, edy = b.y - cy, el = Math.hypot(edx, edy) || 1;
     const sx = a.x + (sdx / sl) * r, sy = a.y + (sdy / sl) * r;
@@ -254,8 +292,9 @@
     if (!cur) return;
     cur.pinned = !cur.pinned;
     if (cur.pinned) {
-      cur.x = snapX(cur.x);
-      cur.y = snapY(cur.y);
+      const s = snapPos(w, cur.x, cur.y, id);
+      cur.x = s.x;
+      cur.y = s.y;
     }
     if (state.opts.onNodeMoved) state.opts.onNodeMoved();
     render();
@@ -320,8 +359,10 @@
         const p = toWorld(e.clientX, e.clientY);
         // 노드 중심을 잡고 끌도록 클릭 지점과의 차이를 반영
         if (!drag.grab) drag.grab = { x: cur.x - toWorld(drag.startX, drag.startY).x, y: cur.y - toWorld(drag.startX, drag.startY).y };
-        cur.x = snapX(p.x + drag.grab.x);
-        cur.y = snapY(p.y + drag.grab.y);
+        // 이미 다른 노드가 차지한 칸이면 가장 가까운 빈 칸으로 스냅한다
+        const s = snapPos(w, p.x + drag.grab.x, p.y + drag.grab.y, drag.id);
+        cur.x = s.x;
+        cur.y = s.y;
         render();
         e.preventDefault();
       } else if (drag.type === 'pan') {
@@ -409,8 +450,8 @@
 
     host.innerHTML =
       '<svg id="faction-svg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">' +
-        '<defs><pattern id="faction-grid" width="64" height="64" patternUnits="userSpaceOnUse">' +
-          '<path d="M 64 0 L 0 0 0 64" fill="none" stroke="rgba(212,175,55,.16)" stroke-width=".5"/>' +
+        '<defs><pattern id="faction-grid" width="' + CELL + '" height="' + CELL + '" patternUnits="userSpaceOnUse">' +
+          '<path d="M ' + CELL + ' 0 L 0 0 0 ' + CELL + '" fill="none" stroke="rgba(212,175,55,.16)" stroke-width=".5"/>' +
         '</pattern></defs>' +
         '<rect class="graph-grid-bg" x="-4000" y="-4000" width="8000" height="8000" fill="url(#faction-grid)"/>' +
         '<g class="fedges"></g>' +

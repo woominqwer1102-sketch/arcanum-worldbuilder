@@ -1,9 +1,11 @@
-/* ARCANUM service worker · offline app shell (arcanum-v6)
+/* ARCANUM service worker · offline app shell (arcanum-v7)
    - 새 버전은 install에서 바로 대기열을 건너뛰고(skipWaiting), activate에서 즉시 제어권을 가져온다(clients.claim).
    - activate 때 열려 있던 화면은 새 버전으로 다시 띄워, 홈 화면 앱에도 새 UI가 바로 보이게 한다.
-   - v6: 인물 프로필 사진 배치 + '크게 보기' 라이트박스 — index.html의 ?v=1.4.1 쿼리로 예전 캐시(arcanum-v3/v4/v5)와 URL 자체를 분리한다. */
-const CACHE = 'arcanum-v6';
-const QUERY = '?v=1.4.1';
+   - v7: 인물 폼·지도 국경의 대규모 개선 — 인물 추가·편집 폼 미리보기에도 '🔍 크게 보기'(저장 전 확인),
+     관계도 96px 격자·겹침 방지·원 안 얼굴/원 아래 이름, 지도 국경을 육각 타일 영토 칠하기로(지형도 육각 타일),
+     줌 1.5배 기준 지역 핀 라벨 전환, 타일 탭으로 세부 지역 진입. ?v=1.4.2 쿼리로 예전 캐시(arcanum-v3~v6)와 URL을 분리한다. */
+const CACHE = 'arcanum-v7';
+const QUERY = '?v=1.4.2';
 const ASSETS = [
   './',
   './index.html' + QUERY,

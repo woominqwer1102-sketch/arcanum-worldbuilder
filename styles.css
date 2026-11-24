@@ -1015,7 +1015,7 @@ main {
   overflow: hidden;
 }
 
-.img-drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+.img-drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center top; cursor: zoom-in; }
 
 .img-drop__inner { position: relative; z-index: 2; display: grid; gap: 5px; justify-items: center; }
 .img-drop.has-img .img-drop__inner { display: none; }
@@ -1027,6 +1027,8 @@ main {
   right: 8px;
   bottom: 8px;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px;
 }
 
@@ -1722,6 +1724,7 @@ main {
 
 /* 국경 그리기·인물 배치 중에는 지도 위 핀이 탭을 가로채지 않는다 */
 .map-frame.is-border .pin-layer, .map-frame.is-border .cpin-layer,
+.map-frame.is-terrain .pin-layer, .map-frame.is-terrain .cpin-layer,
 .map-frame.is-charpin .pin-layer, .map-frame.is-charpin .cpin-layer { pointer-events: none; }
 .map-frame.is-border .tstamp { pointer-events: none; }
 
@@ -1746,6 +1749,32 @@ main {
   z-index: 2;
   pointer-events: none;
 }
+
+/* 육각 지형 레이어 — 영토(국경)보다 아래, 지도 이미지 바로 위 */
+.map-terrain-hex-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.map-terrain-hex { fill-opacity: .3; stroke: rgba(30, 22, 16, .18); stroke-width: .35; }
+.map-terrain-hex__ico { opacity: .82; pointer-events: none; }
+
+.map-border__hex { fill-opacity: .26; }
+.map-border__hexline { fill: none; stroke-width: 1.9; stroke-opacity: .92; stroke-linejoin: round; stroke-linecap: round; pointer-events: auto; }
+.map-border__hexline.is-selected { stroke-width: 3; stroke-opacity: 1; }
+.map-border__grid { fill: none; stroke: rgba(212, 175, 55, .26); stroke-width: .4; }
+.map-border__badge { pointer-events: none; }
+
+.chip__dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35); }
+.chip__num { margin-left: 5px; opacity: .65; font-size: 10px; }
+
+/* 칠하는 동안 손가락이 페이지를 스크롤하지 않게 */
+.map-frame.is-border .map-stage,
+.map-frame.is-terrain .map-stage { touch-action: none; }
 
 .map-border__area { fill-opacity: .16; stroke: none; pointer-events: auto; }
 .map-border__line { fill: none; stroke-width: 1.6; stroke-opacity: .8; stroke-linejoin: round; pointer-events: auto; }
@@ -1898,7 +1927,16 @@ main {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: opacity .18s var(--ease);
 }
+
+/* 축소·기본 배율: 국가 영토 위주로 깔끔하게 — 지역 핀은 점처럼만 */
+.map-frame:not(.is-detail) .pin__label,
+.map-frame:not(.is-detail) .pin__faction { display: none; }
+.map-frame:not(.is-detail) .pin__mark { transform: rotate(-45deg) scale(.82); }
+.map-frame:not(.is-detail) .map-terrain-hex__ico { opacity: .5; }
+.map-terrain-hex-svg,
+.map-border-svg { transition: opacity .2s var(--ease); }
 
 .pin--dungeon .pin__mark { background: linear-gradient(150deg, #c9a0e0, #6b4a8a); }
 .pin--forest .pin__mark { background: linear-gradient(150deg, #a7d0a0, #3f7a52); }
@@ -2339,7 +2377,9 @@ main {
   -webkit-user-select: none;
 }
 .gnode circle { transition: stroke-opacity .18s; }
-.gnode-lbl { fill: var(--text); stroke: var(--bg); stroke-width: 2.2; paint-order: stroke; }
+.gnode-plate { fill: #100d0b; fill-opacity: .84; stroke: rgba(212, 175, 55, .22); stroke-width: .5; }
+.gnode-lbl { fill: var(--text); stroke: none; }
+.gnode-sub { fill: #b3a488; }
 .gnode.is-selected circle { stroke: var(--gold); stroke-opacity: 1; }
 .gedge text, .gedge rect { cursor: pointer; }
 .gedge path { transition: stroke-opacity .18s; }

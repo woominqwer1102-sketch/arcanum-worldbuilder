@@ -1033,7 +1033,7 @@ main {
   overflow: hidden;
 }
 
-.img-drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+.img-drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center top; cursor: zoom-in; }
 
 .img-drop__inner { position: relative; z-index: 2; display: grid; gap: 5px; justify-items: center; }
 .img-drop.has-img .img-drop__inner { display: none; }
@@ -1045,6 +1045,8 @@ main {
   right: 8px;
   bottom: 8px;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px;
 }
 
@@ -1740,6 +1742,7 @@ main {
 
 /* 국경 그리기·인물 배치 중에는 지도 위 핀이 탭을 가로채지 않는다 */
 .map-frame.is-border .pin-layer, .map-frame.is-border .cpin-layer,
+.map-frame.is-terrain .pin-layer, .map-frame.is-terrain .cpin-layer,
 .map-frame.is-charpin .pin-layer, .map-frame.is-charpin .cpin-layer { pointer-events: none; }
 .map-frame.is-border .tstamp { pointer-events: none; }
 
@@ -1764,6 +1767,32 @@ main {
   z-index: 2;
   pointer-events: none;
 }
+
+/* 육각 지형 레이어 — 영토(국경)보다 아래, 지도 이미지 바로 위 */
+.map-terrain-hex-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.map-terrain-hex { fill-opacity: .3; stroke: rgba(30, 22, 16, .18); stroke-width: .35; }
+.map-terrain-hex__ico { opacity: .82; pointer-events: none; }
+
+.map-border__hex { fill-opacity: .26; }
+.map-border__hexline { fill: none; stroke-width: 1.9; stroke-opacity: .92; stroke-linejoin: round; stroke-linecap: round; pointer-events: auto; }
+.map-border__hexline.is-selected { stroke-width: 3; stroke-opacity: 1; }
+.map-border__grid { fill: none; stroke: rgba(212, 175, 55, .26); stroke-width: .4; }
+.map-border__badge { pointer-events: none; }
+
+.chip__dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35); }
+.chip__num { margin-left: 5px; opacity: .65; font-size: 10px; }
+
+/* 칠하는 동안 손가락이 페이지를 스크롤하지 않게 */
+.map-frame.is-border .map-stage,
+.map-frame.is-terrain .map-stage { touch-action: none; }
 
 .map-border__area { fill-opacity: .16; stroke: none; pointer-events: auto; }
 .map-border__line { fill: none; stroke-width: 1.6; stroke-opacity: .8; stroke-linejoin: round; pointer-events: auto; }
@@ -1916,7 +1945,16 @@ main {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: opacity .18s var(--ease);
 }
+
+/* 축소·기본 배율: 국가 영토 위주로 깔끔하게 — 지역 핀은 점처럼만 */
+.map-frame:not(.is-detail) .pin__label,
+.map-frame:not(.is-detail) .pin__faction { display: none; }
+.map-frame:not(.is-detail) .pin__mark { transform: rotate(-45deg) scale(.82); }
+.map-frame:not(.is-detail) .map-terrain-hex__ico { opacity: .5; }
+.map-terrain-hex-svg,
+.map-border-svg { transition: opacity .2s var(--ease); }
 
 .pin--dungeon .pin__mark { background: linear-gradient(150deg, #c9a0e0, #6b4a8a); }
 .pin--forest .pin__mark { background: linear-gradient(150deg, #a7d0a0, #3f7a52); }
@@ -2357,7 +2395,9 @@ main {
   -webkit-user-select: none;
 }
 .gnode circle { transition: stroke-opacity .18s; }
-.gnode-lbl { fill: var(--text); stroke: var(--bg); stroke-width: 2.2; paint-order: stroke; }
+.gnode-plate { fill: #100d0b; fill-opacity: .84; stroke: rgba(212, 175, 55, .22); stroke-width: .5; }
+.gnode-lbl { fill: var(--text); stroke: none; }
+.gnode-sub { fill: #b3a488; }
 .gnode.is-selected circle { stroke: var(--gold); stroke-opacity: 1; }
 .gedge text, .gedge rect { cursor: pointer; }
 .gedge path { transition: stroke-opacity .18s; }
@@ -3323,7 +3363,7 @@ main {
 <input type="file" id="import-input" accept="application/json,.json" hidden>
 
 <script>
-/* ---- js/utils.js?v=1.4.1 ---- */
+/* ---- js/utils.js?v=1.4.2 ---- */
 /* =========================================================
    ARCANUM · utils (DOM, sheets, toast, files, images)
    ========================================================= */
@@ -3569,6 +3609,58 @@ main {
     return { el: wrap, close: close, img: img };
   }
 
+  /* ---------------- 관계도 바둑판 격자 ----------------
+     노드는 격자 칸 하나에 하나만 놓는다. 겹칠 자리면 가장 가까운 빈 칸으로 밀어낸다.
+     (원 지름 44 + 원 아래 이름·칭호 라벨이 들어가도 이웃 칸과 붙지 않을 만큼 넉넉한 96px) */
+  const GRAPH_CELL = 96;
+
+  function graphGrid(n) {
+    const count = Math.max(1, Number(n) || 1);
+    const cols = Math.min(9, Math.max(4, Math.ceil(Math.sqrt(count * 1.3))));
+    let rows = Math.max(4, Math.ceil(count / cols) + 1);
+    while (cols * rows < count) rows += 1;
+    return { cols: cols, rows: rows, cell: GRAPH_CELL };
+  }
+
+  function graphCellOf(x, y) {
+    return {
+      col: Math.round((Number(x) || 0) / GRAPH_CELL),
+      row: Math.round((Number(y) || 0) / GRAPH_CELL)
+    };
+  }
+
+  function graphKey(cell) { return cell.col + '|' + cell.row; }
+
+  // 겹치지 않는 가장 가까운 격자 칸으로 — occupied(Set)는 이미 차지된 칸의 키
+  function graphSnap(x, y, occupied, grid) {
+    const g = grid || graphGrid(1);
+    const cell = g.cell;
+    const base = graphCellOf(x, y);
+    base.col = Math.min(g.cols, Math.max(1, base.col || 1));
+    base.row = Math.min(g.rows, Math.max(1, base.row || 1));
+    const occ = occupied || new Set();
+    if (!occ.has(graphKey(base))) return { x: base.col * cell, y: base.row * cell, col: base.col, row: base.row };
+    let best = null;
+    let bestD = Infinity;
+    for (let r = 1; r <= g.rows; r++) {
+      for (let c = 1; c <= g.cols; c++) {
+        if (occ.has(c + '|' + r)) continue;
+        const d = Math.hypot(c - base.col, r - base.row);
+        if (d < bestD - 0.001) { bestD = d; best = { col: c, row: r }; }
+      }
+    }
+    if (!best) return { x: base.col * cell, y: base.row * cell, col: base.col, row: base.row };
+    return { x: best.col * cell, y: best.row * cell, col: best.col, row: best.row };
+  }
+
+  // 새 노드의 첫 자리 — 격자 가운데에서 해바라기 모양으로 퍼진 후보
+  function graphSeed(index) {
+    const i = Math.max(0, Number(index) || 0);
+    const angle = (i * 137.5) * Math.PI / 180;
+    const radius = (1 + Math.sqrt(i) * 1.1) * GRAPH_CELL;
+    return { x: 3 * GRAPH_CELL + Math.cos(angle) * radius, y: 3 * GRAPH_CELL + Math.sin(angle) * radius };
+  }
+
   /* ---------------- Files ---------------- */
   function readFileAsDataURL(file) {
     return new Promise((resolve, reject) => {
@@ -3779,13 +3871,14 @@ main {
     $, $$, esc, uid, debounce, clamp, toast, openSheet, confirmSheet, openLightbox,
     readFileAsDataURL, readFileAsText, loadImage, resizeImage, downloadText, copyText,
     pickFile, haptic, field, textInput, textArea, selectInput, chipPicker, datalist,
-    initials, todayLabel, fileStamp, plural
+    initials, todayLabel, fileStamp, plural,
+    GRAPH_CELL, graphGrid, graphCellOf, graphKey, graphSnap, graphSeed
   };
 })(window);
 
 </script>
 <script>
-/* ---- js/store.js?v=1.4.1 ---- */
+/* ---- js/store.js?v=1.4.2 ---- */
 /* =========================================================
    ARCANUM · storage (IndexedDB + localStorage mirror)
    ========================================================= */
@@ -3830,6 +3923,22 @@ main {
     if (!w.map || typeof w.map !== 'object') w.map = { kind: null, image: null, markers: [] };
     if (!Array.isArray(w.map.markers)) w.map.markers = [];
     if (!Array.isArray(w.map.terrainStamps)) w.map.terrainStamps = [];
+    // v1.4.2 — 육각 타일 영토(tiles)와 육각 지형 색감(mapHexTerrains)
+    if (!Array.isArray(w.mapBorders)) w.mapBorders = [];
+    w.mapBorders = w.mapBorders.filter((b) => b && typeof b === 'object');
+    w.mapBorders.forEach((b) => {
+      if (!Array.isArray(b.tiles)) b.tiles = [];
+      b.tiles = b.tiles.filter((k) => typeof k === 'string' && k.indexOf(',') > 0);
+      if (!Array.isArray(b.points)) b.points = [];
+      if (b.tiles.length) b.hexMode = true;
+    });
+    if (!w.mapHexTerrains || typeof w.mapHexTerrains !== 'object' || Array.isArray(w.mapHexTerrains)) {
+      w.mapHexTerrains = {};
+    } else {
+      Object.keys(w.mapHexTerrains).forEach((k) => {
+        if (typeof k !== 'string' || k.indexOf(',') < 0) delete w.mapHexTerrains[k];
+      });
+    }
     // 업로드한 원본과 양피지 변환본을 함께 보관하고, 어느 쪽을 보여 줄지 기억한다
     if (typeof w.map.image !== 'string' || !w.map.image) w.map.image = null;
     if (typeof w.map.imageOriginal !== 'string' || !w.map.imageOriginal) w.map.imageOriginal = null;
@@ -3931,11 +4040,8 @@ main {
       if (typeof c.abilityText !== 'string') c.abilityText = '';
       if (!c.pos || typeof c.pos.x !== 'number' || typeof c.pos.y !== 'number') {
         c.pos = randomPos(w.characters.length);
-      } else {
-        // 예전 저장본의 자유 좌표도 격자 교차점으로 한 번 맞춘다
-        c.pos.x = gridX(c.pos.x);
-        c.pos.y = gridY(c.pos.y);
       }
+      // 예전 저장본의 자유 좌표(64px 격자 포함)는 아래 layoutCharacters가 새 96px 격자로 옮긴다
       // 인물 등급: 체계마다 단계 하나(인덱스). 없는 체계·단계는 버린다.
       if (!Array.isArray(c.ranks)) c.ranks = [];
       const seen = new Set();
@@ -3951,6 +4057,8 @@ main {
         return true;
       });
     });
+    // 좌표를 새 격자(96px)에 맞추고, 같은 칸에 몰린 노드를 빈 칸으로 흘어 놓는다
+    layoutCharacters(w.characters);
     if (genderSeed) w.genderSeeded = true;
     w.relations.forEach((r) => {
       if (!r.id) r.id = 'r_' + Math.random().toString(36).slice(2, 9);
@@ -4196,20 +4304,41 @@ main {
     });
   }
 
-  // 자동 배치도 바둑판 격자 교차점(64px)에 맞춘다
-  const GRID_CELL = 64;
-  function gridX(x) { return Math.min(320, Math.max(64, Math.round(x / GRID_CELL) * GRID_CELL)); }
-  function gridY(y) { return Math.min(448, Math.max(64, Math.round(y / GRID_CELL) * GRID_CELL)); }
+  // 자동 배치도 관계도 바둑판 격자에 맞춘다 — 겹치면 가장 가까운 빈 칸으로 (칸 간격은 U.GRAPH_CELL)
+  function randomPos(index, occupied, total) {
+    const seed = U.graphSeed(index || 0);
+    const n = Math.max(total || 0, (occupied ? occupied.size : 0) + 1, (index || 0) + 1);
+    return U.graphSnap(seed.x, seed.y, occupied, U.graphGrid(n));
+  }
 
-  function randomPos(index) {
-    const i = index || 0;
-    const cx = 192, cy = 256;
-    const angle = (i * 137.5) * Math.PI / 180;
-    const radius = 40 + (i % 5) * 42;
-    return {
-      x: gridX(cx + Math.cos(angle) * radius),
-      y: gridY(cy + Math.sin(angle) * radius)
-    };
+  // 인물 목록에서 이미 차지된 격자 칸 (exceptId는 빼고)
+  function characterCells(chars, exceptId) {
+    const occ = new Set();
+    (chars || []).forEach((c) => {
+      if (!c || !c.pos || c.id === exceptId) return;
+      if (typeof c.pos.x !== 'number' || typeof c.pos.y !== 'number') return;
+      occ.add(U.graphKey(U.graphCellOf(c.pos.x, c.pos.y)));
+    });
+    return occ;
+  }
+
+  // 인물을 관계도 격자의 빈 칸으로 — 이미 누가 차지한 칸이면 가장 가까운 빈 칸
+  function fitCharacterPos(chars, x, y, exceptId) {
+    const list = chars || [];
+    return U.graphSnap(x, y, characterCells(list, exceptId), U.graphGrid(Math.max(1, list.length)));
+  }
+
+  // 저장본의 인물 좌표를 새 격자(96px)로 옮기고, 같은 칸에 몰린 노드를 빈 칸으로 흘어 놓는다.
+  function layoutCharacters(chars) {
+    if (!Array.isArray(chars) || !chars.length) return;
+    const grid = U.graphGrid(chars.length);
+    const occ = new Set();
+    // 고정(📌)한 노드는 제자리를 먼저 지킨다
+    chars.slice().sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)).forEach((c) => {
+      const p = U.graphSnap(c.pos && c.pos.x, c.pos && c.pos.y, occ, grid);
+      c.pos = { x: p.x, y: p.y };
+      occ.add(p.col + '|' + p.row);
+    });
   }
 
   function openDB() {
@@ -4405,7 +4534,8 @@ main {
   function api() {
     return {
       init, get, save, setTheme, exportPayload, parseImport, applyImport,
-      normalizeWorld, randomPos, DEFAULT_BACKUP_FOLDER, syncLoreLinks, syncLoreFields,
+      normalizeWorld, randomPos, layoutCharacters, characterCells, fitCharacterPos,
+      DEFAULT_BACKUP_FOLDER, syncLoreLinks, syncLoreFields,
       state: () => state,
       isDbBroken: () => dbBroken,
       LS_KEY, LS_THEME
@@ -4417,7 +4547,7 @@ main {
 
 </script>
 <script>
-/* ---- js/generator.js?v=1.4.1 ---- */
+/* ---- js/generator.js?v=1.4.2 ---- */
 /* =========================================================
    ARCANUM · 판타지 이름 / 지명 생성기
    ========================================================= */
@@ -5314,7 +5444,7 @@ main {
 
 </script>
 <script>
-/* ---- js/sample.js?v=1.4.1 ---- */
+/* ---- js/sample.js?v=1.4.2 ---- */
 /* =========================================================
    ARCANUM · sample world "아르카디아 연대기" + sample map
    ========================================================= */
@@ -5771,7 +5901,7 @@ main {
 
 </script>
 <script>
-/* ---- js/graph.js?v=1.4.1 ---- */
+/* ---- js/graph.js?v=1.4.2 ---- */
 /* =========================================================
    ARCANUM · 인물 관계도 (interactive SVG)
    ========================================================= */
@@ -5792,12 +5922,35 @@ main {
     other: { label: '기타', color: '#9a9282' }
   };
 
-  // 바둑판 격자 — 노드는 격자 교차점에만 놓인다
-  const CELL = 64;
-  const GRID_MIN_X = CELL, GRID_MAX_X = 320, GRID_MIN_Y = CELL, GRID_MAX_Y = 448;
+  // 바둑판 격자 — 노드는 격자 칸 하나에 하나만 놓인다. 칸 간격은 U.GRAPH_CELL(96px)
+  const CELL = U.GRAPH_CELL;
+  const NODE_R = 21;          // 원 반지름 — 원 아래 이름 라벨까지 96px 칸 안에 들어간다
 
-  function snapX(x) { return U.clamp(Math.round(x / CELL) * CELL, GRID_MIN_X, GRID_MAX_X); }
-  function snapY(y) { return U.clamp(Math.round(y / CELL) * CELL, GRID_MIN_Y, GRID_MAX_Y); }
+  // 이미 다른 노드가 차지한 칸 (exceptId는 빼고)
+  function occupiedCells(chars, exceptId) {
+    const occ = new Set();
+    chars.forEach((c) => {
+      if (!c.pos || c.id === exceptId) return;
+      occ.add(U.graphKey(U.graphCellOf(c.pos.x, c.pos.y)));
+    });
+    return occ;
+  }
+
+  // 겹치면 가장 가까운 빈 칸으로 — 드래그·고정·초기 배치가 모두 이걸 쓴다
+  function snapPos(chars, x, y, exceptId) {
+    const list = chars instanceof Map ? Array.from(chars.values()) : (chars || []);
+    const occ = occupiedCells(list, exceptId);
+    return U.graphSnap(x, y, occ, U.graphGrid(Math.max(1, list.length)));
+  }
+
+  // 이름 라벨 폭 — 한글은 글자당 8.6px 남짓, 영문은 그보다 좁다
+  function textWidth(text, size) {
+    let w = 0;
+    String(text || '').split('').forEach((ch) => {
+      w += /[\u3131-\uD7A3]/.test(ch) ? size : size * 0.58;
+    });
+    return w;
+  }
 
   // 스승·제자: mentor는 a→b, student는 b→a 방향
   function isDirected(type) { return type === 'mentor' || type === 'student'; }
@@ -5862,7 +6015,7 @@ main {
     const cx = (a.x + b.x) / 2 + nx * offset;
     const cy = (a.y + b.y) / 2 + ny * offset;
     // 노드 원 바깥에서 시작해 화살촉이 노드 가장자리에 닿도록 양끝을 다듬는다
-    const r = 19;
+    const r = NODE_R + 1;
     const sdx = cx - a.x, sdy = cy - a.y, sl = Math.hypot(sdx, sdy) || 1;
     const edx = b.x - cx, edy = b.y - cy, el = Math.hypot(edx, edy) || 1;
     const sx = a.x + (sdx / sl) * r, sy = a.y + (sdy / sl) * r;
@@ -5938,31 +6091,44 @@ main {
     group.innerHTML = html;
   }
 
+  /* 인물 노드 — 원 안은 얼굴 사진(없으면 이니셜), 이름·칭호는 원 바로 아래 라벨 */
   function renderNodes(svg, chars) {
     const group = svg.querySelector('.gnodes');
     if (!group) return;
     let defs = '';
     let html = '';
+    let seq = 0;
     chars.forEach((c) => {
       const selected = state.selected.indexOf(c.id) > -1;
       const hasImg = !!c.image;
-      const r = 18;
+      const clipId = 'gclip' + (seq++) + '_' + String(c.id).replace(/[^\w-]/g, '');
       if (hasImg) {
-        defs += '<clipPath id="clip_' + U.esc(c.id) + '"><circle cx="' + c.pos.x + '" cy="' + c.pos.y + '" r="' + r + '"/></clipPath>';
+        defs += '<clipPath id="' + clipId + '"><circle cx="0" cy="0" r="' + NODE_R + '"/></clipPath>';
       }
+      const name = truncate(c.name, 7);
+      const title = truncate(String(c.title || '').trim(), 9);
+      const nameW = textWidth(name, 8.8) + 11;
+      const titleW = title ? textWidth(title, 6.4) + 9 : 0;
+      const boxW = Math.max(20, nameW, titleW);
+      const boxH = title ? 22 : 14;
+      const boxY = NODE_R + 3;
       html +=
         '<g class="gnode' + (selected ? ' is-selected' : '') + (c.pinned ? ' is-pinned' : '') + '" data-node="' + U.esc(c.id) + '" transform="translate(' + c.pos.x + ' ' + c.pos.y + ')">' +
-          (selected ? '<circle r="24" fill="none" stroke="#d4af37" stroke-width="1" stroke-dasharray="2 2" opacity=".9"/>' : '') +
-          (c.pinned ? '<circle r="23" fill="none" stroke="#d4af37" stroke-width="1.2" stroke-opacity=".9" stroke-dasharray="1.4 2.8"/>' : '') +
-          '<circle r="' + r + '" fill="#241a12" stroke="#d4af37" stroke-width="1.4" stroke-opacity=".75"/>' +
+          (selected ? '<circle r="' + (NODE_R + 5) + '" fill="none" stroke="#d4af37" stroke-width="1" stroke-dasharray="2 2" opacity=".9"/>' : '') +
+          (c.pinned ? '<circle r="' + (NODE_R + 4) + '" fill="none" stroke="#d4af37" stroke-width="1.2" stroke-opacity=".9" stroke-dasharray="1.4 2.8"/>' : '') +
+          '<circle r="' + NODE_R + '" fill="#241a12"/>' +
           (hasImg
-            ? '<image href="' + U.esc(c.image) + '" x="' + (c.pos.x - r) + '" y="' + (c.pos.y - r) + '" width="' + (r * 2) + '" height="' + (r * 2) + '" preserveAspectRatio="xMidYMid slice" clip-path="url(#clip_' + U.esc(c.id) + ')" style="pointer-events:none"/>'
-            : '<text y="4.5" text-anchor="middle" font-size="13" fill="#d8b864" font-family="Georgia, \'AppleMyungjo\', serif">' + U.esc(U.initials(c.name)) + '</text>') +
-          '<text class="gnode-lbl" y="32" text-anchor="middle" font-size="8.4" stroke-width="2.2" paint-order="stroke" stroke-linejoin="round" font-family="-apple-system, sans-serif">' + U.esc(truncate(c.name, 8)) + '</text>' +
-          (c.pinned ? '<text y="-27" text-anchor="middle" font-size="9" aria-hidden="true">📌</text>' : '') +
+            ? '<image href="' + U.esc(c.image) + '" x="' + (-NODE_R) + '" y="' + (-NODE_R) + '" width="' + (NODE_R * 2) + '" height="' + (NODE_R * 2) + '" preserveAspectRatio="xMidYMin slice" clip-path="url(#' + clipId + ')" style="pointer-events:none"/>'
+            : '<text y="4.8" text-anchor="middle" font-size="14" fill="#d8b864" font-family="Georgia, \'AppleMyungjo\', serif">' + U.esc(U.initials(c.name)) + '</text>') +
+          '<circle r="' + NODE_R + '" fill="none" stroke="#d4af37" stroke-width="1.4" stroke-opacity=".8"/>' +
+          '<rect class="gnode-plate" x="' + (-boxW / 2).toFixed(1) + '" y="' + boxY + '" width="' + boxW.toFixed(1) + '" height="' + boxH + '" rx="4.5"/>' +
+          '<text class="gnode-lbl" y="' + (boxY + 10.4) + '" text-anchor="middle" font-size="8.8" font-family="-apple-system, sans-serif">' + U.esc(name) + '</text>' +
+          (title ? '<text class="gnode-sub" y="' + (boxY + 18.4) + '" text-anchor="middle" font-size="6.4" font-family="-apple-system, sans-serif">' + U.esc(title) + '</text>' : '') +
+          (c.pinned ? '<text y="' + (-(NODE_R + 9)) + '" text-anchor="middle" font-size="9" aria-hidden="true">📌</text>' : '') +
         '</g>';
     });
-    svg.querySelector('.gdefs-clip').innerHTML = defs;
+    const defsEl = svg.querySelector('.gdefs-clip');
+    if (defsEl) defsEl.innerHTML = defs;
     group.innerHTML = html;
   }
 
@@ -5990,7 +6156,7 @@ main {
         ? '상대 인물을 한 명 더 탭하세요.'
         : '관계를 이을 인물 두 명을 차례로 탭하세요.';
     } else {
-      hint.textContent = '노드를 끌면 바둑판 칸에 맞춰지고, 두 번 탭하면 위치가 고정돼요.';
+      hint.textContent = '노드를 끌면 빈 바둑판 칸에 맞춰지고, 두 번 탭하면 위치가 고정돼요.';
     }
   }
 
@@ -6056,9 +6222,10 @@ main {
     if (!c) return;
     c.pinned = !c.pinned;
     if (c.pinned) {
-      if (!c.pos) c.pos = { x: 180, y: 260 };
-      c.pos.x = snapX(c.pos.x);
-      c.pos.y = snapY(c.pos.y);
+      if (!c.pos) c.pos = { x: 3 * CELL, y: 3 * CELL };
+      const p = snapPos(nodeMap(), c.pos.x, c.pos.y, c.id);
+      c.pos.x = p.x;
+      c.pos.y = p.y;
     }
     if (state.opts.onNodeMoved) state.opts.onNodeMoved();
     refresh();
@@ -6138,8 +6305,10 @@ main {
         if (!c) return;
         if (c.pinned) return;   // 고정된 노드는 끌어도 움직이지 않는다
         const p = toWorld(e.clientX, e.clientY);
-        c.pos.x = snapX(p.x);
-        c.pos.y = snapY(p.y);
+        // 이미 다른 노드가 차지한 칸이면 가장 가까운 빈 칸으로 스냅한다
+        const snapped = snapPos(nodeMap(), p.x, p.y, c.id);
+        c.pos.x = snapped.x;
+        c.pos.y = snapped.y;
         updateNodeTransform(c);
         renderEdges(state.svg, nodeMap());
         e.preventDefault();
@@ -6237,8 +6406,8 @@ main {
     host.innerHTML =
       '<svg id="graph-svg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">' +
         '<defs class="gdefs-clip"></defs>' +
-        '<defs><pattern id="graph-grid" width="64" height="64" patternUnits="userSpaceOnUse">' +
-          '<path d="M 64 0 L 0 0 0 64" fill="none" stroke="rgba(212,175,55,.16)" stroke-width=".5"/>' +
+        '<defs><pattern id="graph-grid" width="' + CELL + '" height="' + CELL + '" patternUnits="userSpaceOnUse">' +
+          '<path d="M ' + CELL + ' 0 L 0 0 0 ' + CELL + '" fill="none" stroke="rgba(212,175,55,.16)" stroke-width=".5"/>' +
         '</pattern></defs>' +
         '<rect class="graph-grid-bg" x="-4000" y="-4000" width="8000" height="8000" fill="url(#graph-grid)"/>' +
         '<g class="gedges"></g>' +
@@ -6278,7 +6447,7 @@ main {
 
 </script>
 <script>
-/* ---- js/factiongraph.js?v=1.4.1 ---- */
+/* ---- js/factiongraph.js?v=1.4.2 ---- */
 /* =========================================================
    ARCANUM · 세력 관계도 (faction relations, interactive SVG)
    설정집 '세력·국가' 항목을 노드로, world.factionRelations를 선으로 그린다.
@@ -6296,11 +6465,29 @@ main {
     trade: { label: '교역·협정', color: '#7fa9d8' }
   };
 
-  // 바둑판 격자 — 노드는 격자 교차점에만 놓인다
-  const CELL = 64;
-  const GRID_MIN_X = CELL, GRID_MAX_X = 320, GRID_MIN_Y = CELL, GRID_MAX_Y = 448;
-  function snapX(x) { return U.clamp(Math.round(x / CELL) * CELL, GRID_MIN_X, GRID_MAX_X); }
-  function snapY(y) { return U.clamp(Math.round(y / CELL) * CELL, GRID_MIN_Y, GRID_MAX_Y); }
+  // 바둑판 격자 — 노드는 격자 칸 하나에 하나만. 칸 간격은 U.GRAPH_CELL(96px)
+  const CELL = U.GRAPH_CELL;
+  const NODE_R = 22;
+
+  // 다른 노드가 차지한 칸 (exceptId는 빼고)
+  function occupiedCells(w, exceptId) {
+    const occ = new Set();
+    const map = (w && w.factionNodes) || {};
+    Object.keys(map).forEach((id) => {
+      if (id === exceptId) return;
+      const p = map[id];
+      if (!p || typeof p.x !== 'number' || typeof p.y !== 'number') return;
+      occ.add(U.graphKey(U.graphCellOf(p.x, p.y)));
+    });
+    return occ;
+  }
+
+  // 겹치면 가장 가까운 빈 칸으로
+  function snapPos(w, x, y, exceptId, total) {
+    const list = factions();
+    const n = Math.max(1, total || list.length);
+    return U.graphSnap(x, y, occupiedCells(w, exceptId), U.graphGrid(n));
+  }
 
   const state = {
     host: null,
@@ -6328,18 +6515,37 @@ main {
     if (!w.factionNodes) w.factionNodes = {};
     let p = w.factionNodes[l.id];
     if (!p) {
-      // 원형으로 흩어 놓는다
-      const angle = (i / Math.max(1, total)) * Math.PI * 2 - Math.PI / 2;
-      const n = Math.max(1, total);
-      // 노드가 많을수록 고리를 넓혀 이름이 겹치지 않게
-      const rx = 100 + Math.min(80, n * 6.5);
-      const ry = 150 + Math.min(120, n * 9.5);
-      // 안팎으로 번갈아 놓아 이름이 겹치지 않게
-      const k = i % 2 ? 0.7 : 1;
-      p = { x: snapX(180 + Math.cos(angle) * rx * k), y: snapY(260 + Math.sin(angle) * ry * k) };
+      const seed = U.graphSeed(i + 1);
+      const snapped = U.graphSnap(seed.x, seed.y, occupiedCells(w, l.id), U.graphGrid(Math.max(1, total)));
+      p = { x: snapped.x, y: snapped.y };
       w.factionNodes[l.id] = p;
     }
     return p;
+  }
+
+  /* 노드 좌표를 96px 격자에 다시 앉힌다 — 같은 칸에 몰린 노드는 빈 칸으로 흘리고,
+     📌 고정한 노드는 제자리를 먼저 지킨다. */
+  function layout(w, list) {
+    if (!w) return [];
+    if (!w.factionNodes || typeof w.factionNodes !== 'object') w.factionNodes = {};
+    const grid = U.graphGrid(Math.max(1, list.length));
+    const occ = new Set();
+    const rows = list.map((l, i) => ({ lore: l, idx: i, cur: w.factionNodes[l.id] || null }));
+    rows.sort((a, b) => ((b.cur && b.cur.pinned) ? 1 : 0) - ((a.cur && a.cur.pinned) ? 1 : 0));
+    rows.forEach((n) => {
+      const cur = n.cur;
+      const base = (cur && typeof cur.x === 'number' && typeof cur.y === 'number')
+        ? { x: cur.x, y: cur.y }
+        : U.graphSeed(n.idx + 1);
+      const s = U.graphSnap(base.x, base.y, occ, grid);
+      const rec = cur || {};
+      rec.x = s.x;
+      rec.y = s.y;
+      w.factionNodes[n.lore.id] = rec;
+      occ.add(s.col + '|' + s.row);
+      n.pos = rec;
+    });
+    return rows.map((n) => Object.assign({ lore: n.lore, pos: n.pos }, n.lore));
   }
 
   function nationNameOf(w, l) {
@@ -6358,7 +6564,8 @@ main {
   function nodeList() {
     const w = world();
     const list = factions();
-    return list.map((l, i) => Object.assign({ lore: l, pos: posOf(w, l, i, list.length) }, l));
+    if (!w) return [];
+    return layout(w, list);
   }
 
   function applyView() {
@@ -6387,7 +6594,7 @@ main {
     const ny = dx / len;
     const cx = (a.x + b.x) / 2 + nx * (offset || 0);
     const cy = (a.y + b.y) / 2 + ny * (offset || 0);
-    const r = 22;
+    const r = NODE_R + 1;
     const sdx = cx - a.x, sdy = cy - a.y, sl = Math.hypot(sdx, sdy) || 1;
     const edx = b.x - cx, edy = b.y - cy, el = Math.hypot(edx, edy) || 1;
     const sx = a.x + (sdx / sl) * r, sy = a.y + (sdy / sl) * r;
@@ -6535,8 +6742,9 @@ main {
     if (!cur) return;
     cur.pinned = !cur.pinned;
     if (cur.pinned) {
-      cur.x = snapX(cur.x);
-      cur.y = snapY(cur.y);
+      const s = snapPos(w, cur.x, cur.y, id);
+      cur.x = s.x;
+      cur.y = s.y;
     }
     if (state.opts.onNodeMoved) state.opts.onNodeMoved();
     render();
@@ -6601,8 +6809,10 @@ main {
         const p = toWorld(e.clientX, e.clientY);
         // 노드 중심을 잡고 끌도록 클릭 지점과의 차이를 반영
         if (!drag.grab) drag.grab = { x: cur.x - toWorld(drag.startX, drag.startY).x, y: cur.y - toWorld(drag.startX, drag.startY).y };
-        cur.x = snapX(p.x + drag.grab.x);
-        cur.y = snapY(p.y + drag.grab.y);
+        // 이미 다른 노드가 차지한 칸이면 가장 가까운 빈 칸으로 스냅한다
+        const s = snapPos(w, p.x + drag.grab.x, p.y + drag.grab.y, drag.id);
+        cur.x = s.x;
+        cur.y = s.y;
         render();
         e.preventDefault();
       } else if (drag.type === 'pan') {
@@ -6690,8 +6900,8 @@ main {
 
     host.innerHTML =
       '<svg id="faction-svg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">' +
-        '<defs><pattern id="faction-grid" width="64" height="64" patternUnits="userSpaceOnUse">' +
-          '<path d="M 64 0 L 0 0 0 64" fill="none" stroke="rgba(212,175,55,.16)" stroke-width=".5"/>' +
+        '<defs><pattern id="faction-grid" width="' + CELL + '" height="' + CELL + '" patternUnits="userSpaceOnUse">' +
+          '<path d="M ' + CELL + ' 0 L 0 0 0 ' + CELL + '" fill="none" stroke="rgba(212,175,55,.16)" stroke-width=".5"/>' +
         '</pattern></defs>' +
         '<rect class="graph-grid-bg" x="-4000" y="-4000" width="8000" height="8000" fill="url(#faction-grid)"/>' +
         '<g class="fedges"></g>' +
@@ -6726,7 +6936,7 @@ main {
 
 </script>
 <script>
-/* ---- js/worldgen.js?v=1.4.1 ---- */
+/* ---- js/worldgen.js?v=1.4.2 ---- */
 /* =========================================================
    ARCANUM · 🎲 대륙 랜덤 생성
    지구 대륙의 간략한 윤곽을 회전·반전·확대해 섞고, 해안선을 프랙탈로
@@ -7163,7 +7373,7 @@ main {
 
 </script>
 <script>
-/* ---- js/mapview.js?v=1.4.1 ---- */
+/* ---- js/mapview.js?v=1.4.2 ---- */
 /* =========================================================
    ARCANUM · 지도 + 지역 핀 + 지형 스탬프 + 스토리 여정(타임라인)
    ========================================================= */
@@ -7269,11 +7479,13 @@ main {
     pinning: false,
     story: false,
     terrain: false,
-    border: false,          // 국경 그리기 모드
-    borderPoints: [],       // 찍고 있는 꼭짓점(0~100%)
+    border: false,          // 영토(육각 타일) 칠하기 모드
+    borderPoints: [],       // 예전 다각형 국경용 꼭짓점(0~100%)
     borderColor: BORDER_COLORS[0],
+    hexBrush: null,         // 영토 붓 — { nationId, color, eraser, borderId }
     selectedBorder: null,
     terrainType: 'mountains',
+    terrainMode: 'hex',     // 'hex' 육각 칸 · 'stamp' 예전 자유 스탬프
     terrainSize: 'm',
     index: 0,
     playing: false,
@@ -7465,11 +7677,115 @@ main {
     return ((w && w.map && w.map.terrainStamps) || []).map(stampHtml).join('');
   }
 
-  /* ---------------- 국경(영토 경계) ---------------- */
+  /* ---------------- 육각(헥스) 타일 영토 ----------------
+     지도를 작은 육각형 칸으로 나누고, 국가 영토가 차지한 칸을 반투명으로 채운 뒤
+     바깥 경계 변만 굵은 국경선으로 그린다. 칸은 axial 좌표(q,r)를 "q,r" 문자열로 저장한다. */
+  const HEX_R = 11;                        // 육각형 반지름(SVG 사용자 단위)
+  const HEX_W = Math.sqrt(3) * HEX_R;      // 가로 폭
+  const HEX_H = HEX_R * 2;                 // 세로 높이
+  // 변 i의 바깥 이웃 (pointy-top 육각형)
+  const HEX_DIRS = [[1, -1], [1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1]];
+
+  function hexCenter(q, r) { return { x: VW / 2 + HEX_W * (q + r / 2), y: HEX_R + HEX_R * 1.5 * r }; }
+  function hexKey(q, r) { return q + ',' + r; }
+  function hexCell(key) { const p = String(key).split(','); return { q: Number(p[0]) || 0, r: Number(p[1]) || 0 }; }
+
+  function hexCorners(q, r) {
+    const c = hexCenter(q, r);
+    const pts = [];
+    for (let i = 0; i < 6; i++) {
+      const a = Math.PI / 180 * (60 * i - 90);
+      pts.push({ x: c.x + HEX_R * Math.cos(a), y: c.y + HEX_R * Math.sin(a) });
+    }
+    return pts;
+  }
+
+  function hexRound(q, r) {
+    const x = q, z = r, y = -x - z;
+    let rx = Math.round(x), ry = Math.round(y), rz = Math.round(z);
+    const dx = Math.abs(rx - x), dy = Math.abs(ry - y), dz = Math.abs(rz - z);
+    if (dx > dy && dx > dz) rx = -ry - rz;
+    else if (dy > dz) ry = -rx - rz;
+    else rz = -rx - ry;
+    return { q: rx, r: rz };
+  }
+
+  // 지도 좌표(SVG 사용자 단위) → 육각형 칸
+  function hexAt(px, py) {
+    const x = px - VW / 2, y = py - HEX_R;
+    return hexRound((Math.sqrt(3) / 3 * x - y / 3) / HEX_R, (2 / 3 * y) / HEX_R);
+  }
+
+  function hexPathD(q, r) {
+    return 'M' + hexCorners(q, r).map((p) => p.x.toFixed(1) + ' ' + p.y.toFixed(1)).join('L') + 'Z';
+  }
+  function hexFillPath(keys) {
+    return (keys || []).map((k) => { const c = hexCell(k); return hexPathD(c.q, c.r); }).join('');
+  }
+  // 같은 영토끼리 맞닿은 안쪽 변은 빼고 바깥 경계 변만 남긴다
+  function hexBoundaryPath(keys, set) {
+    let d = '';
+    (keys || []).forEach((k) => {
+      const c = hexCell(k);
+      const pts = hexCorners(c.q, c.r);
+      for (let i = 0; i < 6; i++) {
+        const dir = HEX_DIRS[i];
+        if (set && set.has(hexKey(c.q + dir[0], c.r + dir[1]))) continue;
+        const a = pts[i], b = pts[(i + 1) % 6];
+        d += 'M' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) + 'L' + b.x.toFixed(1) + ' ' + b.y.toFixed(1);
+      }
+    });
+    return d;
+  }
+  // 지도 전체를 덮는 육각 격자(편집할 때만 얇게) — 높이가 같으면 다시 만들지 않는다
+  let gridCache = { key: -1, d: '' };
+  function hexGridPath(h) {
+    const cacheKey = Math.round(h * 10);
+    if (gridCache.key === cacheKey) return gridCache.d;
+    const rows = Math.ceil(h / (HEX_R * 1.5)) + 1;
+    const cols = Math.ceil(VW / HEX_W) + 1;
+    let d = '';
+    for (let r = -1; r <= rows; r++) {
+      for (let q = -cols; q <= cols; q++) {
+        const c = hexCenter(q, r);
+        if (c.x < -HEX_W || c.x > VW + HEX_W || c.y < -HEX_H || c.y > h + HEX_H) continue;
+        d += hexPathD(q, r);
+      }
+    }
+    gridCache = { key: cacheKey, d: d };
+    return d;
+  }
+  function keysCenter(keys) {
+    let sx = 0, sy = 0;
+    (keys || []).forEach((k) => { const c = hexCell(k); const p = hexCenter(c.q, c.r); sx += p.x; sy += p.y; });
+    const n = (keys || []).length || 1;
+    return { x: sx / n, y: sy / n };
+  }
+
+  function tilesOf(b) { return (b && Array.isArray(b.tiles)) ? b.tiles : []; }
+  function hexTilesTotal(w) { return bordersOf(w).reduce((n, b) => n + tilesOf(b).length, 0); }
+  function hexTerritories(w) { return bordersOf(w).filter((b) => tilesOf(b).length || b.hexMode); }
+  function tileOwner(w, key) {
+    const list = bordersOf(w);
+    for (let i = 0; i < list.length; i++) if (tilesOf(list[i]).indexOf(key) > -1) return list[i];
+    return null;
+  }
+  // 그 지점을 덮는 영토의 국가 (세부 지역 핀을 꽂을 때 미리 채운다)
+  function nationAtPoint(w, px, py) {
+    const c = hexAt(px, py);
+    const owner = tileOwner(w, hexKey(c.q, c.r));
+    return owner ? (owner.nationId || '') : '';
+  }
+
+  /* 예전 데이터(꼭짓점 다각형)도 그대로 그린다 */
   function borderSvgPoints(points, h) {
     return (points || []).map((p) => ((p.x / 100) * VW).toFixed(2) + ',' + ((p.y / 100) * h).toFixed(2)).join(' ');
   }
-
+  function borderPathD(points, h) {
+    const pts = (points || []).map((p) => ({ x: (p.x / 100) * VW, y: (p.y / 100) * h }));
+    if (pts.length < 3) return '';
+    return 'M' + pts.map((p) => p.x.toFixed(2) + ' ' + p.y.toFixed(2)).join('L') + 'Z';
+  }
   function borderCenter(points) {
     const pts = points || [];
     if (!pts.length) return { x: 50, y: 50 };
@@ -7477,68 +7793,302 @@ main {
     pts.forEach((p) => { sx += p.x; sy += p.y; });
     return { x: sx / pts.length, y: sy / pts.length };
   }
-
   function borderLabel(w, b) {
     return (b && b.label) || nationTitle(w, b && b.nationId) || '국경';
   }
+  function borderBadge(w, b, cx, cy) {
+    const label = borderLabel(w, b);
+    const color = b.color || BORDER_COLORS[0];
+    const lw = Math.min(VW * 0.62, label.length * 6.6 + 10);
+    return '<g class="map-border__badge" pointer-events="none">' +
+      '<rect class="map-border__plate" x="' + (cx - lw / 2).toFixed(1) + '" y="' + (cy - 6).toFixed(1) + '" width="' + lw.toFixed(1) + '" height="12" rx="6" fill="rgba(255,250,235,.8)" stroke="' + U.esc(color) + '" stroke-opacity=".5" stroke-width=".7"/>' +
+      '<text class="map-border__label" x="' + cx.toFixed(1) + '" y="' + cy.toFixed(1) + '">' + U.esc(label) + '</text>' +
+    '</g>';
+  }
 
-  /* 국경 SVG — 반투명 영토 채우기 + 국경선 + 중앙 국가명 (지도 좌표계와 1:1) */
-  function renderBorderLayer(w) {
+  /* 국경 레이어 내용 — 육각 영토(채움·경계·국가명 배지) + 예전 다각형 + 편집 격자 */
+  function borderSvgInner(w) {
     const h = viewH();
-    const list = bordersOf(w);
-    if (!list.length && !st.border) return '';
-
-    const shapes = list.map((b) => {
-      const pts = (b && b.points) || [];
-      if (pts.length < 3) return '';
-      const c = borderCenter(pts);
+    let areas = '', lines = '', badges = '';
+    bordersOf(w).forEach((b) => {
       const color = b.color || BORDER_COLORS[0];
-      const xy = borderSvgPoints(pts, h);
-      const label = borderLabel(w, b);
-      const lw = Math.min(130, label.length * 4.8 + 8);
-      const lx = (c.x / 100) * VW;
-      const ly = (c.y / 100) * h;
-      return '<g class="map-border' + (st.selectedBorder === b.id ? ' is-selected' : '') + '" data-border="' + U.esc(b.id) + '">' +
-        '<polygon class="map-border__area" points="' + xy + '" fill="' + U.esc(color) + '" data-border="' + U.esc(b.id) + '"/>' +
-        '<polygon class="map-border__line" points="' + xy + '" stroke="' + U.esc(color) + '" data-border="' + U.esc(b.id) + '"/>' +
-        '<rect class="map-border__plate" x="' + (lx - lw / 2).toFixed(1) + '" y="' + (ly - 6).toFixed(1) + '" width="' + lw.toFixed(1) + '" height="12" rx="6" fill="rgba(255,250,235,.78)" stroke="' + U.esc(color) + '" stroke-opacity=".45" stroke-width=".6"/>' +
-        '<text class="map-border__label" x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '">' + U.esc(label) + '</text>' +
-      '</g>';
-    }).join('');
+      const sel = st.selectedBorder === b.id;
+      const keys = tilesOf(b);
+      if (keys.length) {
+        const c = keysCenter(keys);
+        areas += '<path class="map-border__area map-border__hex" d="' + hexFillPath(keys) + '" fill="' + U.esc(color) + '" data-border="' + U.esc(b.id) + '"/>';
+        lines += '<path class="map-border__line map-border__hexline' + (sel ? ' is-selected' : '') + '" d="' + hexBoundaryPath(keys, new Set(keys)) + '" stroke="' + U.esc(color) + '" data-border="' + U.esc(b.id) + '"/>';
+        badges += borderBadge(w, b, c.x, c.y);
+      }
+      const pts = (b && b.points) || [];
+      if (pts.length >= 3) {
+        const center = borderCenter(pts);
+        const d = borderPathD(pts, h);
+        areas += '<path class="map-border__area" d="' + d + '" fill="' + U.esc(color) + '" data-border="' + U.esc(b.id) + '"/>';
+        lines += '<path class="map-border__line' + (sel ? ' is-selected' : '') + '" d="' + d + '" stroke="' + U.esc(color) + '" data-border="' + U.esc(b.id) + '"/>';
+        badges += borderBadge(w, b, (center.x / 100) * VW, (center.y / 100) * h);
+      }
+    });
+    const grid = (st.border || (st.terrain && st.terrainMode !== 'stamp'))
+      ? '<path class="map-border__grid" d="' + hexGridPath(h) + '"/>' : '';
+    return '<g class="map-border__gridlayer">' + grid + '</g>' + areas + lines + badges;
+  }
 
-    let draft = '';
-    if (st.border && st.borderPoints.length) {
-      draft = '<polyline class="map-border__draft" points="' + borderSvgPoints(st.borderPoints, h) + '"/>' +
-        st.borderPoints.map((p) => '<circle class="map-border__dot" cx="' + ((p.x / 100) * VW).toFixed(2) + '" cy="' + ((p.y / 100) * h).toFixed(2) + '" r="3.2"/>').join('');
-    }
+  function renderBorderLayer(w) {
+    const showGrid = st.border || (st.terrain && st.terrainMode !== 'stamp');
+    if (!bordersOf(w).length && !showGrid) return '';
+    return '<svg class="map-border-svg" id="map-border-svg" viewBox="0 0 ' + VW + ' ' + viewH() + '" preserveAspectRatio="none" aria-label="국경선">' + borderSvgInner(w) + '</svg>';
+  }
 
-    return '<svg class="map-border-svg" viewBox="0 0 ' + VW + ' ' + h + '" preserveAspectRatio="none" aria-label="국경선">' + shapes + draft + '</svg>';
+  function refreshBorderSvg() {
+    const svg = st.host && st.host.querySelector('#map-border-svg');
+    if (!svg) { render(); return; }
+    svg.innerHTML = borderSvgInner(world());
+  }
+
+  /* ---------------- 영토 칠하기 패널 ---------------- */
+  function newHexBrush() { return { nationId: '', color: BORDER_COLORS[0], eraser: false, borderId: null }; }
+  function hexBrush() { return st.hexBrush || (st.hexBrush = newHexBrush()); }
+
+  function hexPanelInner(w) {
+    const list = hexTerritories(w);
+    const total = hexTilesTotal(w);
+    const brush = hexBrush();
+    const target = brush.borderId ? (list.find((b) => b.id === brush.borderId) || null) : null;
+    const nations = ((w && w.lore) || []).filter((l) => l.category === 'nation');
+    const territoryRow = '<div class="chip-row">' +
+      '<button type="button" class="chip chip--small' + (!target ? ' chip--active' : '') + '" data-hex-act="new">＋ 새 영토</button>' +
+      list.map((b) => '<button type="button" class="chip chip--small' + (target && target.id === b.id ? ' chip--active' : '') + '" data-hex-territory="' + U.esc(b.id) + '">' +
+        '<i class="chip__dot" style="background:' + U.esc(b.color || BORDER_COLORS[0]) + '"></i>' + U.esc(borderLabel(w, b)) +
+        '<span class="chip__num">' + tilesOf(b).length + '</span></button>').join('') +
+    '</div>';
+    const nationRow = target ? '' : ('<div class="chip-row">' +
+      '<button type="button" class="chip chip--small' + (!brush.nationId ? ' chip--active' : '') + '" data-hex-nation="">국가 없음</button>' +
+      nations.map((n) => '<button type="button" class="chip chip--small' + (brush.nationId === n.id ? ' chip--active' : '') + '" data-hex-nation="' + U.esc(n.id) + '">' + U.esc(n.title) + '</button>').join('') +
+    '</div>');
+    return '<div class="border-panel__head">' +
+        '<span class="border-panel__title">🏳️ 영토 칠하기</span>' +
+        '<span class="border-panel__count" data-hex-count>칠한 칸 ' + total + '</span>' +
+      '</div>' +
+      '<p class="field-hint">' + (target
+        ? '<b>' + U.esc(borderLabel(w, target)) + '</b> 영토를 고치는 중 — 칸을 탭하거나 문질러 더하고, 지우개로 뺍니다.'
+        : '국가와 색을 고른 뒤 육각형 칸을 탭하거나 문질러 칠하세요. 같은 나라 칸을 다시 탭하면 지워져요.') + '</p>' +
+      territoryRow + nationRow +
+      '<div class="border-colors">' + BORDER_COLORS.map((c) =>
+        '<button type="button" class="border-color' + (String(c).toLowerCase() === String(brush.color).toLowerCase() ? ' is-on' : '') +
+          '" data-hex-color="' + c + '" style="--bc:' + c + '" aria-label="영토 색 ' + c + '"></button>').join('') + '</div>' +
+      '<div class="border-panel__row">' +
+        '<button type="button" class="btn btn--sm' + (brush.eraser ? ' btn--gold' : ' btn--ghost') + '" data-hex-act="eraser">🧽 지우개</button>' +
+        (target ? '<button type="button" class="btn btn--sm" data-hex-act="edit">🛠 수정</button>' : '') +
+      '</div>' +
+      '<div class="border-panel__row">' +
+        '<button type="button" class="btn btn--sm btn--gold" data-hex-act="save">✅ 저장</button>' +
+        '<button type="button" class="btn btn--sm" data-hex-act="done">완료</button>' +
+      '</div>';
   }
 
   function renderBorderPanel(w) {
-    const n = st.borderPoints.length;
-    return '<div class="border-panel">' +
-      '<div class="border-panel__head">' +
-        '<span class="border-panel__title">🏳️ 국경 그리기</span>' +
-        '<span class="border-panel__count">꼭짓점 ' + n + '개</span>' +
-      '</div>' +
-      '<p class="field-hint">지도를 탭해 국경선 꼭짓점을 차례로 찍으세요. 3개 이상 찍고 [완료]를 누르면 국가와 색을 고를 수 있어요.</p>' +
-      '<div class="border-panel__row">' +
-        '<button type="button" class="btn btn--sm" data-border-act="undo"' + (n ? '' : ' disabled') + '>되돌리기</button>' +
-        '<button type="button" class="btn btn--sm btn--ghost" data-border-act="cancel">취소</button>' +
-        '<button type="button" class="btn btn--sm btn--gold" data-border-act="done"' + (n >= 3 ? '' : ' disabled') + '>완료</button>' +
-      '</div>' +
-    '</div>';
+    return '<div class="border-panel border-panel--hex"><div id="hex-panel-inner">' + hexPanelInner(w) + '</div></div>';
+  }
+
+  function refreshBorderPanel() {
+    const inner = st.host && st.host.querySelector('#hex-panel-inner');
+    if (inner) inner.innerHTML = hexPanelInner(world());
+    refreshBorderSvg();
+  }
+  function refreshHexCount() {
+    const el = st.host && st.host.querySelector('[data-hex-count]');
+    if (el) el.textContent = '칠한 칸 ' + hexTilesTotal(world());
+  }
+
+  function setHexBrushNation(w, nationId) {
+    const brush = hexBrush();
+    const id = nationId || '';
+    const existing = bordersOf(w).find((b) => String(b.nationId || '') === id && (tilesOf(b).length || b.hexMode));
+    brush.nationId = id;
+    brush.borderId = existing ? existing.id : null;
+    brush.eraser = false;
+    if (existing) {
+      brush.color = existing.color || brush.color;
+      st.selectedBorder = existing.id;
+    } else {
+      brush.color = BORDER_COLORS[(hexTerritories(w).length + 1) % BORDER_COLORS.length];
+    }
+  }
+
+  function setHexBrushTerritory(w, id) {
+    const b = bordersOf(w).find((x) => x.id === id);
+    if (!b) return;
+    const brush = hexBrush();
+    brush.borderId = b.id;
+    brush.nationId = b.nationId || '';
+    brush.color = b.color || BORDER_COLORS[0];
+    brush.eraser = false;
+    st.selectedBorder = b.id;
+  }
+
+  function setHexBrushColor(w, color) {
+    const brush = hexBrush();
+    brush.color = color;
+    const target = brush.borderId ? bordersOf(w).find((b) => b.id === brush.borderId) : null;
+    if (target) target.color = color;
+  }
+
+  function dropEmptyTerritory(w, b) {
+    if (!b) return;
+    if (tilesOf(b).length || (b.points || []).length >= 3) return;
+    w.mapBorders = bordersOf(w).filter((x) => x !== b);
+    if (st.hexBrush && st.hexBrush.borderId === b.id) st.hexBrush.borderId = null;
+    if (st.selectedBorder === b.id) st.selectedBorder = null;
+  }
+
+  /* 한 칸 칠하기 — 새로 칠했거나 지운 칸의 키를 돌려준다 */
+  function paintHexAt(px, py) {
+    const w = world();
+    if (!w || isLocked()) return '';
+    const cell = hexAt(px, py);
+    const key = hexKey(cell.q, cell.r);
+    const brush = hexBrush();
+    const owner = tileOwner(w, key);
+    const target = brush.borderId ? bordersOf(w).find((b) => b.id === brush.borderId) : null;
+    const sameNation = (b) => String(b.nationId || '') === String(brush.nationId || '');
+
+    if (brush.eraser) {
+      if (!owner) return key;
+      owner.tiles = tilesOf(owner).filter((k) => k !== key);
+      dropEmptyTerritory(w, owner);
+      return key;
+    }
+    if (owner) {
+      const mine = target ? owner === target : sameNation(owner);
+      if (mine) {
+        // 같은 영토(같은 나라) 칸을 다시 탭하면 해제
+        owner.tiles = tilesOf(owner).filter((k) => k !== key);
+        dropEmptyTerritory(w, owner);
+        return key;
+      }
+      // 다른 영토의 칸을 칠하면 그 영토에서 빼고 내 영토로 넘긴다
+      owner.tiles = tilesOf(owner).filter((k) => k !== key);
+      dropEmptyTerritory(w, owner);
+    }
+    let dest = target;
+    if (!dest) dest = bordersOf(w).find((b) => sameNation(b) && (tilesOf(b).length || b.hexMode));
+    if (!dest) {
+      dest = {
+        id: U.uid('bd'),
+        nationId: brush.nationId || null,
+        label: brush.nationId ? nationTitle(w, brush.nationId) : '영토',
+        color: brush.color || BORDER_COLORS[0],
+        points: [],
+        tiles: [],
+        hexMode: true
+      };
+      if (!Array.isArray(w.mapBorders)) w.mapBorders = [];
+      w.mapBorders.push(dest);
+    }
+    dest.hexMode = true;
+    dest.nationId = brush.nationId || null;
+    if (!Array.isArray(dest.tiles)) dest.tiles = [];
+    if (dest.tiles.indexOf(key) === -1) dest.tiles.push(key);
+    if (!dest.nationId) dest.color = brush.color || BORDER_COLORS[0];
+    st.selectedBorder = dest.id;
+    return key;
+  }
+
+  /* ---------------- 육각 지형(색감 + 아이콘) ---------------- */
+  const HEX_TERRAIN = {
+    mountains: { label: '산맥', color: '#8a8378', icon: '⛰️' },
+    forest: { label: '숲', color: '#4d7a52', icon: '🌲' },
+    lake: { label: '호수·바다', color: '#3f7f9c', icon: '🌊' },
+    swamp: { label: '늪', color: '#5a6d52', icon: '🌿' },
+    desert: { label: '사막', color: '#c2a468', icon: '🏜️' },
+    snow: { label: '설원', color: '#c8d6de', icon: '❄️' },
+    volcano: { label: '화산', color: '#9a5540', icon: '🌋' },
+    ruins: { label: '성채·유적', color: '#8b7a62', icon: '🏰' }
+  };
+  const HEX_TERRAIN_ORDER = ['mountains', 'forest', 'lake', 'swamp', 'desert', 'snow', 'volcano', 'ruins'];
+
+  function hexTerrainsOf(w) {
+    const m = w && w.mapHexTerrains;
+    return (m && typeof m === 'object' && !Array.isArray(m)) ? m : {};
+  }
+  function ensureHexTerrains(w) {
+    if (!w.mapHexTerrains || typeof w.mapHexTerrains !== 'object' || Array.isArray(w.mapHexTerrains)) w.mapHexTerrains = {};
+    return w.mapHexTerrains;
+  }
+  function hexTerrainTotal(w) { return Object.keys(hexTerrainsOf(w)).length; }
+
+  function paintHexTerrainAt(px, py) {
+    const w = world();
+    if (!w || isLocked()) return '';
+    const c = hexAt(px, py);
+    const key = hexKey(c.q, c.r);
+    const map2 = ensureHexTerrains(w);
+    if (st.terrainType === 'eraser') {
+      if (!(key in map2)) return key;
+      delete map2[key];
+      return key;
+    }
+    if (!HEX_TERRAIN[st.terrainType]) return key;
+    if (map2[key] === st.terrainType) { delete map2[key]; return key; }
+    map2[key] = st.terrainType;
+    return key;
+  }
+
+  function hexTerrainSvgInner(w) {
+    const map2 = hexTerrainsOf(w);
+    const keys = Object.keys(map2);
+    if (!keys.length) return '';
+    const by = {};
+    keys.forEach((k) => {
+      const t = map2[k];
+      if (!HEX_TERRAIN[t]) return;
+      (by[t] = by[t] || []).push(k);
+    });
+    let out = '';
+    Object.keys(by).forEach((t) => {
+      const meta = HEX_TERRAIN[t];
+      out += '<path class="map-terrain-hex" d="' + hexFillPath(by[t]) + '" fill="' + meta.color + '"/>';
+      out += by[t].map((k) => {
+        const c = hexCell(k);
+        const p = hexCenter(c.q, c.r);
+        return '<text class="map-terrain-hex__ico" x="' + p.x.toFixed(1) + '" y="' + (p.y + 3.4).toFixed(1) + '" text-anchor="middle" font-size="9.5" pointer-events="none">' + meta.icon + '</text>';
+      }).join('');
+    });
+    return out;
+  }
+
+  function renderTerrainHexLayer(w) {
+    const inner = hexTerrainSvgInner(w);
+    if (!inner && !(st.terrain && st.terrainMode !== 'stamp')) return '';
+    return '<svg class="map-terrain-hex-svg" id="map-terrain-hex-svg" viewBox="0 0 ' + VW + ' ' + viewH() + '" preserveAspectRatio="none" aria-label="지형">' + inner + '</svg>';
+  }
+  function refreshTerrainHexSvg() {
+    const svg = st.host && st.host.querySelector('#map-terrain-hex-svg');
+    if (svg) svg.innerHTML = hexTerrainSvgInner(world());
   }
 
   function setBorder(on) {
     if (on && lockBlocked()) return;
+    const wasOn = st.border;
     st.border = !!on;
     st.borderPoints = [];
-    if (st.border) { st.pinning = false; st.terrain = false; st.story = false; st.playing = false; clearInterval(st.timer); }
+    if (st.border) {
+      st.pinning = false; st.terrain = false; st.story = false; st.playing = false;
+      st.charPin = false; st.movingCpin = null; clearInterval(st.timer);
+      const brush = hexBrush();
+      brush.eraser = false;
+      const target = brush.borderId ? bordersOf(world()).find((b) => b.id === brush.borderId) : null;
+      if (!target) { brush.borderId = null; brush.nationId = ''; }
+      st.selectedBorder = target ? target.id : null;
+    } else if (wasOn) {
+      saveMap();
+      st.selectedBorder = null;
+      if (st.hexBrush) st.hexBrush.borderId = null;
+    }
     render();
     if (global.App && global.App.syncFab) global.App.syncFab();
-    if (st.border) U.toast('지도를 탭해 국경선 꼭짓점을 찍으세요', { icon: 'i-pin', duration: 2200 });
+    if (st.border) U.toast('육각형 칸을 탭하거나 문질러 영토를 칠하세요', { icon: 'i-pin', duration: 2400 });
   }
 
   function addBorderPoint(x, y) {
@@ -7547,30 +8097,33 @@ main {
     U.haptic(8);
   }
 
-  /* 국경 저장/수정 시트 — 국가(설정집)와 색, 표시 이름을 고른다 */
+  /* 국경 수정 시트 — 국가·색·이름 변경, 칸/꼭짓점 확인, 삭제 */
   function openBorderEditor(borderId, draftPoints) {
     const w = world();
     if (!w) return;
     if (lockBlocked()) return;
     const existing = borderId ? bordersOf(w).find((b) => b.id === borderId) : null;
-    const points = (existing ? existing.points : draftPoints || []).map((p) => ({ x: p.x, y: p.y }));
-    if (points.length < 3) { U.toast('꼭짓점을 3개 이상 찍어 주세요', { icon: 'i-x' }); return; }
+    const points = (existing ? (existing.points || []) : (draftPoints || [])).map((p) => ({ x: p.x, y: p.y }));
+    const tileKeys = existing ? tilesOf(existing) : [];
+    if (!tileKeys.length && points.length < 3) { U.toast('칠한 칸이나 꼭짓점이 필요해요', { icon: 'i-x' }); return; }
 
     const nations = (w.lore || []).filter((l) => l.category === 'nation');
     let nationId = existing ? (existing.nationId || '') : (nations[0] ? nations[0].id : '');
-    let color = (existing && existing.color) || st.borderColor || BORDER_COLORS[0];
-    st.borderColor = color;
+    let color = (existing && existing.color) || hexBrush().color || BORDER_COLORS[0];
+    hexBrush().color = color;
 
     const body = document.createElement('div');
     body.innerHTML =
       '<div class="field"><span class="field__label">지배 국가</span><div id="border-nation"></div>' +
         '<span class="field-hint">' + (nations.length
-          ? '설정집의 국가를 고르면 지도 중앙에 국가명이 함께 표시돼요.'
+          ? '설정집의 국가를 고르면 영토 중앙에 국가명 배지가 표시돼요.'
           : '설정집에 아직 국가가 없어요. 이름만 남기고 나중에 국가를 연결할 수 있어요.') + '</span></div>' +
-      '<div class="field"><span class="field__label">국경 색</span><div class="border-colors" id="border-colors"></div></div>' +
+      '<div class="field"><span class="field__label">영토 색</span><div class="border-colors" id="border-colors"></div></div>' +
       '<div class="field"><span class="field__label">표시 이름</span>' +
         '<input class="input" id="border-label" placeholder="비우면 국가명이 표시돼요" value="' + U.esc(existing ? (existing.label || '') : '') + '"></div>' +
-      '<p class="field-hint">꼭짓점 ' + points.length + '개 · 반투명 영토와 국경선으로 그려져요.</p>' +
+      '<p class="field-hint">' + (tileKeys.length
+        ? '칠한 칸 ' + tileKeys.length + '개 · 반투명 영토와 바깥 국경선으로 그려져요.'
+        : '꼭짓점 ' + points.length + '개 · 반투명 영토와 국경선으로 그려져요.') + '</p>' +
       (existing ? '<button type="button" class="btn btn--danger btn--block mt-14" id="border-delete"><svg><use href="#i-trash"/></svg>국경 삭제</button>' : '');
 
     const picker = U.chipPicker(
@@ -7600,78 +8153,113 @@ main {
       const nation = nationId ? (w.lore || []).find((l) => l.id === nationId) : null;
       const data = {
         nationId: nation ? nation.id : null,
-        label: typed || (nation ? nation.title : '국경'),
+        label: typed || (nation ? nation.title : '영토'),
         color: color,
         points: points
       };
-      st.borderColor = color;
+      if (tileKeys.length) { data.tiles = tileKeys; data.hexMode = true; }
+      hexBrush().color = color;
+      let targetId;
       if (existing) {
         Object.assign(existing, data);
+        targetId = existing.id;
         st.selectedBorder = existing.id;
       } else {
         if (!Array.isArray(w.mapBorders)) w.mapBorders = [];
         const made = Object.assign({ id: U.uid('bd') }, data);
         w.mapBorders.push(made);
+        targetId = made.id;
         st.selectedBorder = made.id;
       }
-      st.border = false;
-      st.borderPoints = [];
+      const brush = hexBrush();
+      if (brush.borderId === targetId) {
+        brush.nationId = data.nationId || '';
+        brush.color = color;
+      }
       saveMap();
-      render();
       sheet.close();
-      U.toast(existing ? '국경을 수정했어요' : '국경을 그렸어요', { icon: 'i-pin' });
+      render();
+      U.toast(existing ? '영토를 수정했어요' : '영토를 그렸어요', { icon: 'i-pin' });
     }
 
     const sheet = U.openSheet({
-      eyebrow: 'BORDER',
-      title: existing ? '국경 수정' : '국경 저장',
+      eyebrow: 'TERRITORY',
+      title: existing ? '영토 수정' : '영토 저장',
       sub: '국가와 색을 고르면 지도에 영토가 칠해져요.',
       body: body,
       foot: [
         { label: '취소', className: 'btn--ghost', onClick: () => 'close' },
-        { label: existing ? '저장' : '국경 저장', className: 'btn--gold', icon: 'i-check', onClick: () => save() }
+        { label: existing ? '저장' : '영토 저장', className: 'btn--gold', icon: 'i-check', onClick: () => save() }
       ]
     });
 
     const del = body.querySelector('#border-delete');
     if (del) del.addEventListener('click', async () => {
       const ok = await U.confirmSheet({
-        title: '국경을 삭제할까요?',
-        message: borderLabel(w, existing) + ' 선이 지도에서 사라집니다. 지역 핀과 지형은 그대로 남아요.',
+        title: '이 영토를 삭제할까요?',
+        message: borderLabel(w, existing) + ' 영토가 지도에서 사라집니다. 지역 핀과 지형은 그대로 남아요.',
         confirmText: '삭제',
         danger: true
       });
       if (!ok) return;
       w.mapBorders = bordersOf(w).filter((b) => b.id !== existing.id);
       if (st.selectedBorder === existing.id) st.selectedBorder = null;
+      if (st.hexBrush && st.hexBrush.borderId === existing.id) st.hexBrush.borderId = null;
       saveMap();
       sheet.close();
       render();
-      U.toast('국경을 삭제했어요', { icon: 'i-trash' });
+      U.toast('영토를 삭제했어요', { icon: 'i-trash' });
     });
   }
 
   function renderTerrainPanel(w) {
-    const count = ((w && w.map && w.map.terrainStamps) || []).length;
-    return '<div class="terrain-panel">' +
-      '<div class="terrain-panel__head">' +
-        '<span class="terrain-panel__title">⛰️ 지형 꾸미기</span>' +
-        '<span class="terrain-panel__count" data-terrain-count>지형 ' + count + '</span>' +
+    const stampCount = ((w && w.map && w.map.terrainStamps) || []).length;
+    const hexCount = hexTerrainTotal(w);
+    const stampMode = st.terrainMode === 'stamp';
+    const head = '<div class="terrain-panel__head">' +
+        '<span class="terrain-panel__title">⛰️ 지형 입히기</span>' +
+        '<span class="terrain-panel__count" data-terrain-count>육각 ' + hexCount + '칸 · 스탬프 ' + stampCount + '</span>' +
       '</div>' +
-      '<div class="terrain-chips">' + TERRAIN_ORDER.map((k) =>
-        '<button type="button" class="tchip' + (st.terrainType === k ? ' is-on' : '') + '" data-terrain-type="' + k + '">' +
-          '<span class="tchip__icon">' + glyph(k, 20) + '</span>' + U.esc(TERRAIN[k].label) +
-        '</button>').join('') + '</div>' +
-      '<div class="terrain-panel__row">' +
-        '<span class="terrain-panel__label">크기</span>' +
-        '<div class="terrain-sizes">' +
-          [['s', '소'], ['m', '중'], ['l', '대']].map((it) =>
-            '<button type="button" class="chip chip--small' + (st.terrainSize === it[0] ? ' chip--active' : '') + '" data-terrain-size="' + it[0] + '">' + it[1] + '</button>').join('') +
+      '<div class="terrain-panel__row terrain-panel__modes">' +
+        '<button type="button" class="chip chip--small' + (stampMode ? '' : ' chip--active') + '" data-terrain-mode="hex">🧱 육각 칸</button>' +
+        '<button type="button" class="chip chip--small' + (stampMode ? ' chip--active' : '') + '" data-terrain-mode="stamp">📍 스탬프</button>' +
+      '</div>';
+
+    if (stampMode) {
+      return '<div class="terrain-panel">' + head +
+        '<div class="terrain-chips">' + TERRAIN_ORDER.map((k) =>
+          '<button type="button" class="tchip' + (st.terrainType === k ? ' is-on' : '') + '" data-terrain-type="' + k + '">' +
+            '<span class="tchip__icon">' + glyph(k, 20) + '</span>' + U.esc(TERRAIN[k].label) +
+          '</button>').join('') + '</div>' +
+        '<div class="terrain-panel__row">' +
+          '<span class="terrain-panel__label">크기</span>' +
+          '<div class="terrain-sizes">' +
+            [['s', '소'], ['m', '중'], ['l', '대']].map((it) =>
+              '<button type="button" class="chip chip--small' + (st.terrainSize === it[0] ? ' chip--active' : '') + '" data-terrain-size="' + it[0] + '">' + it[1] + '</button>').join('') +
+          '</div>' +
+          '<button type="button" class="terrain-clear" data-terrain-act="clear">전체 지우기</button>' +
+          '<button type="button" class="terrain-done" data-terrain-act="done">완료</button>' +
         '</div>' +
-        '<button type="button" class="terrain-clear" data-terrain-act="clear">전체 지우기</button>' +
+        '<p class="field-hint">지도를 터치해 지형 스탬프를 놓고, 놓인 지형을 다시 탭하면 지워져요.</p>' +
+      '</div>';
+    }
+
+    const chips = HEX_TERRAIN_ORDER.map((k) => {
+      const meta = HEX_TERRAIN[k];
+      return '<button type="button" class="tchip' + (st.terrainType === k ? ' is-on' : '') + '" data-hex-terrain-type="' + k + '">' +
+        '<span class="tchip__icon">' + meta.icon + '</span>' + U.esc(meta.label) + '</button>';
+    }).join('') +
+      '<button type="button" class="tchip' + (st.terrainType === 'eraser' ? ' is-on' : '') + '" data-hex-terrain-type="eraser">' +
+        '<span class="tchip__icon">🧽</span>지우개</button>';
+
+    return '<div class="terrain-panel">' + head +
+      '<div class="terrain-chips">' + chips + '</div>' +
+      '<p class="field-hint">육각형 칸을 탭하거나 문질러 지형을 입히세요. 같은 지형 칸을 다시 탭하면 지워지고, 지우개로도 지울 수 있어요.</p>' +
+      '<div class="terrain-panel__row">' +
+        '<button type="button" class="terrain-clear" data-terrain-act="clearhex">전체 지우기</button>' +
+        '<button type="button" class="terrain-clear" data-terrain-act="save">✅ 저장</button>' +
         '<button type="button" class="terrain-done" data-terrain-act="done">완료</button>' +
       '</div>' +
-      '<p class="field-hint">지도를 터치해 지형을 놓고, 놓인 지형을 다시 탭하면 지워져요. 핀은 핀 모드에서 꽂아요.</p>' +
     '</div>';
   }
 
@@ -7683,7 +8271,7 @@ main {
   function refreshTerrainCount() {
     const w = world();
     const el = st.host && st.host.querySelector('[data-terrain-count]');
-    if (el) el.textContent = '지형 ' + (((w && w.map && w.map.terrainStamps) || []).length);
+    if (el) el.textContent = '육각 ' + hexTerrainTotal(w) + '칸 · 스탬프 ' + (((w && w.map && w.map.terrainStamps) || []).length);
   }
 
   function addStamp(x, y) {
@@ -7740,10 +8328,39 @@ main {
     U.toast('지형을 모두 지웠어요', { icon: 'i-trash' });
   }
 
+  async function clearHexTerrains() {
+    if (lockBlocked()) return;
+    const w = world();
+    if (!w) return;
+    const n = hexTerrainTotal(w);
+    if (!n) { U.toast('지울 지형이 없어요', { icon: 'i-x' }); return; }
+    const ok = await U.confirmSheet({
+      title: '육각 지형을 모두 지울까요?',
+      message: '지도에 입힌 육각 지형 ' + n + '칸이 사라집니다. 영토·지역 핀은 그대로 남아요.',
+      confirmText: '전체 지우기',
+      danger: true
+    });
+    if (!ok) return;
+    w.mapHexTerrains = {};
+    refreshTerrainHexSvg();
+    refreshTerrainCount();
+    saveTerrain();
+    U.toast('육각 지형을 모두 지웠어요', { icon: 'i-trash' });
+  }
+
   function setTerrain(on) {
     if (on && lockBlocked()) return;
+    const wasOn = st.terrain;
     st.terrain = !!on;
-    if (st.terrain) { st.pinning = false; st.story = false; st.border = false; st.borderPoints = []; st.playing = false; clearInterval(st.timer); }
+    if (st.terrain) {
+      st.pinning = false; st.story = false; st.border = false; st.borderPoints = [];
+      st.playing = false; st.charPin = false; st.movingCpin = null; clearInterval(st.timer);
+      if (st.terrainMode !== 'stamp') st.terrainMode = 'hex';
+      if (st.terrainMode !== 'stamp' && !HEX_TERRAIN[st.terrainType] && st.terrainType !== 'eraser') st.terrainType = 'mountains';
+      if (!st.hexTerrain) st.hexTerrain = { type: 'mountains' };
+    } else if (wasOn) {
+      saveTerrain();
+    }
     render();
     if (global.App && global.App.syncFab) global.App.syncFab();
   }
@@ -7816,6 +8433,31 @@ main {
       '<span class="pin__label">' + U.esc(m.name) + '</span>' +
       (flags ? '<span class="pin__faction">' + U.esc(flags) + '</span>' : '') +
     '</button>';
+  }
+
+  // 그 자리에 세부 지역 핀이 있으면 상세로, 없으면 새 지역 등록 시트로
+  function markersNear(w, x, y) {
+    const list = (w && w.map && w.map.markers) || [];
+    let best = null, bestD = 5.5;
+    list.forEach((m) => {
+      const d = Math.hypot((Number(m.x) || 0) - x, (Number(m.y) || 0) - y);
+      if (d < bestD) { bestD = d; best = m; }
+    });
+    return best;
+  }
+
+  function openRegionAt(w, x, y) {
+    const hit = markersNear(w, x, y);
+    if (hit) {
+      if (st.opts.onPin) st.opts.onPin(hit.id);
+      return true;
+    }
+    if (isLocked() || !st.opts.onCreatePin) return false;
+    // 빈 지도에서 실수로 폼이 열리지 않도록 — 영토·지형을 칠해 둔 지도에서만
+    if (hexTilesTotal(w) <= 0 && hexTerrainTotal(w) <= 0) return false;
+    const nat = nationAtPoint(w, (x / 100) * VW, (y / 100) * viewH());
+    st.opts.onCreatePin(Math.round(x * 10) / 10, Math.round(y * 10) / 10, { nationId: nat });
+    return true;
   }
 
   /* ---------------- 인물 핀 (지도 위 인물 배치) ---------------- */
@@ -7994,7 +8636,7 @@ main {
       (locked ? '' :
         '<button type="button" class="gbtn" data-map="upload"><svg><use href="#i-image"/></svg>지도 이미지</button>' +
         '<button type="button" class="gbtn' + (st.pinning ? ' is-on' : '') + '" data-map="pin"><svg><use href="#i-pin"/></svg>핀 꽂기</button>' +
-        '<button type="button" class="gbtn' + (st.terrain ? ' is-on' : '') + '" data-map="terrain"><span class="gbtn__emoji">⛰️</span>지형 꾸미기</button>' +
+        '<button type="button" class="gbtn' + (st.terrain ? ' is-on' : '') + '" data-map="terrain"><span class="gbtn__emoji">⛰️</span>지형 입히기</button>' +
         '<button type="button" class="gbtn' + (st.border ? ' is-on' : '') + '" data-map="border"><span class="gbtn__emoji">🏳️</span>국경 그리기</button>' +
         '<button type="button" class="gbtn' + (st.charPin ? ' is-on' : '') + '" data-map="charpin"><span class="gbtn__emoji">👤</span>인물 배치</button>') +
       '<button type="button" class="gbtn' + (st.story ? ' is-on' : '') + '" data-map="story"><svg><use href="#i-route"/></svg>스토리 여정</button>' +
@@ -8025,6 +8667,7 @@ main {
         '<div class="map-stage" id="map-stage">' +
           '<img class="map-img" src="' + U.esc(src) + '" alt="세계 지도" draggable="false">' +
           '<div class="terrain-layer">' + terrainLayerInner(w) + '</div>' +
+          renderTerrainHexLayer(w) +
           renderBorderLayer(w) +
           (st.story ? renderStoryOverlay() : '') +
           '<div class="pin-layer">' + markers.map((m) => pinHtml(m, w)).join('') + '</div>' +
@@ -8038,9 +8681,9 @@ main {
         ((!markers.length && !st.pinning && !st.terrain && !st.border && !st.charPin) || st.pinning || st.terrain || st.border || st.charPin
           ? '<div class="map-empty-hint">' +
               (st.charPin ? '지도를 탭해 인물을 놓을 자리를 고르세요'
-                : (st.border ? '지도를 탭해 국경선 꼭짓점을 찍으세요'
-                : (st.terrain ? '지형 팔레트에서 지형을 고르고 지도를 터치하세요'
-                : (st.pinning ? '지도를 터치해 지역 핀을 꽂으세요' : '핀 꽂기를 눌러 지역을 등록할 수 있어요')))) +
+                : (st.border ? '육각형 칸을 탭하거나 문질러 국가 영토를 칠하세요'
+                : (st.terrain ? (st.terrainMode === 'stamp' ? '지형 스탬프를 고르고 지도를 터치하세요' : '육각형 칸을 탭하거나 문질러 지형을 입히세요')
+                : (st.pinning ? '지도를 터치해 지역 핀을 꽂으세요' : '지도를 탭해 지역을 열거나 새로 등록할 수 있어요')))) +
             '</div>'
           : '') +
       '</div>';
@@ -8256,47 +8899,103 @@ main {
       });
     });
 
-    // 지형 팔레트
-    host.querySelectorAll('[data-terrain-type]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        st.terrainType = btn.getAttribute('data-terrain-type');
-        host.querySelectorAll('[data-terrain-type]').forEach((b) => b.classList.toggle('is-on', b === btn));
+    // 지형 팔레트 — 육각 칸 / 예전 자유 스탬프
+    const terrainPanel = host.querySelector('.terrain-panel');
+    if (terrainPanel) terrainPanel.addEventListener('click', (e) => {
+      const tm = e.target.closest('[data-terrain-mode]');
+      if (tm) {
+        st.terrainMode = tm.getAttribute('data-terrain-mode') === 'stamp' ? 'stamp' : 'hex';
+        if (st.terrainMode === 'stamp' && !TERRAIN[st.terrainType]) st.terrainType = 'mountains';
+        if (st.terrainMode !== 'stamp' && st.terrainType !== 'eraser' && !HEX_TERRAIN[st.terrainType]) st.terrainType = 'mountains';
+        render();
         U.haptic(6);
-      });
-    });
-    host.querySelectorAll('[data-terrain-size]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        st.terrainSize = btn.getAttribute('data-terrain-size');
-        host.querySelectorAll('[data-terrain-size]').forEach((b) => b.classList.toggle('chip--active', b === btn));
+        return;
+      }
+      const ht = e.target.closest('[data-hex-terrain-type]');
+      if (ht) {
+        st.terrainType = ht.getAttribute('data-hex-terrain-type');
+        host.querySelectorAll('[data-hex-terrain-type]').forEach((b) => b.classList.toggle('is-on', b === ht));
         U.haptic(6);
-      });
-    });
-    host.querySelectorAll('[data-terrain-act]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const act = btn.getAttribute('data-terrain-act');
-        if (act === 'clear') clearStamps();
-        else if (act === 'done') setTerrain(false);
-      });
+        return;
+      }
+      const tt = e.target.closest('[data-terrain-type]');
+      if (tt) {
+        st.terrainType = tt.getAttribute('data-terrain-type');
+        host.querySelectorAll('[data-terrain-type]').forEach((b) => b.classList.toggle('is-on', b === tt));
+        U.haptic(6);
+        return;
+      }
+      const sz = e.target.closest('[data-terrain-size]');
+      if (sz) {
+        st.terrainSize = sz.getAttribute('data-terrain-size');
+        host.querySelectorAll('[data-terrain-size]').forEach((b) => b.classList.toggle('chip--active', b === sz));
+        U.haptic(6);
+        return;
+      }
+      const act = e.target.closest('[data-terrain-act]');
+      if (act) {
+        const a = act.getAttribute('data-terrain-act');
+        if (st.terrainMode === 'stamp') {
+          if (a === 'clear') clearStamps();
+          else if (a === 'done') setTerrain(false);
+        } else {
+          if (a === 'clearhex') clearHexTerrains();
+          else if (a === 'save') { saveTerrain(); U.toast('지형을 저장했어요', { icon: 'i-check' }); }
+          else if (a === 'done') setTerrain(false);
+        }
+      }
     });
 
-    // 국경 그리기 팔레트 — 되돌리기 / 취소 / 완료
-    host.querySelectorAll('[data-border-act]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const act = btn.getAttribute('data-border-act');
-        if (act === 'undo') {
-          st.borderPoints.pop();
-          render();
-          U.haptic(6);
-        } else if (act === 'cancel') {
-          st.border = false;
-          st.borderPoints = [];
-          render();
-          U.toast('국경 그리기를 취소했어요', { icon: 'i-x', duration: 1600 });
-        } else if (act === 'done') {
-          if (st.borderPoints.length < 3) { U.toast('꼭짓점을 3개 이상 찍어 주세요', { icon: 'i-x' }); return; }
-          openBorderEditor(null, st.borderPoints.slice());
-        }
-      });
+    // 영토(육각 타일) 패널 — 국가 / 영토 선택 / 색 / 지우개 / 저장 / 수정 / 완료
+    const hexPanel = host.querySelector('.border-panel--hex');
+    if (hexPanel) hexPanel.addEventListener('click', (e) => {
+      const w2 = world();
+      const brush = hexBrush();
+      const nat = e.target.closest('[data-hex-nation]');
+      if (nat) {
+        setHexBrushNation(w2, nat.getAttribute('data-hex-nation'));
+        refreshBorderPanel();
+        U.haptic(6);
+        return;
+      }
+      const terr = e.target.closest('[data-hex-territory]');
+      if (terr) {
+        setHexBrushTerritory(w2, terr.getAttribute('data-hex-territory'));
+        refreshBorderPanel();
+        U.haptic(6);
+        return;
+      }
+      const col = e.target.closest('[data-hex-color]');
+      if (col) {
+        setHexBrushColor(w2, col.getAttribute('data-hex-color'));
+        saveMap();
+        refreshBorderPanel();
+        U.haptic(6);
+        return;
+      }
+      const act = e.target.closest('[data-hex-act]');
+      if (!act) return;
+      const a = act.getAttribute('data-hex-act');
+      if (a === 'new') {
+        brush.borderId = null;
+        brush.eraser = false;
+        brush.nationId = '';
+        brush.color = BORDER_COLORS[(hexTerritories(w2).length + 1) % BORDER_COLORS.length];
+        st.selectedBorder = null;
+        refreshBorderPanel();
+      } else if (a === 'eraser') {
+        brush.eraser = !brush.eraser;
+        refreshBorderPanel();
+      } else if (a === 'edit') {
+        if (brush.borderId) openBorderEditor(brush.borderId);
+      } else if (a === 'save') {
+        saveMap();
+        U.toast('영토를 저장했어요', { icon: 'i-check' });
+        refreshBorderPanel();
+      } else if (a === 'done') {
+        setBorder(false);
+      }
+      U.haptic(6);
     });
 
     // 인물 배치 모드 종료
@@ -8329,8 +9028,8 @@ main {
         const x = U.clamp(((e.clientX - rect.left) / rect.width) * 100, 1, 99);
         const y = U.clamp(((e.clientY - rect.top) / rect.height) * 100, 1, 99);
 
-        // 국경 그리기 — 탭한 자리에 꼭짓점을 찍는다
-        if (st.border) { e.preventDefault(); addBorderPoint(x, y); return; }
+        // 영토 칠하기 — 탭은 pointerdown에서 처리한다
+        if (st.border) { e.preventDefault(); return; }
         // 인물 핀 옮기기 / 새로 배치
         if (st.movingCpin) { e.preventDefault(); moveCharacterPinTo(st.movingCpin, x, y); return; }
         if (st.charPin) {
@@ -8370,23 +9069,96 @@ main {
           openCharacterPinSheet(cpinId);
           return;
         }
-        // 국경선을 탭하면 국가·색·삭제 시트
+        // 예전 다각형 국경을 탭하면 국가·색·삭제 시트 (육각 영토는 타일 탭으로 세부 지역에 들어간다)
         const borderEl = e.target.closest('[data-border]');
         if (borderEl) {
-          e.preventDefault();
-          e.stopPropagation();
-          st.selectedBorder = borderEl.getAttribute('data-border');
-          openBorderEditor(st.selectedBorder);
-          return;
+          const bd = bordersOf(w).find((x) => x.id === borderEl.getAttribute('data-border'));
+          if (bd && !tilesOf(bd).length) {
+            e.preventDefault();
+            e.stopPropagation();
+            st.selectedBorder = bd.id;
+            openBorderEditor(bd.id);
+            return;
+          }
         }
         if (st.terrain) {
-          addStamp(x, y);
+          if (st.terrainMode === 'stamp') addStamp(x, y);
           return;
+        }
+        // 육각형 타일 — 그 자리에 세부 지역 핀이 있으면 상세로, 없으면 새 지역 등록
+        if (!st.pinning) {
+          if (openRegionAt(w, x, y)) return;
         }
         if (!st.pinning) return;
         st.pinning = false;
         if (st.opts.onCreatePin) st.opts.onCreatePin(Math.round(x * 10) / 10, Math.round(y * 10) / 10);
       });
+
+      /* 영토·지형 칠하기 — 탭은 물론 문지르기(드래그)로도 칠한다 */
+      let painting = false;
+      let lastKey = '';
+      let paintCount = 0;
+      let paintRaf = 0;
+
+      function paintTarget() {
+        if (st.border) return 'border';
+        if (st.terrain && st.terrainMode !== 'stamp') return 'terrain';
+        return '';
+      }
+      function schedulePaintRefresh() {
+        if (paintRaf) return;
+        const run = () => {
+          paintRaf = 0;
+          if (st.border) { refreshBorderSvg(); refreshHexCount(); }
+          else refreshTerrainHexSvg();
+        };
+        paintRaf = global.requestAnimationFrame ? global.requestAnimationFrame(run) : setTimeout(run, 16);
+      }
+      function paintAtEvent(ev) {
+        const mode = paintTarget();
+        if (!mode) return;
+        const stage = frame.querySelector('#map-stage') || frame;
+        const rect = stage.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const px = ((ev.clientX - rect.left) / rect.width) * VW;
+        const py = ((ev.clientY - rect.top) / rect.height) * viewH();
+        const key = mode === 'border' ? paintHexAt(px, py) : paintHexTerrainAt(px, py);
+        if (key && key !== lastKey) {
+          lastKey = key;
+          paintCount += 1;
+          schedulePaintRefresh();
+        }
+      }
+      frame.addEventListener('pointerdown', (ev) => {
+        if (!paintTarget()) return;
+        if (ev.target.closest('.map-zoom')) return;
+        if (ev.button !== undefined && ev.button > 0) return;
+        if (isLocked()) return;
+        painting = true;
+        lastKey = '';
+        paintCount = 0;
+        if (frame.setPointerCapture) { try { frame.setPointerCapture(ev.pointerId); } catch (err) {} }
+        paintAtEvent(ev);
+        ev.preventDefault();
+      });
+      frame.addEventListener('pointermove', (ev) => {
+        if (!painting || !paintTarget()) return;
+        paintAtEvent(ev);
+        if (ev.cancelable) ev.preventDefault();
+      });
+      const endPaint = () => {
+        if (!painting) return;
+        painting = false;
+        if (paintCount) {
+          if (st.border) { saveMap(); refreshBorderPanel(); }
+          else { refreshTerrainHexSvg(); refreshTerrainCount(); saveTerrain(); }
+          U.haptic(6);
+        }
+        paintCount = 0;
+        lastKey = '-';
+      };
+      frame.addEventListener('pointerup', endPaint);
+      frame.addEventListener('pointercancel', endPaint);
     }
 
     host.querySelectorAll('[data-region]').forEach((btn) => {
@@ -8428,6 +9200,8 @@ main {
     stage.style.setProperty('--mk', U.clamp(1 / z, 0.34, 1).toFixed(3));
     stage.style.setProperty('--tk', U.clamp(1 / Math.sqrt(z), 0.55, 1).toFixed(3));
     frame.classList.toggle('is-zoomed', z > 1.001);
+    // 확대하면 세부 지역 핀 이름·지배 세력 라벨을 또렷하게 (축소 시에는 국가 영토 위주로)
+    frame.classList.toggle('is-detail', z >= 1.5);
     const label = frame.querySelector('[data-zoomlabel]');
     if (label) label.textContent = Math.round(z * 100) + '%';
   }
@@ -8495,9 +9269,15 @@ main {
         pan = { x: e.touches[0].clientX, y: e.touches[0].clientY, tx: st.tx, ty: st.ty, moved: 0 };
         mode = 1;
       }
+      // 영토·지형을 칠하는 중에는 지도 위 손가락으로 페이지가 스크롤되지 않게
+      if (st.border || (st.terrain && st.terrainMode !== 'stamp')) { if (e.cancelable) e.preventDefault(); }
     }, { passive: false });
 
     frame.addEventListener('touchmove', (e) => {
+      if (st.border || (st.terrain && st.terrainMode !== 'stamp')) {
+        if (e.cancelable) e.preventDefault();
+        return;
+      }
       if (mode === 2 && e.touches.length >= 2) {
         const a = e.touches[0], b = e.touches[1];
         const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) || 1;
@@ -8838,7 +9618,7 @@ main {
 
 </script>
 <script>
-/* ---- js/rankicon.js?v=1.4.1 ---- */
+/* ---- js/rankicon.js?v=1.4.2 ---- */
 /* =========================================================
    ARCANUM · 등급 아이콘 — 기본 팩(30종) + 설명 기반 문장(SVG) 생성기
    - 기본 아이콘: 이모지 24종 + 커스텀 SVG 문장 6종
@@ -9451,7 +10231,7 @@ main {
 
 </script>
 <script>
-/* ---- js/app.js?v=1.4.1 ---- */
+/* ---- js/app.js?v=1.4.2 ---- */
 /* =========================================================
    ARCANUM · app (views, forms, backup, navigation)
    ========================================================= */
@@ -9764,7 +10544,7 @@ main {
           '<span class="row-card__chev"><svg><use href="#i-chev-right"/></svg></span></button>' +
       '</div>';
 
-    html += '<p class="center muted small" style="margin-top:22px">아르카눔 · 판타지 세계관 노트 v1.4.1</p>';
+    html += '<p class="center muted small" style="margin-top:22px">아르카눔 · 판타지 세계관 노트 v1.4.2</p>';
 
     host.innerHTML = html;
 
@@ -10316,13 +11096,24 @@ main {
     const wrap = document.createElement('div');
     wrap.className = 'img-drop' + (initial ? ' has-img' : '');
     let value = initial || null;
+    // 라이트박스 캡션 — 폼에 지금 적힌 이름·칭호를 그때그때 읽는다
+    function caption(key, fallback) {
+      const v = typeof o[key] === 'function' ? o[key]() : o[key];
+      return String(v || '').trim() || (fallback || '');
+    }
+    function openZoom() {
+      if (!value) return;
+      U.openLightbox({ src: value, title: caption('title', '대표 이미지'), sub: caption('sub', '') });
+      U.haptic(6);
+    }
     function draw() {
       wrap.classList.toggle('has-img', !!value);
       wrap.innerHTML =
-        (value ? '<img src="' + esc(value) + '" alt="">' : '') +
+        (value ? '<img src="' + esc(value) + '" alt="" data-img="zoom">' : '') +
         '<span class="img-drop__inner"><svg><use href="#' + (o.icon || 'i-image') + '"/></svg>' +
         '<span>' + esc(o.label || '사진 선택') + '</span></span>' +
         '<span class="img-drop__actions">' +
+          (value ? '<button type="button" class="btn" data-img="zoom"><span aria-hidden="true">🔍</span>크게 보기</button>' : '') +
           '<button type="button" class="btn" data-img="pick"><svg><use href="#i-image"/></svg>' + (value ? '바꾸기' : '올리기') + '</button>' +
           (value ? '<button type="button" class="btn" data-img="clear">삭제</button>' : '') +
         '</span>';
@@ -10331,6 +11122,10 @@ main {
     wrap.addEventListener('click', async (e) => {
       const b = e.target.closest('[data-img]');
       if (!b) return;
+      if (b.dataset.img === 'zoom') {
+        openZoom();
+        return;
+      }
       if (b.dataset.img === 'clear') {
         value = null;
         draw();
@@ -10577,7 +11372,18 @@ main {
       full: true,
       html: html,
       onReady: ({ body, form, sheet }) => {
-        img = buildImageField(c ? c.image : null, { maxDim: 900, label: '초상 사진 올리기' });
+        img = buildImageField(c ? c.image : null, {
+          maxDim: 900,
+          label: '초상 사진 올리기',
+          title: () => {
+            const el = form.querySelector('[name="name"]');
+            return el ? el.value : '';
+          },
+          sub: () => {
+            const el = form.querySelector('[name="title"]');
+            return el ? el.value : '';
+          }
+        });
         body.querySelector('#char-img').appendChild(img.el);
         bindIllustrationPanel(body, form, img, () => {
           const byId = new Map((w.lore || []).map((l) => [l.id, l]));
@@ -10729,7 +11535,7 @@ main {
         if (c) {
           Object.assign(c, data);
         } else {
-          const pos = Store.randomPos(w.characters.length);
+          const pos = Store.randomPos(w.characters.length, Store.characterCells(w.characters), w.characters.length + 1);
           w.characters.push(Object.assign({ id: U.uid('c'), pos: pos }, data));
         }
         touch({ immediate: true });
@@ -11385,7 +12191,7 @@ main {
         MapView.refresh();
         U.toast('기본 판타지 지도를 불러왔어요');
       },
-      onCreatePin: (x, y) => openPinForm(x, y, null),
+      onCreatePin: (x, y, preset) => openPinForm(x, y, null, preset),
       onPin: (id) => openRegionDetail(id),
       onOpenCharacter: (charId) => openCharacterDetail(charId),
       onMapChange: () => touch()
@@ -11507,7 +12313,7 @@ main {
     });
   }
 
-  function openPinForm(x, y, id) {
+  function openPinForm(x, y, id, preset) {
     const w = W();
     if (w.mapLocked) {
       U.toast('🔒 지도가 고정되어 있어요 · 잠금을 해제한 뒤 수정할 수 있어요', { icon: 'i-x', duration: 2400 });
@@ -11564,7 +12370,7 @@ main {
         });
         nationPick = buildLorePicker(body.querySelector('#pin-nation'), w, {
           category: 'nation', multi: false, noneLabel: '무소속',
-          ids: (m && m.nationId) ? [m.nationId] : [],
+          ids: (m && m.nationId) ? [m.nationId] : ((preset && preset.nationId) ? [preset.nationId] : []),
           legacy: ''
         });
         body.querySelector('#gen-place').addEventListener('click', () => {
@@ -12965,7 +13771,7 @@ main {
       '<div class="divider"></div>' +
       '<div class="label-row"><span>앱 정보</span></div>' +
       '<div class="def-list">' +
-        '<div class="def"><dt>버전</dt><dd>아르카눔 v1.4.1 · PWA</dd></div>' +
+        '<div class="def"><dt>버전</dt><dd>아르카눔 v1.4.2 · PWA</dd></div>' +
         '<div class="def"><dt>저장</dt><dd>' + (Store.isDbBroken() ? 'localStorage (자동 저장)' : 'IndexedDB + localStorage 이중 저장') + '</dd></div>' +
         '<div class="def"><dt>오프라인</dt><dd>홈 화면에 추가하면 인터넷 없이도 열립니다.</dd></div>' +
       '</div>' +

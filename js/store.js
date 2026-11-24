@@ -42,6 +42,22 @@
     if (!w.map || typeof w.map !== 'object') w.map = { kind: null, image: null, markers: [] };
     if (!Array.isArray(w.map.markers)) w.map.markers = [];
     if (!Array.isArray(w.map.terrainStamps)) w.map.terrainStamps = [];
+    // v1.4.2 — 육각 타일 영토(tiles)와 육각 지형 색감(mapHexTerrains)
+    if (!Array.isArray(w.mapBorders)) w.mapBorders = [];
+    w.mapBorders = w.mapBorders.filter((b) => b && typeof b === 'object');
+    w.mapBorders.forEach((b) => {
+      if (!Array.isArray(b.tiles)) b.tiles = [];
+      b.tiles = b.tiles.filter((k) => typeof k === 'string' && k.indexOf(',') > 0);
+      if (!Array.isArray(b.points)) b.points = [];
+      if (b.tiles.length) b.hexMode = true;
+    });
+    if (!w.mapHexTerrains || typeof w.mapHexTerrains !== 'object' || Array.isArray(w.mapHexTerrains)) {
+      w.mapHexTerrains = {};
+    } else {
+      Object.keys(w.mapHexTerrains).forEach((k) => {
+        if (typeof k !== 'string' || k.indexOf(',') < 0) delete w.mapHexTerrains[k];
+      });
+    }
     // 업로드한 원본과 양피지 변환본을 함께 보관하고, 어느 쪽을 보여 줄지 기억한다
     if (typeof w.map.image !== 'string' || !w.map.image) w.map.image = null;
     if (typeof w.map.imageOriginal !== 'string' || !w.map.imageOriginal) w.map.imageOriginal = null;
@@ -143,11 +159,8 @@
       if (typeof c.abilityText !== 'string') c.abilityText = '';
       if (!c.pos || typeof c.pos.x !== 'number' || typeof c.pos.y !== 'number') {
         c.pos = randomPos(w.characters.length);
-      } else {
-        // 예전 저장본의 자유 좌표도 격자 교차점으로 한 번 맞춘다
-        c.pos.x = gridX(c.pos.x);
-        c.pos.y = gridY(c.pos.y);
       }
+      // 예전 저장본의 자유 좌표(64px 격자 포함)는 아래 layoutCharacters가 새 96px 격자로 옮긴다
       // 인물 등급: 체계마다 단계 하나(인덱스). 없는 체계·단계는 버린다.
       if (!Array.isArray(c.ranks)) c.ranks = [];
       const seen = new Set();
@@ -163,6 +176,8 @@
         return true;
       });
     });
+    // 좌표를 새 격자(96px)에 맞추고, 같은 칸에 몰린 노드를 빈 칸으로 흘어 놓는다
+    layoutCharacters(w.characters);
     if (genderSeed) w.genderSeeded = true;
     w.relations.forEach((r) => {
       if (!r.id) r.id = 'r_' + Math.random().toString(36).slice(2, 9);
@@ -408,20 +423,41 @@
     });
   }
 
-  // 자동 배치도 바둑판 격자 교차점(64px)에 맞춘다
-  const GRID_CELL = 64;
-  function gridX(x) { return Math.min(320, Math.max(64, Math.round(x / GRID_CELL) * GRID_CELL)); }
-  function gridY(y) { return Math.min(448, Math.max(64, Math.round(y / GRID_CELL) * GRID_CELL)); }
+  // 자동 배치도 관계도 바둑판 격자에 맞춘다 — 겹치면 가장 가까운 빈 칸으로 (칸 간격은 U.GRAPH_CELL)
+  function randomPos(index, occupied, total) {
+    const seed = U.graphSeed(index || 0);
+    const n = Math.max(total || 0, (occupied ? occupied.size : 0) + 1, (index || 0) + 1);
+    return U.graphSnap(seed.x, seed.y, occupied, U.graphGrid(n));
+  }
 
-  function randomPos(index) {
-    const i = index || 0;
-    const cx = 192, cy = 256;
-    const angle = (i * 137.5) * Math.PI / 180;
-    const radius = 40 + (i % 5) * 42;
-    return {
-      x: gridX(cx + Math.cos(angle) * radius),
-      y: gridY(cy + Math.sin(angle) * radius)
-    };
+  // 인물 목록에서 이미 차지된 격자 칸 (exceptId는 빼고)
+  function characterCells(chars, exceptId) {
+    const occ = new Set();
+    (chars || []).forEach((c) => {
+      if (!c || !c.pos || c.id === exceptId) return;
+      if (typeof c.pos.x !== 'number' || typeof c.pos.y !== 'number') return;
+      occ.add(U.graphKey(U.graphCellOf(c.pos.x, c.pos.y)));
+    });
+    return occ;
+  }
+
+  // 인물을 관계도 격자의 빈 칸으로 — 이미 누가 차지한 칸이면 가장 가까운 빈 칸
+  function fitCharacterPos(chars, x, y, exceptId) {
+    const list = chars || [];
+    return U.graphSnap(x, y, characterCells(list, exceptId), U.graphGrid(Math.max(1, list.length)));
+  }
+
+  // 저장본의 인물 좌표를 새 격자(96px)로 옮기고, 같은 칸에 몰린 노드를 빈 칸으로 흘어 놓는다.
+  function layoutCharacters(chars) {
+    if (!Array.isArray(chars) || !chars.length) return;
+    const grid = U.graphGrid(chars.length);
+    const occ = new Set();
+    // 고정(📌)한 노드는 제자리를 먼저 지킨다
+    chars.slice().sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)).forEach((c) => {
+      const p = U.graphSnap(c.pos && c.pos.x, c.pos && c.pos.y, occ, grid);
+      c.pos = { x: p.x, y: p.y };
+      occ.add(p.col + '|' + p.row);
+    });
   }
 
   function openDB() {
@@ -617,7 +653,8 @@
   function api() {
     return {
       init, get, save, setTheme, exportPayload, parseImport, applyImport,
-      normalizeWorld, randomPos, DEFAULT_BACKUP_FOLDER, syncLoreLinks, syncLoreFields,
+      normalizeWorld, randomPos, layoutCharacters, characterCells, fitCharacterPos,
+      DEFAULT_BACKUP_FOLDER, syncLoreLinks, syncLoreFields,
       state: () => state,
       isDbBroken: () => dbBroken,
       LS_KEY, LS_THEME

@@ -243,6 +243,58 @@
     return { el: wrap, close: close, img: img };
   }
 
+  /* ---------------- 관계도 바둑판 격자 ----------------
+     노드는 격자 칸 하나에 하나만 놓는다. 겹칠 자리면 가장 가까운 빈 칸으로 밀어낸다.
+     (원 지름 44 + 원 아래 이름·칭호 라벨이 들어가도 이웃 칸과 붙지 않을 만큼 넉넉한 96px) */
+  const GRAPH_CELL = 96;
+
+  function graphGrid(n) {
+    const count = Math.max(1, Number(n) || 1);
+    const cols = Math.min(9, Math.max(4, Math.ceil(Math.sqrt(count * 1.3))));
+    let rows = Math.max(4, Math.ceil(count / cols) + 1);
+    while (cols * rows < count) rows += 1;
+    return { cols: cols, rows: rows, cell: GRAPH_CELL };
+  }
+
+  function graphCellOf(x, y) {
+    return {
+      col: Math.round((Number(x) || 0) / GRAPH_CELL),
+      row: Math.round((Number(y) || 0) / GRAPH_CELL)
+    };
+  }
+
+  function graphKey(cell) { return cell.col + '|' + cell.row; }
+
+  // 겹치지 않는 가장 가까운 격자 칸으로 — occupied(Set)는 이미 차지된 칸의 키
+  function graphSnap(x, y, occupied, grid) {
+    const g = grid || graphGrid(1);
+    const cell = g.cell;
+    const base = graphCellOf(x, y);
+    base.col = Math.min(g.cols, Math.max(1, base.col || 1));
+    base.row = Math.min(g.rows, Math.max(1, base.row || 1));
+    const occ = occupied || new Set();
+    if (!occ.has(graphKey(base))) return { x: base.col * cell, y: base.row * cell, col: base.col, row: base.row };
+    let best = null;
+    let bestD = Infinity;
+    for (let r = 1; r <= g.rows; r++) {
+      for (let c = 1; c <= g.cols; c++) {
+        if (occ.has(c + '|' + r)) continue;
+        const d = Math.hypot(c - base.col, r - base.row);
+        if (d < bestD - 0.001) { bestD = d; best = { col: c, row: r }; }
+      }
+    }
+    if (!best) return { x: base.col * cell, y: base.row * cell, col: base.col, row: base.row };
+    return { x: best.col * cell, y: best.row * cell, col: best.col, row: best.row };
+  }
+
+  // 새 노드의 첫 자리 — 격자 가운데에서 해바라기 모양으로 퍼진 후보
+  function graphSeed(index) {
+    const i = Math.max(0, Number(index) || 0);
+    const angle = (i * 137.5) * Math.PI / 180;
+    const radius = (1 + Math.sqrt(i) * 1.1) * GRAPH_CELL;
+    return { x: 3 * GRAPH_CELL + Math.cos(angle) * radius, y: 3 * GRAPH_CELL + Math.sin(angle) * radius };
+  }
+
   /* ---------------- Files ---------------- */
   function readFileAsDataURL(file) {
     return new Promise((resolve, reject) => {
@@ -453,6 +505,7 @@
     $, $$, esc, uid, debounce, clamp, toast, openSheet, confirmSheet, openLightbox,
     readFileAsDataURL, readFileAsText, loadImage, resizeImage, downloadText, copyText,
     pickFile, haptic, field, textInput, textArea, selectInput, chipPicker, datalist,
-    initials, todayLabel, fileStamp, plural
+    initials, todayLabel, fileStamp, plural,
+    GRAPH_CELL, graphGrid, graphCellOf, graphKey, graphSnap, graphSeed
   };
 })(window);

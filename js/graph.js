@@ -18,12 +18,35 @@
     other: { label: '기타', color: '#9a9282' }
   };
 
-  // 바둑판 격자 — 노드는 격자 교차점에만 놓인다
-  const CELL = 64;
-  const GRID_MIN_X = CELL, GRID_MAX_X = 320, GRID_MIN_Y = CELL, GRID_MAX_Y = 448;
+  // 바둑판 격자 — 노드는 격자 칸 하나에 하나만 놓인다. 칸 간격은 U.GRAPH_CELL(96px)
+  const CELL = U.GRAPH_CELL;
+  const NODE_R = 21;          // 원 반지름 — 원 아래 이름 라벨까지 96px 칸 안에 들어간다
 
-  function snapX(x) { return U.clamp(Math.round(x / CELL) * CELL, GRID_MIN_X, GRID_MAX_X); }
-  function snapY(y) { return U.clamp(Math.round(y / CELL) * CELL, GRID_MIN_Y, GRID_MAX_Y); }
+  // 이미 다른 노드가 차지한 칸 (exceptId는 빼고)
+  function occupiedCells(chars, exceptId) {
+    const occ = new Set();
+    chars.forEach((c) => {
+      if (!c.pos || c.id === exceptId) return;
+      occ.add(U.graphKey(U.graphCellOf(c.pos.x, c.pos.y)));
+    });
+    return occ;
+  }
+
+  // 겹치면 가장 가까운 빈 칸으로 — 드래그·고정·초기 배치가 모두 이걸 쓴다
+  function snapPos(chars, x, y, exceptId) {
+    const list = chars instanceof Map ? Array.from(chars.values()) : (chars || []);
+    const occ = occupiedCells(list, exceptId);
+    return U.graphSnap(x, y, occ, U.graphGrid(Math.max(1, list.length)));
+  }
+
+  // 이름 라벨 폭 — 한글은 글자당 8.6px 남짓, 영문은 그보다 좁다
+  function textWidth(text, size) {
+    let w = 0;
+    String(text || '').split('').forEach((ch) => {
+      w += /[\u3131-\uD7A3]/.test(ch) ? size : size * 0.58;
+    });
+    return w;
+  }
 
   // 스승·제자: mentor는 a→b, student는 b→a 방향
   function isDirected(type) { return type === 'mentor' || type === 'student'; }
@@ -88,7 +111,7 @@
     const cx = (a.x + b.x) / 2 + nx * offset;
     const cy = (a.y + b.y) / 2 + ny * offset;
     // 노드 원 바깥에서 시작해 화살촉이 노드 가장자리에 닿도록 양끝을 다듬는다
-    const r = 19;
+    const r = NODE_R + 1;
     const sdx = cx - a.x, sdy = cy - a.y, sl = Math.hypot(sdx, sdy) || 1;
     const edx = b.x - cx, edy = b.y - cy, el = Math.hypot(edx, edy) || 1;
     const sx = a.x + (sdx / sl) * r, sy = a.y + (sdy / sl) * r;
@@ -164,31 +187,44 @@
     group.innerHTML = html;
   }
 
+  /* 인물 노드 — 원 안은 얼굴 사진(없으면 이니셜), 이름·칭호는 원 바로 아래 라벨 */
   function renderNodes(svg, chars) {
     const group = svg.querySelector('.gnodes');
     if (!group) return;
     let defs = '';
     let html = '';
+    let seq = 0;
     chars.forEach((c) => {
       const selected = state.selected.indexOf(c.id) > -1;
       const hasImg = !!c.image;
-      const r = 18;
+      const clipId = 'gclip' + (seq++) + '_' + String(c.id).replace(/[^\w-]/g, '');
       if (hasImg) {
-        defs += '<clipPath id="clip_' + U.esc(c.id) + '"><circle cx="' + c.pos.x + '" cy="' + c.pos.y + '" r="' + r + '"/></clipPath>';
+        defs += '<clipPath id="' + clipId + '"><circle cx="0" cy="0" r="' + NODE_R + '"/></clipPath>';
       }
+      const name = truncate(c.name, 7);
+      const title = truncate(String(c.title || '').trim(), 9);
+      const nameW = textWidth(name, 8.8) + 11;
+      const titleW = title ? textWidth(title, 6.4) + 9 : 0;
+      const boxW = Math.max(20, nameW, titleW);
+      const boxH = title ? 22 : 14;
+      const boxY = NODE_R + 3;
       html +=
         '<g class="gnode' + (selected ? ' is-selected' : '') + (c.pinned ? ' is-pinned' : '') + '" data-node="' + U.esc(c.id) + '" transform="translate(' + c.pos.x + ' ' + c.pos.y + ')">' +
-          (selected ? '<circle r="24" fill="none" stroke="#d4af37" stroke-width="1" stroke-dasharray="2 2" opacity=".9"/>' : '') +
-          (c.pinned ? '<circle r="23" fill="none" stroke="#d4af37" stroke-width="1.2" stroke-opacity=".9" stroke-dasharray="1.4 2.8"/>' : '') +
-          '<circle r="' + r + '" fill="#241a12" stroke="#d4af37" stroke-width="1.4" stroke-opacity=".75"/>' +
+          (selected ? '<circle r="' + (NODE_R + 5) + '" fill="none" stroke="#d4af37" stroke-width="1" stroke-dasharray="2 2" opacity=".9"/>' : '') +
+          (c.pinned ? '<circle r="' + (NODE_R + 4) + '" fill="none" stroke="#d4af37" stroke-width="1.2" stroke-opacity=".9" stroke-dasharray="1.4 2.8"/>' : '') +
+          '<circle r="' + NODE_R + '" fill="#241a12"/>' +
           (hasImg
-            ? '<image href="' + U.esc(c.image) + '" x="' + (c.pos.x - r) + '" y="' + (c.pos.y - r) + '" width="' + (r * 2) + '" height="' + (r * 2) + '" preserveAspectRatio="xMidYMid slice" clip-path="url(#clip_' + U.esc(c.id) + ')" style="pointer-events:none"/>'
-            : '<text y="4.5" text-anchor="middle" font-size="13" fill="#d8b864" font-family="Georgia, \'AppleMyungjo\', serif">' + U.esc(U.initials(c.name)) + '</text>') +
-          '<text class="gnode-lbl" y="32" text-anchor="middle" font-size="8.4" stroke-width="2.2" paint-order="stroke" stroke-linejoin="round" font-family="-apple-system, sans-serif">' + U.esc(truncate(c.name, 8)) + '</text>' +
-          (c.pinned ? '<text y="-27" text-anchor="middle" font-size="9" aria-hidden="true">📌</text>' : '') +
+            ? '<image href="' + U.esc(c.image) + '" x="' + (-NODE_R) + '" y="' + (-NODE_R) + '" width="' + (NODE_R * 2) + '" height="' + (NODE_R * 2) + '" preserveAspectRatio="xMidYMin slice" clip-path="url(#' + clipId + ')" style="pointer-events:none"/>'
+            : '<text y="4.8" text-anchor="middle" font-size="14" fill="#d8b864" font-family="Georgia, \'AppleMyungjo\', serif">' + U.esc(U.initials(c.name)) + '</text>') +
+          '<circle r="' + NODE_R + '" fill="none" stroke="#d4af37" stroke-width="1.4" stroke-opacity=".8"/>' +
+          '<rect class="gnode-plate" x="' + (-boxW / 2).toFixed(1) + '" y="' + boxY + '" width="' + boxW.toFixed(1) + '" height="' + boxH + '" rx="4.5"/>' +
+          '<text class="gnode-lbl" y="' + (boxY + 10.4) + '" text-anchor="middle" font-size="8.8" font-family="-apple-system, sans-serif">' + U.esc(name) + '</text>' +
+          (title ? '<text class="gnode-sub" y="' + (boxY + 18.4) + '" text-anchor="middle" font-size="6.4" font-family="-apple-system, sans-serif">' + U.esc(title) + '</text>' : '') +
+          (c.pinned ? '<text y="' + (-(NODE_R + 9)) + '" text-anchor="middle" font-size="9" aria-hidden="true">📌</text>' : '') +
         '</g>';
     });
-    svg.querySelector('.gdefs-clip').innerHTML = defs;
+    const defsEl = svg.querySelector('.gdefs-clip');
+    if (defsEl) defsEl.innerHTML = defs;
     group.innerHTML = html;
   }
 
@@ -216,7 +252,7 @@
         ? '상대 인물을 한 명 더 탭하세요.'
         : '관계를 이을 인물 두 명을 차례로 탭하세요.';
     } else {
-      hint.textContent = '노드를 끌면 바둑판 칸에 맞춰지고, 두 번 탭하면 위치가 고정돼요.';
+      hint.textContent = '노드를 끌면 빈 바둑판 칸에 맞춰지고, 두 번 탭하면 위치가 고정돼요.';
     }
   }
 
@@ -282,9 +318,10 @@
     if (!c) return;
     c.pinned = !c.pinned;
     if (c.pinned) {
-      if (!c.pos) c.pos = { x: 180, y: 260 };
-      c.pos.x = snapX(c.pos.x);
-      c.pos.y = snapY(c.pos.y);
+      if (!c.pos) c.pos = { x: 3 * CELL, y: 3 * CELL };
+      const p = snapPos(nodeMap(), c.pos.x, c.pos.y, c.id);
+      c.pos.x = p.x;
+      c.pos.y = p.y;
     }
     if (state.opts.onNodeMoved) state.opts.onNodeMoved();
     refresh();
@@ -364,8 +401,10 @@
         if (!c) return;
         if (c.pinned) return;   // 고정된 노드는 끌어도 움직이지 않는다
         const p = toWorld(e.clientX, e.clientY);
-        c.pos.x = snapX(p.x);
-        c.pos.y = snapY(p.y);
+        // 이미 다른 노드가 차지한 칸이면 가장 가까운 빈 칸으로 스냅한다
+        const snapped = snapPos(nodeMap(), p.x, p.y, c.id);
+        c.pos.x = snapped.x;
+        c.pos.y = snapped.y;
         updateNodeTransform(c);
         renderEdges(state.svg, nodeMap());
         e.preventDefault();
@@ -463,8 +502,8 @@
     host.innerHTML =
       '<svg id="graph-svg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">' +
         '<defs class="gdefs-clip"></defs>' +
-        '<defs><pattern id="graph-grid" width="64" height="64" patternUnits="userSpaceOnUse">' +
-          '<path d="M 64 0 L 0 0 0 64" fill="none" stroke="rgba(212,175,55,.16)" stroke-width=".5"/>' +
+        '<defs><pattern id="graph-grid" width="' + CELL + '" height="' + CELL + '" patternUnits="userSpaceOnUse">' +
+          '<path d="M ' + CELL + ' 0 L 0 0 0 ' + CELL + '" fill="none" stroke="rgba(212,175,55,.16)" stroke-width=".5"/>' +
         '</pattern></defs>' +
         '<rect class="graph-grid-bg" x="-4000" y="-4000" width="8000" height="8000" fill="url(#graph-grid)"/>' +
         '<g class="gedges"></g>' +
